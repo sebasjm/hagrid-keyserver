@@ -2,13 +2,29 @@ use multipart::server::Multipart;
 use multipart::server::save::Entries;
 use multipart::server::save::SaveResult::*;
 
-use rocket::Data;
+use rocket::{State, Data};
 use rocket::http::{ContentType, Status};
 use rocket::response::status::Custom;
+use rocket_contrib::Template;
+
+use database::{Database, Polymorphic};
+
+mod template {
+    #[derive(Serialize)]
+    pub struct Token {
+        pub userid: String,
+        pub token: String,
+    }
+
+    #[derive(Serialize)]
+    pub struct Context {
+        pub tokens: Vec<Token>,
+    }
+}
 
 #[post("/keys", data = "<data>")]
 // signature requires the request to have a `Content-Type`
-pub fn multipart_upload(cont_type: &ContentType, data: Data) -> Result<String, Custom<String>> {
+pub fn multipart_upload(db: State<Polymorphic>, cont_type: &ContentType, data: Data) -> Result<Template, Custom<String>> {
     // this and the next check can be implemented as a request guard but it seems like just
     // more boilerplate than necessary
     if !cont_type.is_form_data() {
@@ -25,17 +41,17 @@ pub fn multipart_upload(cont_type: &ContentType, data: Data) -> Result<String, C
             )
         )?;
 
-    process_upload(boundary, data)
+    process_upload(boundary, data, db.inner())
 }
 
-fn process_upload(boundary: &str, data: Data) -> Result<String, Custom<String>> {
+fn process_upload(boundary: &str, data: Data, db: &Polymorphic) -> Result<Template, Custom<String>> {
     // saves all fields, any field longer than 10kB goes to a temporary directory
     // Entries could implement FromData though that would give zero control over
     // how the files are saved; Multipart would be a good impl candidate though
     match Multipart::with_body(data.open(), boundary).save().temp() {
-        Full(entries) => process_entries(entries),
+        Full(entries) => process_entries(entries, db),
         Partial(partial, _) => {
-            process_entries(partial.entries)
+            process_entries(partial.entries, db)
         },
         Error(err) => Err(Custom(Status::InternalServerError, err.to_string())),
     }
@@ -43,7 +59,7 @@ fn process_upload(boundary: &str, data: Data) -> Result<String, Custom<String>> 
 
 // having a streaming output would be nice; there's one for returning a `Read` impl
 // but not one that you can `write()` to
-fn process_entries(entries: Entries) -> Result<String, Custom<String>> {
+fn process_entries(entries: Entries, db: &Polymorphic) -> Result<Template, Custom<String>> {
     use openpgp::TPK;
 
     match entries.fields.get(&"key".to_string()) {
@@ -54,24 +70,29 @@ fn process_entries(entries: Entries) -> Result<String, Custom<String>> {
 
             match TPK::from_reader(reader) {
                 Ok(tpk) => {
-                    match tpk.userids().next() {
-                        Some(uid) => {
-                            Ok(format!("Hello, {:?}", uid.userid()))
+                    match db.merge_or_publish(tpk) {
+                        Ok(tokens) => {
+                            let tokens = tokens
+                                .into_iter().map(|(uid,tok)| {
+                                    template::Token{ userid: uid.to_string(), token: tok }
+                                }).collect::<Vec<_>>();
+                            let context = template::Context{
+                                tokens: tokens
+                            };
+
+                            Ok(Template::render("upload", context))
                         }
-                        None => {
-                            Ok(format!("Hello, {:?}", tpk.primary().fingerprint()))
-                        }
+                        Err(err) =>
+                            Err(Custom(Status::InternalServerError,
+                                       format!("{:?}", err))),
                     }
                 }
-                Err(e) => {
-                    Ok(format!("Error: {:?}", e))
-                }
+                Err(_) => Err(Custom(Status::BadRequest,
+                                     "Not a PGP public key".into())),
             }
         }
-        Some(_) | None => Err(Custom(
-            Status::BadRequest,
-            "Not a PGP public key".into()
-        )),
+        Some(_) | None =>
+            Err(Custom(Status::BadRequest, "Not a PGP public key".into())),
     }
 }
 

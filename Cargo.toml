@@ -19,3 +19,8 @@ time = "0.1"
 tempfile = "3.0"
 parking_lot = "0.6"
 structopt = "0.2"
+
+[dependencies.rocket_contrib]
+version = "0"
+default-features = false
+features = ["handlebars_templates"]

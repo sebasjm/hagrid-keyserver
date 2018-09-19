@@ -9,10 +9,13 @@ extern crate serde_json;
 
 extern crate time;
 extern crate base64;
+
 #[cfg(not(test))] #[macro_use] extern crate rocket;
 #[cfg(test)] extern crate rocket;
-extern crate openpgp;
+extern crate rocket_contrib;
 extern crate multipart;
+
+extern crate openpgp;
 #[macro_use] extern crate error_chain;
 #[macro_use] extern crate log;
 extern crate rand;
@@ -31,6 +34,9 @@ mod errors {
             Json(::serde_json::Error);
             Persist(::tempfile::PersistError);
             Base64(::base64::DecodeError);
+            RktConfig(::rocket::config::ConfigError);
+            StringUtf8Error(::std::string::FromUtf8Error);
+            StrUtf8Error(::std::str::Utf8Error);
         }
     }
 }
@@ -41,23 +47,38 @@ use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
 #[structopt(name = "garbage", about = "Garbage Pile - The verifying OpenPGP key server.")]
-struct Opt {
-    /// Debug mode
+pub struct Opt {
+    /// More verbose output. Disabled when running as daemon.
     #[structopt(short = "v", long = "verbose")]
-    debug: bool,
-    /// Daemon
+    verbose: bool,
+    /// Daemonize after startup.
     #[structopt(short = "d", long = "daemon")]
     daemon: bool,
     /// Base directory
     #[structopt(parse(from_os_str))]
     base: PathBuf,
-    /// Listen
-    #[structopt(short = "l", long = "listen", default_value = "0.0.0.0:80")]
+    /// Template directory
+    #[structopt(parse(from_os_str))]
+    templates: PathBuf,
+    /// Port and address to listen on.
+    #[structopt(short = "l", long = "listen", default_value = "0.0.0.0:8080")]
     listen: String,
  }
 
 fn main() {
-    let opt = Opt::from_args();
-    println!("{:?}", opt);
-}
+    use database::{Filesystem, Polymorphic};
 
+    let opt = Opt::from_args();
+    println!("{:#?}", opt);
+
+    if !opt.base.is_absolute() {
+        panic!("Base directory must be absolute");
+    }
+
+    if !opt.templates.is_absolute() {
+        panic!("Template directory must be absolute");
+    }
+
+    let db = Filesystem::new(opt.base.clone()).unwrap();
+    web::serve(&opt, Polymorphic::Filesystem(db)).unwrap();
+}
