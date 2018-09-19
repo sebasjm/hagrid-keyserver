@@ -188,16 +188,27 @@ impl Database for Filesystem {
 
     // XXX: slow
     fn by_uid(&self, uid: &str) -> Option<Box<[u8]>> {
-        let target = self.base.join("public").join("by-uid").join(uid);
+        use std::fs;
 
-        File::open(target).ok().and_then(|mut fd| {
-            let mut buf = Vec::default();
-            if fd.read_to_end(&mut buf).is_ok() {
-                Some(buf.into_boxed_slice())
-            } else {
-                None
-            }
-        })
+        let path = self.base.join("public").join("by-uid").join(uid);
+
+        fs::canonicalize(path).ok()
+            .and_then(|p| {
+                if p.starts_with(&self.base) {
+                    Some(p)
+                } else {
+                    None
+                }
+            }).and_then(|p| {
+                File::open(p).ok()
+            }).and_then(|mut fd| {
+                let mut buf = Vec::default();
+                if fd.read_to_end(&mut buf).is_ok() {
+                    Some(buf.into_boxed_slice())
+                } else {
+                    None
+                }
+            })
     }
 }
 
