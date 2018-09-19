@@ -20,7 +20,7 @@ use std::sync::atomic::{Ordering, AtomicBool};
 
 use database::{Fingerprint, Database};
 use openpgp::tpk::{TPKBuilder, UserIDBinding};
-use openpgp::{UserID, TPK, PacketPile, Packet};
+use openpgp::{Packet, UserID, TPK, PacketPile};
 use base64;
 
 pub fn test_uid_verification<D: Database>(db: &mut D) {
@@ -30,8 +30,12 @@ pub fn test_uid_verification<D: Database>(db: &mut D) {
         .add_userid(str_uid1)
         .add_userid(str_uid2)
         .generate().unwrap();
-    let uid1 = UserID::new().userid_from_bytes(str_uid1.as_bytes());
-    let uid2 = UserID::new().userid_from_bytes(str_uid2.as_bytes());
+    let mut uid1 = UserID::new();
+    let mut uid2 = UserID::new();
+
+    uid1.set_userid_from_bytes(str_uid1.as_bytes());
+    uid2.set_userid_from_bytes(str_uid2.as_bytes());
+
     let b64_uid1 = base64::encode_config(str_uid1, base64::URL_SAFE);
     let b64_uid2 = base64::encode_config(str_uid2, base64::URL_SAFE);
 
@@ -56,7 +60,7 @@ pub fn test_uid_verification<D: Database>(db: &mut D) {
     assert!(db.by_uid(&b64_uid2).is_none());
 
     // verify 1st uid
-    assert!(db.verify_token(&tokens[0]).unwrap());
+    assert!(db.verify_token(&tokens[0].1).unwrap().is_some());
 
     {
         // fetch by fpr
@@ -70,7 +74,7 @@ pub fn test_uid_verification<D: Database>(db: &mut D) {
         let uid = key.userids().next().unwrap().userid().clone();
 
         assert!((uid == uid1) ^ (uid == uid2));
-        let b64_uid = base64::encode_config(&String::from_utf8(uid.value.clone()).unwrap(), base64::URL_SAFE);
+        let b64_uid = base64::encode_config(&String::from_utf8(uid.userid().to_vec()).unwrap(), base64::URL_SAFE);
         assert_eq!(db.by_uid(&b64_uid).unwrap(), raw);
 
         if b64_uid1 == b64_uid {
@@ -83,7 +87,7 @@ pub fn test_uid_verification<D: Database>(db: &mut D) {
     }
 
     // verify 1st uid again
-    assert!(db.verify_token(&tokens[0]).is_err());
+    assert!(db.verify_token(&tokens[0].1).is_err());
 
     {
         // fetch by fpr
@@ -97,7 +101,7 @@ pub fn test_uid_verification<D: Database>(db: &mut D) {
         let uid = key.userids().next().unwrap().userid().clone();
 
         assert!((uid == uid1) ^ (uid == uid2));
-        let b64_uid = base64::encode_config(&String::from_utf8(uid.value.clone()).unwrap(), base64::URL_SAFE);
+        let b64_uid = base64::encode_config(&String::from_utf8(uid.userid().to_vec()).unwrap(), base64::URL_SAFE);
         assert_eq!(db.by_uid(&b64_uid).unwrap(), raw);
 
         if b64_uid1 == b64_uid {
@@ -110,7 +114,7 @@ pub fn test_uid_verification<D: Database>(db: &mut D) {
     }
 
     // verify 2nd uid
-    assert!(db.verify_token(&tokens[1]).unwrap());
+    assert!(db.verify_token(&tokens[1].1).unwrap().is_some());
 
     {
         // fetch by fpr
@@ -130,7 +134,7 @@ pub fn test_uid_verification<D: Database>(db: &mut D) {
     }
 
     // upload again
-    assert_eq!(db.merge_or_publish(tpk.clone()).unwrap(), Vec::<String>::default());
+    assert_eq!(db.merge_or_publish(tpk.clone()).unwrap(), Vec::<(UserID,String)>::default());
 
     // publish w/ one uid less
     {
@@ -146,7 +150,7 @@ pub fn test_uid_verification<D: Database>(db: &mut D) {
         let pile = PacketPile::from_packets(packets.collect());
         let short_tpk = TPK::from_packet_pile(pile).unwrap();
 
-        assert_eq!(db.merge_or_publish(short_tpk.clone()).unwrap(), Vec::<String>::default());
+        assert_eq!(db.merge_or_publish(short_tpk.clone()).unwrap(), Vec::<(UserID,String)>::default());
 
         // fetch by fpr
         let raw = db.by_fpr(&fpr).unwrap();
@@ -176,7 +180,9 @@ pub fn test_uid_verification<D: Database>(db: &mut D) {
                 }
             }).collect::<Vec<_>>();
         let str_uid3 = "Test C <test_c@example.com>";
-        let uid3 = UserID::new().userid_from_bytes(str_uid3.as_bytes());
+        let mut uid3 = UserID::new();
+        uid3.set_userid_from_bytes(str_uid3.as_bytes());
+
         let b64_uid3 = base64::encode_config(str_uid3, base64::URL_SAFE);
         let key = tpk.primary();
         let bind = UserIDBinding::new(key, uid3.clone(), key).unwrap();
@@ -215,8 +221,12 @@ pub fn test_uid_deletion<D: Database>(db: &mut D) {
         .add_userid(str_uid1)
         .add_userid(str_uid2)
         .generate().unwrap();
-    let uid1 = UserID::new().userid_from_bytes(str_uid1.as_bytes());
-    let uid2 = UserID::new().userid_from_bytes(str_uid2.as_bytes());
+    let mut uid1 = UserID::new();
+    let mut uid2 = UserID::new();
+
+    uid1.set_userid_from_bytes(str_uid1.as_bytes());
+    uid2.set_userid_from_bytes(str_uid2.as_bytes());
+
     let b64_uid1 = base64::encode_config(str_uid1, base64::URL_SAFE);
     let b64_uid2 = base64::encode_config(str_uid2, base64::URL_SAFE);
 
@@ -224,8 +234,8 @@ pub fn test_uid_deletion<D: Database>(db: &mut D) {
     let tokens = db.merge_or_publish(tpk.clone()).unwrap();
 
     assert_eq!(tokens.len(), 2);
-    assert!(db.verify_token(&tokens[0]).unwrap());
-    assert!(db.verify_token(&tokens[1]).unwrap());
+    assert!(db.verify_token(&tokens[0].1).unwrap().is_some());
+    assert!(db.verify_token(&tokens[1].1).unwrap().is_some());
 
     let fpr = Fingerprint::try_from(tpk.fingerprint()).unwrap();
 

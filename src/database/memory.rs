@@ -7,16 +7,16 @@ use base64;
 use database::{Verify, Delete, Fingerprint, Database};
 use Result;
 
-struct InMemory {
+pub struct Memory {
     fpr: Mutex<HashMap<Fingerprint, Box<[u8]>>>,
     userid: Mutex<HashMap<String, Fingerprint>>,
     verify_token: Mutex<HashMap<String, Verify>>,
     delete_token: Mutex<HashMap<String, Delete>>,
 }
 
-impl Default for InMemory {
+impl Default for Memory {
     fn default() -> Self {
-        InMemory{
+        Memory{
             fpr: Mutex::new(HashMap::default()),
             userid: Mutex::new(HashMap::default()),
             verify_token: Mutex::new(HashMap::default()),
@@ -25,22 +25,22 @@ impl Default for InMemory {
     }
 }
 
-impl Database for InMemory {
-    fn new_verify_token(&mut self, payload: Verify) -> Result<String> {
+impl Database for Memory {
+    fn new_verify_token(&self, payload: Verify) -> Result<String> {
         let token = Self::new_token();
 
         self.verify_token.lock().insert(token.clone(), payload);
         Ok(token)
     }
 
-    fn new_delete_token(&mut self, payload: Delete) -> Result<String> {
+    fn new_delete_token(&self, payload: Delete) -> Result<String> {
         let token = Self::new_token();
 
         self.delete_token.lock().insert(token.clone(), payload);
         Ok(token)
     }
 
-    fn compare_and_swap(&mut self, fpr: &Fingerprint, present: Option<&[u8]>, new: Option<&[u8]>) -> Result<bool> {
+    fn compare_and_swap(&self, fpr: &Fingerprint, present: Option<&[u8]>, new: Option<&[u8]>) -> Result<bool> {
         let mut fprs = self.fpr.lock();
 
         if fprs.get(fpr).map(|x| &x[..]) == present {
@@ -56,23 +56,23 @@ impl Database for InMemory {
         }
     }
 
-    fn link_userid(&mut self, uid: &UserID, fpr: &Fingerprint) {
-        let uid = base64::encode_config(&uid.value, base64::URL_SAFE);
+    fn link_userid(&self, uid: &UserID, fpr: &Fingerprint) {
+        let uid = base64::encode_config(uid.userid(), base64::URL_SAFE);
         self.userid.lock().insert(uid.to_string(), fpr.clone());
     }
 
-    fn unlink_userid(&mut self, uid: &UserID, _: &Fingerprint) {
-        let uid = base64::encode_config(&uid.value, base64::URL_SAFE);
+    fn unlink_userid(&self, uid: &UserID, _: &Fingerprint) {
+        let uid = base64::encode_config(uid.userid(), base64::URL_SAFE);
         self.userid.lock().remove(&uid.to_string());
     }
 
     // (verified uid, fpr)
-    fn pop_verify_token(&mut self, token: &str) -> Option<Verify> {
+    fn pop_verify_token(&self, token: &str) -> Option<Verify> {
         self.verify_token.lock().remove(token)
     }
 
     // fpr
-    fn pop_delete_token(&mut self, token: &str) -> Option<Delete> {
+    fn pop_delete_token(&self, token: &str) -> Option<Delete> {
         self.delete_token.lock().remove(token)
     }
 
@@ -88,7 +88,7 @@ impl Database for InMemory {
     }
 }
 
-impl InMemory {
+impl Memory {
     pub fn new_token() -> String {
         use rand::{thread_rng, Rng};
         use rand::distributions::Alphanumeric;
@@ -108,7 +108,7 @@ mod tests {
 
     #[test]
     fn new() {
-        let mut db = InMemory::default();
+        let mut db = Memory::default();
         let k1 = TPKBuilder::default().add_userid("a").generate().unwrap();
         let k2 = TPKBuilder::default().add_userid("b").generate().unwrap();
         let k3 = TPKBuilder::default().add_userid("c").generate().unwrap();
@@ -123,7 +123,7 @@ mod tests {
 
     #[test]
     fn uid_verification() {
-        let mut db = InMemory::default();
+        let mut db = Memory::default();
 
         test::test_uid_verification(&mut db);
     }

@@ -6,13 +6,18 @@ use std::fmt;
 
 use serde::{Serializer, Deserializer, de};
 use time;
-use openpgp::{self, TPK, UserID, Packet, PacketPile, Signature, constants::SignatureType};
+use openpgp::{self, Signature, TPK, UserID, Packet, PacketPile, constants::SignatureType};
 use base64;
 use {Error, Result};
 
 mod fs;
+pub use self::fs::Filesystem;
 mod memory;
+pub use self::memory::Memory;
+mod poly;
+pub use self::poly::Polymorphic;
 mod test;
+
 
 #[derive(Serialize,Deserialize,Clone,Debug,Hash,PartialEq,Eq)]
 pub struct Fingerprint([u8; 20]);
@@ -38,7 +43,8 @@ impl FromStr for Fingerprint {
     type Err = Error;
 
     fn from_str(s: &str) -> Result<Fingerprint> {
-        let vec = base64::decode(s)?;
+        let vec = base64::decode_config(s, base64::URL_SAFE)
+            .map_err(|e| format!("'{}' is not a valid fingerprint: {}", s, e))?;
         if vec.len() == 20 {
             let mut arr = [0u8; 20];
 
@@ -87,7 +93,7 @@ impl Verify {
     }
 
     fn serialize_userid<S>(uid: &UserID, ser: S) -> result::Result<S::Ok, S::Error> where S: Serializer {
-        ser.serialize_bytes(&uid.value)
+        ser.serialize_bytes(uid.userid())
     }
 }
 
@@ -104,7 +110,9 @@ impl<'de> de::Visitor<'de> for UserIDVisitor {
     where
         E: de::Error,
     {
-        Ok(UserID::new().userid_from_bytes(s))
+        let mut uid = UserID::new();
+        uid.set_userid_from_bytes(s);
+        Ok(uid)
     }
 
     fn visit_seq<A>(self, mut seq: A) -> result::Result<Self::Value, A::Error>
@@ -117,7 +125,9 @@ impl<'de> de::Visitor<'de> for UserIDVisitor {
             buf.push(x);
         }
 
-        Ok(UserID::new().userid_from_bytes(&buf))
+        let mut uid = UserID::new();
+        uid.set_userid_from_bytes(&buf);
+        Ok(uid)
     }
 }
 
@@ -139,19 +149,19 @@ impl Delete {
 // uid -> uidsig+
 // subkey -> subkeysig+
 
-pub trait Database: Sync + Send{
-    fn new_verify_token(&mut self, payload: Verify) -> Result<String>;
-    fn new_delete_token(&mut self, payload: Delete) -> Result<String>;
+pub trait Database: Sync + Send {
+    fn new_verify_token(&self, payload: Verify) -> Result<String>;
+    fn new_delete_token(&self, payload: Delete) -> Result<String>;
 
-    fn compare_and_swap(&mut self, fpr: &Fingerprint, present: Option<&[u8]>, new: Option<&[u8]>) -> Result<bool>;
+    fn compare_and_swap(&self, fpr: &Fingerprint, present: Option<&[u8]>, new: Option<&[u8]>) -> Result<bool>;
 
-    fn link_userid(&mut self, uid: &UserID, fpr: &Fingerprint);
-    fn unlink_userid(&mut self, uid: &UserID, fpr: &Fingerprint);
+    fn link_userid(&self, uid: &UserID, fpr: &Fingerprint);
+    fn unlink_userid(&self, uid: &UserID, fpr: &Fingerprint);
 
     // (verified uid, fpr)
-    fn pop_verify_token(&mut self, token: &str) -> Option<Verify>;
+    fn pop_verify_token(&self, token: &str) -> Option<Verify>;
     // fpr
-    fn pop_delete_token(&mut self, token: &str) -> Option<Delete>;
+    fn pop_delete_token(&self, token: &str) -> Option<Delete>;
 
     fn by_fpr(&self, fpr: &Fingerprint) -> Option<Box<[u8]>>;
     fn by_uid(&self, uid: &str) -> Option<Box<[u8]>>;
@@ -161,7 +171,7 @@ pub trait Database: Sync + Send{
         let pile = tpk.to_packet_pile().into_children().filter(|pkt| {
             match pkt {
                 &Packet::PublicKey(_) | &Packet::PublicSubkey(_) => true,
-                &Packet::Signature(ref sig) => sig.sigtype == SignatureType::DirectKey,
+                &Packet::Signature(ref sig) => sig.sigtype() == SignatureType::DirectKey,
                 _ => false,
             }
         }).collect::<Vec<_>>();
@@ -177,7 +187,7 @@ pub trait Database: Sync + Send{
         tpk.serialize(&mut cur).map(|_| cur.into_inner()).map_err(|e| format!("{}", e).into())
     }
 
-    fn merge_or_publish(&mut self, mut tpk: TPK) -> Result<Vec<String>> {
+    fn merge_or_publish(&self, mut tpk: TPK) -> Result<Vec<(UserID,String)>> {
         let fpr = Fingerprint::try_from(tpk.primary().fingerprint())?;
         let mut ret = Vec::default();
 
@@ -188,7 +198,7 @@ pub trait Database: Sync + Send{
                 let payload = Verify::new(uid.userid(), &uid.selfsigs().collect::<Vec<_>>(), fpr.clone())?;
 
                 // XXX: send mail
-                ret.push(self.new_verify_token(payload)?);
+                ret.push((uid.userid().clone(),self.new_verify_token(payload)?));
             }
         }
 
@@ -228,11 +238,11 @@ pub trait Database: Sync + Send{
     //    cas(tpk, merged)
     //  }
     // }
-    fn verify_token(&mut self, token: &str) -> Result<bool> {
+    fn verify_token(&self, token: &str) -> Result<Option<(UserID, Fingerprint)>> {
         match self.pop_verify_token(token) {
             Some(Verify{ created, packets, fpr, uid }) => {
                 let now = time::now().to_timespec().sec;
-                if created > now || now - created > 3 * 3600 { return Ok(false); }
+                if created > now || now - created > 3 * 3600 { return Ok(None); }
 
                 loop /* while cas falied */ {
                     match self.by_fpr(&fpr).map(|x| x.to_vec()) {
@@ -242,11 +252,11 @@ pub trait Database: Sync + Send{
 
                             if self.compare_and_swap(&fpr, Some(&old), Some(&new))? {
                                 self.link_userid(&uid, &fpr);
-                                return Ok(true);
+                                return Ok(Some((uid.clone(), fpr.clone())));
                             }
                         }
                         None => {
-                            return Ok(false);
+                            return Ok(None);
                         }
                     }
                 }
@@ -255,7 +265,7 @@ pub trait Database: Sync + Send{
         }
     }
 
-    fn request_deletion(&mut self, fpr: Fingerprint) -> Result<String> {
+    fn request_deletion(&self, fpr: Fingerprint) -> Result<String> {
         if self.by_fpr(&fpr).is_none() { return Err("Unknown key".into()); }
 
         let payload = Delete::new(fpr);
@@ -269,7 +279,7 @@ pub trait Database: Sync + Send{
     //  }
     //  del-fpr(fpr)
     // }
-    fn confirm_deletion(&mut self, token: &str) -> Result<bool> {
+    fn confirm_deletion(&self, token: &str) -> Result<bool> {
         match self.pop_delete_token(token) {
             Some(Delete{ created, fpr }) => {
                 let now = time::now().to_timespec().sec;

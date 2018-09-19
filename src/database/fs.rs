@@ -12,7 +12,7 @@ use base64;
 use database::{Verify, Delete, Fingerprint, Database};
 use Result;
 
-struct Filesystem {
+pub struct Filesystem {
     base: PathBuf,
 }
 
@@ -65,7 +65,6 @@ impl Filesystem {
         // 43 chars ~ 256 bit
         let name: String = rng.sample_iter(&Alphanumeric).take(43).collect();
         let dir = self.base.join(base);
-
         let fd = File::create(dir.join(name.clone()))?;
 
         Ok((fd, name))
@@ -87,21 +86,21 @@ impl Filesystem {
 }
 
 impl Database for Filesystem {
-    fn new_verify_token(&mut self, payload: Verify) -> Result<String> {
+    fn new_verify_token(&self, payload: Verify) -> Result<String> {
         let (mut fd, name) = self.new_token("verification_tokens")?;
         fd.write_all(serde_json::to_string(&payload)?.as_bytes())?;
 
         Ok(name)
     }
 
-    fn new_delete_token(&mut self, payload: Delete) -> Result<String> {
+    fn new_delete_token(&self, payload: Delete) -> Result<String> {
         let (mut fd, name) = self.new_token("deletion_tokens")?;
         fd.write_all(serde_json::to_string(&payload)?.as_bytes())?;
 
         Ok(name)
     }
 
-    fn compare_and_swap(&mut self, fpr: &Fingerprint, old: Option<&[u8]>, new: Option<&[u8]>) -> Result<bool> {
+    fn compare_and_swap(&self, fpr: &Fingerprint, old: Option<&[u8]>, new: Option<&[u8]>) -> Result<bool> {
         let target = self.base.join("public").join("by-fpr").join(fpr.to_string());
         let dir = self.base.join("scratch_pad");
 
@@ -128,8 +127,8 @@ impl Database for Filesystem {
         }
     }
 
-    fn link_userid(&mut self, uid: &UserID, fpr: &Fingerprint) {
-        let uid = base64::encode_config(&uid.value, base64::URL_SAFE);
+    fn link_userid(&self, uid: &UserID, fpr: &Fingerprint) {
+        let uid = base64::encode_config(uid.userid(), base64::URL_SAFE);
         let target = self.base.join("public").join("by-fpr").join(fpr.to_string());
         let link = self.base.join("public").join("by-uid").join(uid);
 
@@ -140,8 +139,8 @@ impl Database for Filesystem {
         let _ = symlink(target, link);
     }
 
-    fn unlink_userid(&mut self, uid: &UserID, fpr: &Fingerprint) {
-        let uid = base64::encode_config(&uid.value, base64::URL_SAFE);
+    fn unlink_userid(&self, uid: &UserID, fpr: &Fingerprint) {
+        let uid = base64::encode_config(uid.userid(), base64::URL_SAFE);
         let link = self.base.join("public").join("by-uid").join(uid);
 
         match read_link(link.clone()) {
@@ -156,7 +155,7 @@ impl Database for Filesystem {
         }
     }
 
-    fn pop_verify_token(&mut self, token: &str) -> Option<Verify> {
+    fn pop_verify_token(&self, token: &str) -> Option<Verify> {
         self.pop_token("verification_tokens", token).ok().and_then(|raw| {
             str::from_utf8(&raw).ok().map(|s| s.to_string())
         }).and_then(|s| {
@@ -165,7 +164,7 @@ impl Database for Filesystem {
         })
     }
 
-    fn pop_delete_token(&mut self, token: &str) -> Option<Delete> {
+    fn pop_delete_token(&self, token: &str) -> Option<Delete> {
         self.pop_token("deletion_tokens", token).ok().and_then(|raw| {
             str::from_utf8(&raw).ok().map(|s| s.to_string())
         }).and_then(|s| {
