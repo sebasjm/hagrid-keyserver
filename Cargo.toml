@@ -6,7 +6,7 @@ authors = ["seu <seu@panopticon.re>"]
 [dependencies]
 rocket = "0"
 rocket_codegen = "0"
-openpgp =  { path = "../sequoia/openpgp" }
+openpgp =  { git = "https://gitlab.com/sequoia-pgp/sequoia.git" }
 multipart = "0"
 error-chain = "0"
 log = "0"
