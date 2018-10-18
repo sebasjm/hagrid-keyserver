@@ -10,7 +10,7 @@ user IDs.
 Quick Start
 -----------
 
-Building Garbage Pile required a working [Rust toolchain](https://rust-lang.org).
+Building Garbage Pile required a working [Rust _nightly_ toolchain](https://rust-lang.org).
 
 ```bash
 cargo build
