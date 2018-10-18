@@ -29,7 +29,7 @@ This will spawn a web server listening on port 8080.
 Usage
 -----
 
-The following URLs are handled.
+While Garbage Piles URL scheme is meant to be machine readable, it's not a REST API. The following URLs are handled.
 
 - `POST /keys` uploads a new key.
 
