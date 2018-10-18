@@ -20,7 +20,7 @@ use std::sync::atomic::{Ordering, AtomicBool};
 
 use database::{Fingerprint, Database};
 use openpgp::tpk::{TPKBuilder, UserIDBinding};
-use openpgp::{Packet, UserID, TPK, PacketPile};
+use openpgp::{Packet, packet::UserID, TPK, PacketPile};
 use base64;
 
 pub fn test_uid_verification<D: Database>(db: &mut D) {

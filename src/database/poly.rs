@@ -1,7 +1,7 @@
 use errors::Result;
 use database::{Verify, Delete, Database, Fingerprint, Filesystem, Memory};
 
-use openpgp::UserID;
+use openpgp::packet::UserID;
 
 pub enum Polymorphic {
     Memory(Memory),

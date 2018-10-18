@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use parking_lot::Mutex;
 
-use openpgp::UserID;
+use openpgp::packet::UserID;
 use base64;
 
 use database::{Verify, Delete, Fingerprint, Database};

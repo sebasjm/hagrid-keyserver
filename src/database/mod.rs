@@ -6,7 +6,7 @@ use std::fmt;
 
 use serde::{Serializer, Deserializer, de};
 use time;
-use openpgp::{self, Signature, TPK, UserID, Packet, PacketPile, constants::SignatureType};
+use openpgp::{self, packet::Signature, TPK, packet::UserID, Packet, PacketPile, constants::SignatureType};
 use base64;
 use {Error, Result};
 
