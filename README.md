@@ -10,18 +10,13 @@ user IDs.
 Quick Start
 -----------
 
-Building Garbage Pile required a working [Rust _nightly_ toolchain](https://rust-lang.org).
+Building Garbage Pile required a working [Rust _nightly_
+toolchain](https://rust-lang.org). The key server uses the filesystem to store
+keys, user IDs and tokens. To run it, supply the absolute path to where you
+want the database to live and the absolute path to the template directory.
 
 ```bash
-cargo build
-```
-
-The key server uses the filesystem to store keys, user IDs and tokens. To run
-it, supply the absolute path to where you want the database to live and the
-absolute path to the template directory.
-
-```bash
-cargo run -- /var/garbage/ `pwd`/templates
+cargo run -- `pwd`/dist
 ```
 
 This will spawn a web server listening on port 8080.
@@ -52,3 +47,52 @@ While Garbage Piles URL scheme is meant to be machine readable, it's not a REST 
 
 - `GET confirm/<Token>` confirms a keys deletion request using a token string send
   by email.
+
+Building
+--------
+
+Garbage Pile consists of a Rust and a NPM project. While the web server is
+implemented in Rust, HTML templates and CSS is bundled using NPM and Webpack.
+Building the Rust part requires a working nightly Rust toolchain. The
+easiest way to get the toolchain is to download [rustup](https://rustup.rs).
+After rustup is installed, get the nightly compiler and tools:
+
+```bash
+rustup default nightly
+```
+
+The web server can now be built with the cargo command:
+
+```bash
+cargo build --release
+```
+
+After compilation a binary is placed in `target/release/` called
+`garbage-pile`. The binary is linked statically and can be copied everywhere.
+
+```bash
+cp target/release/garbage-pile /usr/local/bin
+```
+
+Bundling the web assets requires npm 8 or later. After you have npm installed
+fetch all dependencies and build the assets:
+
+```bash
+npm install
+npm run build
+```
+
+The web assets are placed in `dist/`. To deploy the key server copy all
+directories under `public/` to a writable location. Then start the server with
+the _absolute_ path to the directory as argument:
+
+```bash
+mkdir /var/garbage-pile
+cp -R dist/* /var/garbage-pile
+garbage-pile /var/garbage-pile
+```
+
+This will spawn the server in foreground, listening on `0.0.0.0:8080`. The
+`--listen` argument can be used to change port and listen address. The server
+will put all keys and runtime data under the base folder (`/var/garbage-pile`
+in the above example).
