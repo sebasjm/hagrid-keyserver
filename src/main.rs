@@ -57,9 +57,6 @@ pub struct Opt {
     /// Base directory
     #[structopt(parse(from_os_str))]
     base: PathBuf,
-    /// Template directory
-    #[structopt(parse(from_os_str))]
-    templates: PathBuf,
     /// Port and address to listen on.
     #[structopt(short = "l", long = "listen", default_value = "0.0.0.0:8080")]
     listen: String,
@@ -73,10 +70,6 @@ fn main() {
 
     if !opt.base.is_absolute() {
         panic!("Base directory must be absolute");
-    }
-
-    if !opt.templates.is_absolute() {
-        panic!("Template directory must be absolute");
     }
 
     let db = Filesystem::new(opt.base.clone()).unwrap();

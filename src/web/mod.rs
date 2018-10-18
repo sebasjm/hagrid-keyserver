@@ -1,12 +1,15 @@
 use rocket;
-use rocket::Outcome;
+use rocket::{State, Outcome};
 use rocket::http::Status;
 use rocket::request::{self, Request, FromRequest};
 use rocket::response::content;
 use rocket::response::status::Custom;
 use rocket::http::uri::URI;
+use rocket::response::NamedFile;
+use rocket::fairing::AdHoc;
 
 use rocket_contrib::Template;
+use std::path::{Path, PathBuf};
 
 mod upload;
 
@@ -46,6 +49,8 @@ mod templates {
         pub deleted: bool,
     }
 }
+
+struct StaticDir(String);
 
 impl<'a, 'r> FromRequest<'a, 'r> for queries::Key {
     type Error = ();
@@ -190,6 +195,11 @@ fn confirm(db: rocket::State<Polymorphic>, token: String)
     }
 }
 
+#[get("/static/<file..>")]
+fn files(file: PathBuf, static_dir: State<StaticDir>) -> Option<NamedFile> {
+    NamedFile::open(Path::new(&static_dir.0).join(file)).ok()
+}
+
 #[get("/")]
 fn root() -> Template {
     use std::collections::HashMap;
@@ -220,7 +230,8 @@ pub fn serve(opt: &Opt, db: Polymorphic) -> Result<()> {
         .port(port)
         .workers(2)
         .root(opt.base.join("public"))
-        .extra("template_dir", format!("{}", opt.templates.display()))
+        .extra("template_dir", format!("{}/templates", opt.base.display()))
+        .extra("static_dir", format!("{}/public", opt.base.display()))
         .finalize()?;
     let routes = routes![
         upload::multipart_upload,
@@ -228,11 +239,20 @@ pub fn serve(opt: &Opt, db: Polymorphic) -> Result<()> {
         verify,
         delete,
         confirm,
-        root
+        root,
+        files,
     ];
 
     rocket::custom(config, opt.verbose)
         .attach(Template::fairing())
+        .attach(AdHoc::on_attach(|rocket| {
+            let static_dir = rocket.config()
+                .get_str("static_dir")
+                .unwrap()
+                .to_string();
+
+            Ok(rocket.manage(StaticDir(static_dir)))
+        }))
         .mount("/", routes)
         .manage(db)
         .launch();
