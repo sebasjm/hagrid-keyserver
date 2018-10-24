@@ -6,11 +6,11 @@ use std::os::unix::fs::symlink;
 
 use tempfile;
 use serde_json;
-use openpgp::packet::UserID;
-use base64;
+use url;
 
-use database::{Verify, Delete, Fingerprint, Database};
+use database::{Verify, Delete, Database};
 use Result;
+use types::{Email, Fingerprint};
 
 pub struct Filesystem {
     base: PathBuf,
@@ -48,7 +48,7 @@ impl Filesystem {
         create_dir_all(base.join("deletion_tokens"))?;
         create_dir_all(base.join("scratch_pad"))?;
         create_dir_all(base.join("public").join("by-fpr"))?;
-        create_dir_all(base.join("public").join("by-uid"))?;
+        create_dir_all(base.join("public").join("by-email"))?;
 
         info!("Opened base dir '{}'", base.display());
         Ok(Filesystem{
@@ -127,10 +127,10 @@ impl Database for Filesystem {
         }
     }
 
-    fn link_userid(&self, uid: &UserID, fpr: &Fingerprint) {
-        let uid = base64::encode_config(uid.userid(), base64::URL_SAFE);
+    fn link_email(&self, email: &Email, fpr: &Fingerprint) {
+        let email = url::form_urlencoded::byte_serialize(email.to_string().as_bytes()).collect::<String>();
         let target = self.base.join("public").join("by-fpr").join(fpr.to_string());
-        let link = self.base.join("public").join("by-uid").join(uid);
+        let link = self.base.join("public").join("by-email").join(email);
 
         if link.exists() {
             let _ = remove_file(link.clone());
@@ -139,9 +139,9 @@ impl Database for Filesystem {
         let _ = symlink(target, link);
     }
 
-    fn unlink_userid(&self, uid: &UserID, fpr: &Fingerprint) {
-        let uid = base64::encode_config(uid.userid(), base64::URL_SAFE);
-        let link = self.base.join("public").join("by-uid").join(uid);
+    fn unlink_email(&self, email: &Email, fpr: &Fingerprint) {
+        let email = url::form_urlencoded::byte_serialize(email.to_string().as_bytes()).collect::<String>();
+        let link = self.base.join("public").join("by-email").join(email);
 
         match read_link(link.clone()) {
             Ok(target) => {
@@ -187,10 +187,11 @@ impl Database for Filesystem {
     }
 
     // XXX: slow
-    fn by_uid(&self, uid: &str) -> Option<Box<[u8]>> {
+    fn by_email(&self, email: &Email) -> Option<Box<[u8]>> {
         use std::fs;
 
-        let path = self.base.join("public").join("by-uid").join(uid);
+        let email = url::form_urlencoded::byte_serialize(email.to_string().as_bytes()).collect::<String>();
+        let path = self.base.join("public").join("by-email").join(email);
 
         fs::canonicalize(path).ok()
             .and_then(|p| {

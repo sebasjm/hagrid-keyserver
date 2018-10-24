@@ -1,14 +1,10 @@
-use std::result;
 use std::io::Cursor;
-use std::str::FromStr;
 use std::convert::TryFrom;
-use std::fmt;
 
-use serde::{Serializer, Deserializer, de};
 use time;
-use openpgp::{self, packet::Signature, TPK, packet::UserID, Packet, PacketPile, constants::SignatureType};
-use base64;
-use {Error, Result};
+use openpgp::{packet::Signature, TPK, packet::UserID, Packet, PacketPile, constants::SignatureType};
+use Result;
+use types::{Fingerprint, Email};
 
 mod fs;
 pub use self::fs::Filesystem;
@@ -16,53 +12,16 @@ mod memory;
 pub use self::memory::Memory;
 mod poly;
 pub use self::poly::Polymorphic;
+
+#[cfg(test)]
 mod test;
-
-
-#[derive(Serialize,Deserialize,Clone,Debug,Hash,PartialEq,Eq)]
-pub struct Fingerprint([u8; 20]);
-
-impl TryFrom<openpgp::Fingerprint> for Fingerprint {
-    type Error = Error;
-
-    fn try_from(fpr: openpgp::Fingerprint) -> Result<Self> {
-        match fpr {
-            openpgp::Fingerprint::V4(a) => Ok(Fingerprint(a)),
-            openpgp::Fingerprint::Invalid(_) => Err("invalid fingerprint".into()),
-        }
-    }
-}
-
-impl ToString for Fingerprint {
-    fn to_string(&self) -> String {
-        base64::encode_config(&self.0[..], base64::URL_SAFE)
-    }
-}
-
-impl FromStr for Fingerprint {
-    type Err = Error;
-
-    fn from_str(s: &str) -> Result<Fingerprint> {
-        let vec = base64::decode_config(s, base64::URL_SAFE)
-            .map_err(|e| format!("'{}' is not a valid fingerprint: {}", s, e))?;
-        if vec.len() == 20 {
-            let mut arr = [0u8; 20];
-
-            arr.copy_from_slice(&vec[..]);
-            Ok(Fingerprint(arr))
-        } else {
-            Err(format!("'{}' is not a valid fingerprint", s).into())
-        }
-    }
-}
 
 #[derive(Serialize,Deserialize,Clone,Debug)]
 pub struct Verify {
     created: i64,
     packets: Box<[u8]>,
     fpr: Fingerprint,
-    #[serde(deserialize_with = "Verify::deserialize_userid", serialize_with = "Verify::serialize_userid")]
-    uid: UserID,
+    email: Email,
 }
 
 impl Verify {
@@ -70,7 +29,6 @@ impl Verify {
         use openpgp::serialize::Serialize;
 
         let mut cur = Cursor::new(Vec::default());
-
         let res: Result<()> = uid.serialize(&mut cur)
             .map_err(|e| format!("openpgp: {}", e).into());
         res?;
@@ -85,49 +43,8 @@ impl Verify {
             created: time::now().to_timespec().sec,
             packets: cur.into_inner().into(),
             fpr: fpr,
-            uid: uid.clone(),
+            email: Email::try_from(uid.clone())?,
         })
-    }
-    fn deserialize_userid<'de, D>(de: D) -> result::Result<UserID, D::Error> where D: Deserializer<'de> {
-        de.deserialize_bytes(UserIDVisitor)
-    }
-
-    fn serialize_userid<S>(uid: &UserID, ser: S) -> result::Result<S::Ok, S::Error> where S: Serializer {
-        ser.serialize_bytes(uid.userid())
-    }
-}
-
-struct UserIDVisitor;
-
-impl<'de> de::Visitor<'de> for UserIDVisitor {
-    type Value = UserID;
-
-    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        write!(formatter, "a OpenPGP User ID")
-    }
-
-    fn visit_bytes<E>(self, s: &[u8]) -> result::Result<Self::Value, E>
-    where
-        E: de::Error,
-    {
-        let mut uid = UserID::new();
-        uid.set_userid_from_bytes(s);
-        Ok(uid)
-    }
-
-    fn visit_seq<A>(self, mut seq: A) -> result::Result<Self::Value, A::Error>
-    where
-        A: de::SeqAccess<'de>
-    {
-        let mut buf = Vec::default();
-
-        while let Some(x) = seq.next_element()? {
-            buf.push(x);
-        }
-
-        let mut uid = UserID::new();
-        uid.set_userid_from_bytes(&buf);
-        Ok(uid)
     }
 }
 
@@ -155,8 +72,8 @@ pub trait Database: Sync + Send {
 
     fn compare_and_swap(&self, fpr: &Fingerprint, present: Option<&[u8]>, new: Option<&[u8]>) -> Result<bool>;
 
-    fn link_userid(&self, uid: &UserID, fpr: &Fingerprint);
-    fn unlink_userid(&self, uid: &UserID, fpr: &Fingerprint);
+    fn link_email(&self, email: &Email, fpr: &Fingerprint);
+    fn unlink_email(&self, email: &Email, fpr: &Fingerprint);
 
     // (verified uid, fpr)
     fn pop_verify_token(&self, token: &str) -> Option<Verify>;
@@ -164,7 +81,7 @@ pub trait Database: Sync + Send {
     fn pop_delete_token(&self, token: &str) -> Option<Delete>;
 
     fn by_fpr(&self, fpr: &Fingerprint) -> Option<Box<[u8]>>;
-    fn by_uid(&self, uid: &str) -> Option<Box<[u8]>>;
+    fn by_email(&self, email: &Email) -> Option<Box<[u8]>>;
     // fn by_kid<'a>(&self, fpr: &str) -> Option<&[u8]>;
 
     fn strip_userids(tpk: TPK) -> Result<TPK> {
@@ -187,18 +104,22 @@ pub trait Database: Sync + Send {
         tpk.serialize(&mut cur).map(|_| cur.into_inner()).map_err(|e| format!("{}", e).into())
     }
 
-    fn merge_or_publish(&self, mut tpk: TPK) -> Result<Vec<(UserID,String)>> {
+    fn merge_or_publish(&self, mut tpk: TPK) -> Result<Vec<(Email,String)>> {
         let fpr = Fingerprint::try_from(tpk.primary().fingerprint())?;
         let mut ret = Vec::default();
 
         // update verify tokens
         for uid in tpk.userids() {
-            let enc = base64::encode_config(&format!("{}", uid.userid()), base64::URL_SAFE);
-            if self.by_uid(&enc).is_none() {
-                let payload = Verify::new(uid.userid(), &uid.selfsigs().collect::<Vec<_>>(), fpr.clone())?;
+            let email = Email::try_from(uid.userid().clone())?;
+
+            if self.by_email(&email).is_none() {
+                let payload = Verify::new(
+                    uid.userid(),
+                    &uid.selfsigs().collect::<Vec<_>>(),
+                    fpr.clone())?;
 
                 // XXX: send mail
-                ret.push((uid.userid().clone(),self.new_verify_token(payload)?));
+                ret.push((email, self.new_verify_token(payload)?));
             }
         }
 
@@ -238,9 +159,9 @@ pub trait Database: Sync + Send {
     //    cas(tpk, merged)
     //  }
     // }
-    fn verify_token(&self, token: &str) -> Result<Option<(UserID, Fingerprint)>> {
+    fn verify_token(&self, token: &str) -> Result<Option<(Email, Fingerprint)>> {
         match self.pop_verify_token(token) {
-            Some(Verify{ created, packets, fpr, uid }) => {
+            Some(Verify{ created, packets, fpr, email }) => {
                 let now = time::now().to_timespec().sec;
                 if created > now || now - created > 3 * 3600 { return Ok(None); }
 
@@ -251,8 +172,8 @@ pub trait Database: Sync + Send {
                             new.extend(packets.into_iter());
 
                             if self.compare_and_swap(&fpr, Some(&old), Some(&new))? {
-                                self.link_userid(&uid, &fpr);
-                                return Ok(Some((uid.clone(), fpr.clone())));
+                                self.link_email(&email, &fpr);
+                                return Ok(Some((email.clone(), fpr.clone())));
                             }
                         }
                         None => {
@@ -296,7 +217,7 @@ pub trait Database: Sync + Send {
                             };
 
                             for uid in tpk.userids() {
-                                self.unlink_userid(uid.userid(), &fpr);
+                                self.unlink_email(&Email::try_from(uid.userid().clone())?, &fpr);
                             }
 
                             while !self.compare_and_swap(&fpr, Some(&old), None)? {}

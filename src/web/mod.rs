@@ -2,7 +2,6 @@ use rocket;
 use rocket::{State, Outcome};
 use rocket::http::Status;
 use rocket::request::{self, Request, FromRequest};
-use rocket::response::content;
 use rocket::response::status::Custom;
 use rocket::http::uri::URI;
 use rocket::response::NamedFile;
@@ -13,7 +12,8 @@ use std::path::{Path, PathBuf};
 
 mod upload;
 
-use database::{Polymorphic, Fingerprint, Database};
+use database::{Polymorphic, Database};
+use types::{Fingerprint, Email};
 use errors::Result;
 use errors;
 use Opt;
@@ -22,11 +22,17 @@ use std::str::FromStr;
 use std::result;
 
 mod queries {
-    use database::Fingerprint;
+    use types::{Fingerprint, Email};
 
     pub enum Key {
         Fingerprint(Fingerprint),
-        UserID(String),
+        Email(Email),
+    }
+
+    #[derive(Debug)]
+    pub enum Hkp {
+        Fingerprint(Fingerprint),
+        Email(Email),
     }
 }
 
@@ -127,11 +133,10 @@ fn get_key(db: rocket::State<Polymorphic>, key: Option<queries::Key>)
 {
     use std::io::Write;
     use openpgp::armor::{Writer, Kind};
-    use std::str::FromStr;
 
     let maybe_key = match key {
         Some(queries::Key::Fingerprint(ref fpr)) => db.by_fpr(fpr),
-        Some(queries::Key::UserID(ref uid)) => db.by_uid(uid),
+        Some(queries::Key::Email(ref email)) => db.by_email(email),
         None => { return Ok("nothing to do".to_string()); }
     };
 

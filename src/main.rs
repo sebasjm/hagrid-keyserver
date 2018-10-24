@@ -8,9 +8,10 @@ extern crate serde;
 extern crate serde_json;
 
 extern crate time;
-extern crate base64;
+extern crate url;
+extern crate hex;
 
-#[cfg(not(test))] #[macro_use] extern crate rocket;
+#[cfg(not(test))] extern crate rocket;
 #[cfg(test)] extern crate rocket;
 extern crate rocket_contrib;
 extern crate multipart;
@@ -21,10 +22,11 @@ extern crate openpgp;
 extern crate rand;
 extern crate tempfile;
 extern crate parking_lot;
-#[macro_use] extern crate structopt;
+extern crate structopt;
 
 mod web;
 mod database;
+mod types;
 
 mod errors {
     error_chain!{
@@ -33,10 +35,10 @@ mod errors {
             Io(::std::io::Error);
             Json(::serde_json::Error);
             Persist(::tempfile::PersistError);
-            Base64(::base64::DecodeError);
             RktConfig(::rocket::config::ConfigError);
             StringUtf8Error(::std::string::FromUtf8Error);
             StrUtf8Error(::std::str::Utf8Error);
+            HexError(::hex::FromHexError);
         }
     }
 }

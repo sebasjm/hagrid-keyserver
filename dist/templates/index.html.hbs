@@ -3,8 +3,9 @@
   <p class="lead">The verifying PGP key server. Powered by p&equiv;pnology!
 
   <h2>Search for keys</h2>
-  <form action="/search" method=POST>
-    <input type="search" id="query" name="query" placeholder="Email">
+  <form action="/pks/lookup" method=GET>
+    <input type="search" id="search" name="search" placeholder="Email">
+    <input type="hidden" id="op" name="op" value="get">
     <input type="submit" value="Search">
   </form>
 

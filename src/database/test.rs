@@ -17,11 +17,12 @@
 use std::convert::TryFrom;
 use std::thread;
 use std::sync::atomic::{Ordering, AtomicBool};
+use std::str::FromStr;
 
-use database::{Fingerprint, Database};
+use database::Database;
 use openpgp::tpk::{TPKBuilder, UserIDBinding};
 use openpgp::{Packet, packet::UserID, TPK, PacketPile};
-use base64;
+use types::{Email, Fingerprint};
 
 pub fn test_uid_verification<D: Database>(db: &mut D) {
     let str_uid1 = "Test A <test_a@example.com>";
@@ -36,8 +37,8 @@ pub fn test_uid_verification<D: Database>(db: &mut D) {
     uid1.set_userid_from_bytes(str_uid1.as_bytes());
     uid2.set_userid_from_bytes(str_uid2.as_bytes());
 
-    let b64_uid1 = base64::encode_config(str_uid1, base64::URL_SAFE);
-    let b64_uid2 = base64::encode_config(str_uid2, base64::URL_SAFE);
+    let email1 = Email::from_str(str_uid1).unwrap();
+    let email2 = Email::from_str(str_uid2).unwrap();
 
     // upload key
     let tokens = db.merge_or_publish(tpk.clone()).unwrap();
@@ -56,8 +57,8 @@ pub fn test_uid_verification<D: Database>(db: &mut D) {
     }
 
     // fail to fetch by uid
-    assert!(db.by_uid(&b64_uid1).is_none());
-    assert!(db.by_uid(&b64_uid2).is_none());
+    assert!(db.by_email(&email1).is_none());
+    assert!(db.by_email(&email2).is_none());
 
     // verify 1st uid
     assert!(db.verify_token(&tokens[0].1).unwrap().is_some());
@@ -74,13 +75,13 @@ pub fn test_uid_verification<D: Database>(db: &mut D) {
         let uid = key.userids().next().unwrap().userid().clone();
 
         assert!((uid == uid1) ^ (uid == uid2));
-        let b64_uid = base64::encode_config(&String::from_utf8(uid.userid().to_vec()).unwrap(), base64::URL_SAFE);
-        assert_eq!(db.by_uid(&b64_uid).unwrap(), raw);
+        let email = Email::from_str(&String::from_utf8(uid.userid().to_vec()).unwrap()).unwrap();
+        assert_eq!(db.by_email(&email).unwrap(), raw);
 
-        if b64_uid1 == b64_uid {
-            assert!(db.by_uid(&b64_uid2).is_none());
-        } else if b64_uid2 == b64_uid {
-            assert!(db.by_uid(&b64_uid1).is_none());
+        if email1 == email {
+            assert!(db.by_email(&email2).is_none());
+        } else if email2 == email {
+            assert!(db.by_email(&email1).is_none());
         } else {
             unreachable!()
         }
@@ -101,13 +102,13 @@ pub fn test_uid_verification<D: Database>(db: &mut D) {
         let uid = key.userids().next().unwrap().userid().clone();
 
         assert!((uid == uid1) ^ (uid == uid2));
-        let b64_uid = base64::encode_config(&String::from_utf8(uid.userid().to_vec()).unwrap(), base64::URL_SAFE);
-        assert_eq!(db.by_uid(&b64_uid).unwrap(), raw);
+        let email = Email::from_str(&String::from_utf8(uid.userid().to_vec()).unwrap()).unwrap();
+        assert_eq!(db.by_email(&email).unwrap(), raw);
 
-        if b64_uid1 == b64_uid {
-            assert!(db.by_uid(&b64_uid2).is_none());
-        } else if b64_uid2 == b64_uid {
-            assert!(db.by_uid(&b64_uid1).is_none());
+        if email1 == email {
+            assert!(db.by_email(&email2).is_none());
+        } else if email2 == email {
+            assert!(db.by_email(&email1).is_none());
         } else {
             unreachable!()
         }
@@ -128,13 +129,13 @@ pub fn test_uid_verification<D: Database>(db: &mut D) {
         let myuid1 = key.userids().next().unwrap().userid().clone();
         let myuid2 = key.userids().skip(1).next().unwrap().userid().clone();
 
-        assert_eq!(db.by_uid(&b64_uid1).unwrap(), raw);
-        assert_eq!(db.by_uid(&b64_uid2).unwrap(), raw);
+        assert_eq!(db.by_email(&email1).unwrap(), raw);
+        assert_eq!(db.by_email(&email2).unwrap(), raw);
         assert!(((myuid1 == uid1) & (myuid2 == uid2)) ^ ((myuid1 == uid2) & (myuid2 == uid1)));
     }
 
     // upload again
-    assert_eq!(db.merge_or_publish(tpk.clone()).unwrap(), Vec::<(UserID,String)>::default());
+    assert_eq!(db.merge_or_publish(tpk.clone()).unwrap(), Vec::<(Email,String)>::default());
 
     // publish w/ one uid less
     {
@@ -150,7 +151,7 @@ pub fn test_uid_verification<D: Database>(db: &mut D) {
         let pile = PacketPile::from_packets(packets.collect());
         let short_tpk = TPK::from_packet_pile(pile).unwrap();
 
-        assert_eq!(db.merge_or_publish(short_tpk.clone()).unwrap(), Vec::<(UserID,String)>::default());
+        assert_eq!(db.merge_or_publish(short_tpk.clone()).unwrap(), Vec::<(Email,String)>::default());
 
         // fetch by fpr
         let raw = db.by_fpr(&fpr).unwrap();
@@ -163,8 +164,8 @@ pub fn test_uid_verification<D: Database>(db: &mut D) {
         let myuid1 = key.userids().next().unwrap().userid().clone();
         let myuid2 = key.userids().skip(1).next().unwrap().userid().clone();
 
-        assert_eq!(db.by_uid(&b64_uid1).unwrap(), raw);
-        assert_eq!(db.by_uid(&b64_uid2).unwrap(), raw);
+        assert_eq!(db.by_email(&email1).unwrap(), raw);
+        assert_eq!(db.by_email(&email2).unwrap(), raw);
         assert!(((myuid1 == uid1) & (myuid2 == uid2)) ^ ((myuid1 == uid2) & (myuid2 == uid1)));
     }
 
@@ -183,7 +184,7 @@ pub fn test_uid_verification<D: Database>(db: &mut D) {
         let mut uid3 = UserID::new();
         uid3.set_userid_from_bytes(str_uid3.as_bytes());
 
-        let b64_uid3 = base64::encode_config(str_uid3, base64::URL_SAFE);
+        let email3 = Email::from_str(str_uid3).unwrap();
         let key = tpk.primary();
         let bind = UserIDBinding::new(key, uid3.clone(), key).unwrap();
 
@@ -207,10 +208,10 @@ pub fn test_uid_verification<D: Database>(db: &mut D) {
         let myuid1 = key.userids().next().unwrap().userid().clone();
         let myuid2 = key.userids().skip(1).next().unwrap().userid().clone();
 
-        assert_eq!(db.by_uid(&b64_uid1).unwrap(), raw);
-        assert_eq!(db.by_uid(&b64_uid2).unwrap(), raw);
+        assert_eq!(db.by_email(&email1).unwrap(), raw);
+        assert_eq!(db.by_email(&email2).unwrap(), raw);
         assert!(((myuid1 == uid1) & (myuid2 == uid2)) ^ ((myuid1 == uid2) & (myuid2 == uid1)));
-        assert!(db.by_uid(&b64_uid3).is_none());
+        assert!(db.by_email(&email3).is_none());
     }
 }
 
@@ -227,8 +228,8 @@ pub fn test_uid_deletion<D: Database>(db: &mut D) {
     uid1.set_userid_from_bytes(str_uid1.as_bytes());
     uid2.set_userid_from_bytes(str_uid2.as_bytes());
 
-    let b64_uid1 = base64::encode_config(str_uid1, base64::URL_SAFE);
-    let b64_uid2 = base64::encode_config(str_uid2, base64::URL_SAFE);
+    let email1 = Email::from_str(str_uid1).unwrap();
+    let email2 = Email::from_str(str_uid2).unwrap();
 
     // upload key and verify uids
     let tokens = db.merge_or_publish(tpk.clone()).unwrap();
@@ -255,8 +256,8 @@ pub fn test_uid_deletion<D: Database>(db: &mut D) {
         let myuid1 = key.userids().next().unwrap().userid().clone();
         let myuid2 = key.userids().skip(1).next().unwrap().userid().clone();
 
-        assert_eq!(db.by_uid(&b64_uid1).unwrap(), raw);
-        assert_eq!(db.by_uid(&b64_uid2).unwrap(), raw);
+        assert_eq!(db.by_email(&email1).unwrap(), raw);
+        assert_eq!(db.by_email(&email2).unwrap(), raw);
         assert!(((myuid1 == uid1) & (myuid2 == uid2)) ^ ((myuid1 == uid2) & (myuid2 == uid1)));
     }
 
@@ -265,14 +266,14 @@ pub fn test_uid_deletion<D: Database>(db: &mut D) {
 
     // check it's gone
     assert!(db.by_fpr(&fpr).is_none());
-    assert!(db.by_uid(&b64_uid1).is_none());
-    assert!(db.by_uid(&b64_uid2).is_none());
+    assert!(db.by_email(&email1).is_none());
+    assert!(db.by_email(&email2).is_none());
 
     // confirm deletion again
     assert!(!db.confirm_deletion(&del).unwrap());
 
     // check it's still gone
     assert!(db.by_fpr(&fpr).is_none());
-    assert!(db.by_uid(&b64_uid1).is_none());
-    assert!(db.by_uid(&b64_uid2).is_none());
+    assert!(db.by_email(&email1).is_none());
+    assert!(db.by_email(&email2).is_none());
 }

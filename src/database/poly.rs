@@ -1,7 +1,6 @@
 use errors::Result;
-use database::{Verify, Delete, Database, Fingerprint, Filesystem, Memory};
-
-use openpgp::packet::UserID;
+use database::{Verify, Delete, Database, Filesystem, Memory};
+use types::{Fingerprint, Email};
 
 pub enum Polymorphic {
     Memory(Memory),
@@ -30,17 +29,17 @@ impl Database for Polymorphic {
         }
     }
 
-    fn link_userid(&self, uid: &UserID, fpr: &Fingerprint) {
+    fn link_email(&self, email: &Email, fpr: &Fingerprint) {
         match self {
-            &Polymorphic::Memory(ref db) => db.link_userid(uid, fpr),
-            &Polymorphic::Filesystem(ref db) => db.link_userid(uid, fpr),
+            &Polymorphic::Memory(ref db) => db.link_email(email, fpr),
+            &Polymorphic::Filesystem(ref db) => db.link_email(email, fpr),
         }
     }
 
-    fn unlink_userid(&self, uid: &UserID, fpr: &Fingerprint) {
+    fn unlink_email(&self, email: &Email, fpr: &Fingerprint) {
         match self {
-            &Polymorphic::Memory(ref db) => db.unlink_userid(uid, fpr),
-            &Polymorphic::Filesystem(ref db) => db.unlink_userid(uid, fpr),
+            &Polymorphic::Memory(ref db) => db.unlink_email(email, fpr),
+            &Polymorphic::Filesystem(ref db) => db.unlink_email(email, fpr),
         }
     }
 
@@ -65,10 +64,10 @@ impl Database for Polymorphic {
         }
     }
 
-    fn by_uid(&self, uid: &str) -> Option<Box<[u8]>> {
+    fn by_email(&self, email: &Email) -> Option<Box<[u8]>> {
         match self {
-            &Polymorphic::Memory(ref db) => db.by_uid(uid),
-            &Polymorphic::Filesystem(ref db) => db.by_uid(uid),
+            &Polymorphic::Memory(ref db) => db.by_email(email),
+            &Polymorphic::Filesystem(ref db) => db.by_email(email),
         }
     }
 }

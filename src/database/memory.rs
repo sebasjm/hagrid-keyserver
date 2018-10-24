@@ -1,15 +1,13 @@
 use std::collections::HashMap;
 use parking_lot::Mutex;
 
-use openpgp::packet::UserID;
-use base64;
-
-use database::{Verify, Delete, Fingerprint, Database};
+use database::{Verify, Delete, Database};
+use types::{Email, Fingerprint};
 use Result;
 
 pub struct Memory {
     fpr: Mutex<HashMap<Fingerprint, Box<[u8]>>>,
-    userid: Mutex<HashMap<String, Fingerprint>>,
+    email: Mutex<HashMap<Email, Fingerprint>>,
     verify_token: Mutex<HashMap<String, Verify>>,
     delete_token: Mutex<HashMap<String, Delete>>,
 }
@@ -18,7 +16,7 @@ impl Default for Memory {
     fn default() -> Self {
         Memory{
             fpr: Mutex::new(HashMap::default()),
-            userid: Mutex::new(HashMap::default()),
+            email: Mutex::new(HashMap::default()),
             verify_token: Mutex::new(HashMap::default()),
             delete_token: Mutex::new(HashMap::default()),
         }
@@ -56,14 +54,12 @@ impl Database for Memory {
         }
     }
 
-    fn link_userid(&self, uid: &UserID, fpr: &Fingerprint) {
-        let uid = base64::encode_config(uid.userid(), base64::URL_SAFE);
-        self.userid.lock().insert(uid.to_string(), fpr.clone());
+    fn link_email(&self, email: &Email, fpr: &Fingerprint) {
+        self.email.lock().insert(email.clone(), fpr.clone());
     }
 
-    fn unlink_userid(&self, uid: &UserID, _: &Fingerprint) {
-        let uid = base64::encode_config(uid.userid(), base64::URL_SAFE);
-        self.userid.lock().remove(&uid.to_string());
+    fn unlink_email(&self, email: &Email, _: &Fingerprint) {
+        self.email.lock().remove(email);
     }
 
     // (verified uid, fpr)
@@ -80,11 +76,11 @@ impl Database for Memory {
         self.fpr.lock().get(fpr).map(|x| x.clone())
     }
 
-    fn by_uid(&self, uid: &str) -> Option<Box<[u8]>> {
-        let userid = self.userid.lock();
+    fn by_email(&self, email: &Email) -> Option<Box<[u8]>> {
+        let by_email = self.email.lock();
         let fprs = self.fpr.lock();
 
-        userid.get(uid).and_then(|fpr| fprs.get(fpr).map(|x| x.clone()))
+        by_email.get(email).and_then(|fpr| fprs.get(fpr).map(|x| x.clone()))
     }
 }
 
