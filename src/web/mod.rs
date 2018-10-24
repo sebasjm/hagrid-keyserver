@@ -65,18 +65,55 @@ impl<'a, 'r> FromRequest<'a, 'r> for queries::Key {
 
             match maybe_fpr {
                 Ok(fpr) => Outcome::Success(queries::Key::Fingerprint(fpr)),
-                Err(e) => Outcome::Failure((Status::BadRequest, ())),
+                Err(_) => Outcome::Failure((Status::BadRequest, ())),
             }
         } else if query.starts_with("uid=") {
-            let maybe_uid: Result<_> = URI::percent_decode(&query[4..].as_bytes())
-                .map_err(|e| errors::ErrorKind::StrUtf8Error(e).into());
+            let maybe_email: Result<_> = URI::percent_decode(&query[4..].as_bytes())
+                .map_err(|e| errors::ErrorKind::StrUtf8Error(e).into())
+                .and_then(|x| Email::from_str(&x));
 
-            match maybe_uid {
-                Ok(uid) => {
-                    eprintln!("get {}", uid);
-                    Outcome::Success(queries::Key::UserID(uid.into()))
+            match maybe_email {
+                Ok(email) => {
+                    eprintln!("get {:?}", email);
+                    Outcome::Success(queries::Key::Email(email))
                 }
-                Err(e) => Outcome::Failure((Status::BadRequest, ())),
+                Err(_) => Outcome::Failure((Status::BadRequest, ())),
+            }
+        } else {
+            Outcome::Failure((Status::BadRequest, ()))
+        }
+    }
+}
+
+impl<'a, 'r> FromRequest<'a, 'r> for queries::Hkp {
+    type Error = ();
+
+    fn from_request(request: &'a Request<'r>) -> request::Outcome<queries::Hkp, ()> {
+        use rocket::request::FormItems;
+        use std::collections::HashMap;
+
+        let query = request.uri().query().unwrap_or("");
+        let fields = FormItems::from(query).map(|(k,v)| {
+            let key = k.url_decode().unwrap_or_default();
+            let value = v.url_decode().unwrap_or_default();
+            (key, value)
+        }).collect::<HashMap<_,_>>();
+
+        if fields.len() == 2 && fields.get("op").map(|x| x  == "get").unwrap_or(false) {
+            let search = fields.get("search").cloned().unwrap_or_default();
+
+            if search.len() == 16 + 2 && search.starts_with("0x") {
+                let maybe_fpr = Fingerprint::from_str(&search[2..]);
+
+                match maybe_fpr {
+                    Ok(fpr) => Outcome::Success(queries::Hkp::Fingerprint(fpr)),
+                    Err(_) => Outcome::Failure((Status::BadRequest, ())),
+                }
+            } else {
+                match Email::from_str(&search) {
+                    Ok(email) => Outcome::Success(queries::Hkp::Email(email)),
+                    Err(_) => Outcome::Failure((Status::BadRequest, ())),
+                }
             }
         } else {
             Outcome::Failure((Status::BadRequest, ()))
@@ -200,6 +237,43 @@ fn files(file: PathBuf, static_dir: State<StaticDir>) -> Option<NamedFile> {
     NamedFile::open(Path::new(&static_dir.0).join(file)).ok()
 }
 
+#[get("/pks/lookup")]
+fn hkp(db: rocket::State<Polymorphic>, key: Option<queries::Hkp>)
+    -> result::Result<String, Custom<String>>
+{
+    use std::io::Write;
+    use openpgp::armor::{Writer, Kind};
+
+    eprintln!("{:?}", key);
+    let maybe_key = match key {
+        Some(queries::Hkp::Fingerprint(ref fpr)) => db.by_fpr(fpr),
+        Some(queries::Hkp::Email(ref email)) => db.by_email(email),
+        None => { return Ok("nothing to do".to_string()); }
+    };
+
+    match maybe_key {
+        Some(bytes) => {
+            let key = || -> Result<String> {
+                let mut buffer = Vec::default();
+                {
+                    let mut writer = Writer::new(&mut buffer, Kind::PublicKey, &[])?;
+                    writer.write_all(&bytes)?;
+                }
+
+                Ok(String::from_utf8(buffer)?)
+            }();
+
+            match key {
+                Ok(s) => Ok(s),
+                Err(_) =>
+                    Err(Custom(Status::InternalServerError,
+                               "Failed to ASCII armor key".to_string())),
+            }
+        }
+        None => Ok("No such key :-(".to_string()),
+    }
+}
+
 #[get("/")]
 fn root() -> Template {
     use std::collections::HashMap;
@@ -241,6 +315,7 @@ pub fn serve(opt: &Opt, db: Polymorphic) -> Result<()> {
         confirm,
         root,
         files,
+        hkp,
     ];
 
     rocket::custom(config, opt.verbose)
