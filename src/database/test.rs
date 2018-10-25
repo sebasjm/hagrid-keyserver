@@ -15,8 +15,6 @@
 // fetch by uid & fpr
 
 use std::convert::TryFrom;
-use std::thread;
-use std::sync::atomic::{Ordering, AtomicBool};
 use std::str::FromStr;
 
 use database::Database;

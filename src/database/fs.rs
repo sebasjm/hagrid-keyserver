@@ -229,7 +229,7 @@ mod tests {
     #[test]
     fn new() {
         let tmpdir = TempDir::new().unwrap();
-        let mut db = Filesystem::new(tmpdir.path()).unwrap();
+        let db = Filesystem::new(tmpdir.path()).unwrap();
         let k1 = TPKBuilder::default().add_userid("a").generate().unwrap();
         let k2 = TPKBuilder::default().add_userid("b").generate().unwrap();
         let k3 = TPKBuilder::default().add_userid("c").generate().unwrap();

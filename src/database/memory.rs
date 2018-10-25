@@ -104,7 +104,7 @@ mod tests {
 
     #[test]
     fn new() {
-        let mut db = Memory::default();
+        let db = Memory::default();
         let k1 = TPKBuilder::default().add_userid("a").generate().unwrap();
         let k2 = TPKBuilder::default().add_userid("b").generate().unwrap();
         let k3 = TPKBuilder::default().add_userid("c").generate().unwrap();
