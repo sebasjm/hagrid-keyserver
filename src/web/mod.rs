@@ -284,7 +284,7 @@ pub fn serve(opt: &Opt, db: Polymorphic) -> Result<()> {
         .address(addr)
         .port(port)
         .workers(2)
-        .root(opt.base.join("public"))
+        .root(opt.base.join("static"))
         .extra("template_dir", format!("{}/templates", opt.base.display()))
         .extra("static_dir", format!("{}/public", opt.base.display()))
         .finalize()?;

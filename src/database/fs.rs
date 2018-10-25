@@ -47,8 +47,8 @@ impl Filesystem {
         create_dir_all(base.join("verification_tokens"))?;
         create_dir_all(base.join("deletion_tokens"))?;
         create_dir_all(base.join("scratch_pad"))?;
-        create_dir_all(base.join("public").join("by-fpr"))?;
-        create_dir_all(base.join("public").join("by-email"))?;
+        create_dir_all(base.join("static").join("by-fpr"))?;
+        create_dir_all(base.join("static").join("by-email"))?;
 
         info!("Opened base dir '{}'", base.display());
         Ok(Filesystem{
@@ -101,7 +101,7 @@ impl Database for Filesystem {
     }
 
     fn compare_and_swap(&self, fpr: &Fingerprint, old: Option<&[u8]>, new: Option<&[u8]>) -> Result<bool> {
-        let target = self.base.join("public").join("by-fpr").join(fpr.to_string());
+        let target = self.base.join("static").join("by-fpr").join(fpr.to_string());
         let dir = self.base.join("scratch_pad");
 
         match new {
@@ -129,8 +129,8 @@ impl Database for Filesystem {
 
     fn link_email(&self, email: &Email, fpr: &Fingerprint) {
         let email = url::form_urlencoded::byte_serialize(email.to_string().as_bytes()).collect::<String>();
-        let target = self.base.join("public").join("by-fpr").join(fpr.to_string());
-        let link = self.base.join("public").join("by-email").join(email);
+        let target = self.base.join("static").join("by-fpr").join(fpr.to_string());
+        let link = self.base.join("static").join("by-email").join(email);
 
         if link.exists() {
             let _ = remove_file(link.clone());
@@ -141,11 +141,11 @@ impl Database for Filesystem {
 
     fn unlink_email(&self, email: &Email, fpr: &Fingerprint) {
         let email = url::form_urlencoded::byte_serialize(email.to_string().as_bytes()).collect::<String>();
-        let link = self.base.join("public").join("by-email").join(email);
+        let link = self.base.join("static").join("by-email").join(email);
 
         match read_link(link.clone()) {
             Ok(target) => {
-                let expected = self.base.join("public").join("by-fpr").join(fpr.to_string());
+                let expected = self.base.join("static").join("by-fpr").join(fpr.to_string());
 
                 if target == expected {
                     let _ = remove_file(link);
@@ -174,7 +174,7 @@ impl Database for Filesystem {
 
     // XXX: slow
     fn by_fpr(&self, fpr: &Fingerprint) -> Option<Box<[u8]>> {
-        let target = self.base.join("public").join("by-fpr").join(fpr.to_string());
+        let target = self.base.join("static").join("by-fpr").join(fpr.to_string());
 
         File::open(target).ok().and_then(|mut fd| {
             let mut buf = Vec::default();
@@ -191,7 +191,7 @@ impl Database for Filesystem {
         use std::fs;
 
         let email = url::form_urlencoded::byte_serialize(email.to_string().as_bytes()).collect::<String>();
-        let path = self.base.join("public").join("by-email").join(email);
+        let path = self.base.join("static").join("by-email").join(email);
 
         fs::canonicalize(path).ok()
             .and_then(|p| {
