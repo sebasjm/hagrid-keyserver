@@ -59,7 +59,7 @@ impl FromStr for Fingerprint {
     type Err = Error;
 
     fn from_str(s: &str) -> Result<Fingerprint> {
-        if !s.starts_with("0x") || s.len() != 20 + 2 {
+        if !s.starts_with("0x") || s.len() != 40 + 2 {
             return Err(format!("'{}' is not a valid fingerprint", s).into());
         }
 
