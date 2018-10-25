@@ -3,7 +3,6 @@ use rocket::{State, Outcome};
 use rocket::http::Status;
 use rocket::request::{self, Request, FromRequest};
 use rocket::response::status::Custom;
-use rocket::http::uri::URI;
 use rocket::response::NamedFile;
 use rocket::fairing::AdHoc;
 
@@ -15,7 +14,6 @@ mod upload;
 use database::{Polymorphic, Database};
 use types::{Fingerprint, Email};
 use errors::Result;
-use errors;
 use Opt;
 
 use std::str::FromStr;
@@ -23,11 +21,6 @@ use std::result;
 
 mod queries {
     use types::{Fingerprint, Email};
-
-    pub enum Key {
-        Fingerprint(Fingerprint),
-        Email(Email),
-    }
 
     #[derive(Debug)]
     pub enum Hkp {
@@ -57,39 +50,6 @@ mod templates {
 }
 
 struct StaticDir(String);
-
-impl<'a, 'r> FromRequest<'a, 'r> for queries::Key {
-    type Error = ();
-
-    fn from_request(request: &'a Request<'r>) -> request::Outcome<queries::Key, ()> {
-        let query = request.uri().query().unwrap_or("");
-
-        if query.starts_with("fpr=") {
-            let maybe_fpr = URI::percent_decode(&query[4..].as_bytes())
-                .map_err(|e| errors::ErrorKind::StrUtf8Error(e).into())
-                .and_then(|x| Fingerprint::from_str(&*x));
-
-            match maybe_fpr {
-                Ok(fpr) => Outcome::Success(queries::Key::Fingerprint(fpr)),
-                Err(_) => Outcome::Failure((Status::BadRequest, ())),
-            }
-        } else if query.starts_with("uid=") {
-            let maybe_email: Result<_> = URI::percent_decode(&query[4..].as_bytes())
-                .map_err(|e| errors::ErrorKind::StrUtf8Error(e).into())
-                .and_then(|x| Email::from_str(&x));
-
-            match maybe_email {
-                Ok(email) => {
-                    eprintln!("get {:?}", email);
-                    Outcome::Success(queries::Key::Email(email))
-                }
-                Err(_) => Outcome::Failure((Status::BadRequest, ())),
-            }
-        } else {
-            Outcome::Failure((Status::BadRequest, ()))
-        }
-    }
-}
 
 impl<'a, 'r> FromRequest<'a, 'r> for queries::Hkp {
     type Error = ();
@@ -127,38 +87,54 @@ impl<'a, 'r> FromRequest<'a, 'r> for queries::Hkp {
     }
 }
 
-#[get("/keys")]
-fn get_key(db: rocket::State<Polymorphic>, key: Option<queries::Key>)
-    -> result::Result<String, Custom<String>>
-{
+fn process_key(bytes: &[u8]) -> result::Result<String, Custom<String>> {
     use std::io::Write;
     use openpgp::armor::{Writer, Kind};
 
-    let maybe_key = match key {
-        Some(queries::Key::Fingerprint(ref fpr)) => db.by_fpr(fpr),
-        Some(queries::Key::Email(ref email)) => db.by_email(email),
-        None => { return Ok("nothing to do".to_string()); }
+    let key = || -> Result<String> {
+        let mut buffer = Vec::default();
+        {
+            let mut writer = Writer::new(&mut buffer, Kind::PublicKey, &[])?;
+            writer.write_all(&bytes)?;
+        }
+
+        Ok(String::from_utf8(buffer)?)
+    }();
+
+    match key {
+        Ok(s) => Ok(s),
+        Err(_) =>
+            Err(Custom(Status::InternalServerError,
+                       "Failed to ASCII armor key".to_string())),
+    }
+}
+
+#[get("/static/by-fpr/<fpr>")]
+fn by_fpr(db: rocket::State<Polymorphic>, fpr: String)
+    -> result::Result<String, Custom<String>>
+{
+    let maybe_key = match Fingerprint::from_str(&fpr) {
+        Ok(ref fpr) => db.by_fpr(fpr),
+        Err(_) => None,
     };
 
     match maybe_key {
-        Some(bytes) => {
-            let key = || -> Result<String> {
-                let mut buffer = Vec::default();
-                {
-                    let mut writer = Writer::new(&mut buffer, Kind::PublicKey, &[])?;
-                    writer.write_all(&bytes)?;
-                }
+        Some(ref bytes) => process_key(bytes),
+        None => Ok("No such key :-(".to_string()),
+    }
+}
 
-                Ok(String::from_utf8(buffer)?)
-            }();
+#[get("/static/by-email/<email>")]
+fn by_email(db: rocket::State<Polymorphic>, email: String)
+    -> result::Result<String, Custom<String>>
+{
+    let maybe_key = match Email::from_str(&email) {
+        Ok(ref email) => db.by_email(email),
+        Err(_) => None,
+    };
 
-            match key {
-                Ok(s) => Ok(s),
-                Err(_) =>
-                    Err(Custom(Status::InternalServerError,
-                               "Failed to ASCII armor key".to_string())),
-            }
-        }
+    match maybe_key {
+        Some(ref bytes) => process_key(bytes),
         None => Ok("No such key :-(".to_string()),
     }
 }
@@ -314,7 +290,8 @@ pub fn serve(opt: &Opt, db: Polymorphic) -> Result<()> {
         .finalize()?;
     let routes = routes![
         upload::multipart_upload,
-        get_key,
+        by_email,
+        by_fpr,
         verify,
         delete,
         confirm,
