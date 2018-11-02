@@ -5,7 +5,7 @@ const copy = require('copy-webpack-plugin')
 
 module.exports = {
   mode: 'production',
-  entry: './web/index.js',
+  entry: './templates/index.js',
   output: {
     filename: 'site.js',
     path: path.resolve(__dirname, 'dist', 'public', 'assets'),
@@ -38,14 +38,14 @@ module.exports = {
   plugins: [
     new html({
       filename: '../../templates/layout.html.hbs',
-      template: 'web/layout.html.hbs',
+      template: 'templates/layout.html.hbs',
     }),
     new text({
       filename: 'site.css'
     }),
     new copy([
       {
-        from: 'web/*.hbs',
+        from: 'templates/*.hbs',
         to: path.resolve(__dirname, 'dist', "templates"),
         ignore: [ 'layout.html.hbs' ],
         flatten: true
