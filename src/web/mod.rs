@@ -109,7 +109,7 @@ fn process_key(bytes: &[u8]) -> result::Result<String, Custom<String>> {
     }
 }
 
-#[get("/static/by-fpr/<fpr>")]
+#[get("/by-fpr/<fpr>")]
 fn by_fpr(db: rocket::State<Polymorphic>, fpr: String)
     -> result::Result<String, Custom<String>>
 {
@@ -124,7 +124,7 @@ fn by_fpr(db: rocket::State<Polymorphic>, fpr: String)
     }
 }
 
-#[get("/static/by-email/<email>")]
+#[get("/by-email/<email>")]
 fn by_email(db: rocket::State<Polymorphic>, email: String)
     -> result::Result<String, Custom<String>>
 {
@@ -139,7 +139,7 @@ fn by_email(db: rocket::State<Polymorphic>, email: String)
     }
 }
 
-#[get("/verify/<token>")]
+#[get("/vks/verify/<token>")]
 fn verify(db: rocket::State<Polymorphic>, token: String)
     -> result::Result<Template, Custom<String>>
 {
@@ -191,7 +191,7 @@ fn delete(db: rocket::State<Polymorphic>, fpr: String)
     }
 }
 
-#[get("/confirm/<token>")]
+#[get("/vks/confirm/<token>")]
 fn confirm(db: rocket::State<Polymorphic>, token: String)
     -> result::Result<Template, Custom<String>>
 {
@@ -213,19 +213,18 @@ fn confirm(db: rocket::State<Polymorphic>, token: String)
     }
 }
 
-#[get("/static/<file..>")]
+#[get("/assets/<file..>")]
 fn files(file: PathBuf, static_dir: State<StaticDir>) -> Option<NamedFile> {
-    NamedFile::open(Path::new(&static_dir.0).join(file)).ok()
+    NamedFile::open(Path::new(&static_dir.0).join("assets").join(file)).ok()
 }
 
 #[get("/pks/lookup")]
-fn hkp(db: rocket::State<Polymorphic>, key: Option<queries::Hkp>)
+fn lookup(db: rocket::State<Polymorphic>, key: Option<queries::Hkp>)
     -> result::Result<String, Custom<String>>
 {
     use std::io::Write;
     use openpgp::armor::{Writer, Kind};
 
-    eprintln!("{:?}", key);
     let maybe_key = match key {
         Some(queries::Hkp::Fingerprint(ref fpr)) => db.by_fpr(fpr),
         Some(queries::Hkp::Email(ref email)) => db.by_email(email),
@@ -284,20 +283,24 @@ pub fn serve(opt: &Opt, db: Polymorphic) -> Result<()> {
         .address(addr)
         .port(port)
         .workers(2)
-        .root(opt.base.join("static"))
+        .root(opt.base.clone())
         .extra("template_dir", format!("{}/templates", opt.base.display()))
         .extra("static_dir", format!("{}/public", opt.base.display()))
         .finalize()?;
     let routes = routes![
-        upload::multipart_upload,
+        // infra
+        root,
+        files,
+        // nginx-supported lookup
         by_email,
         by_fpr,
+        // HKP
+        lookup,
+        upload::multipart_upload,
+        // verification & deletion
         verify,
         delete,
         confirm,
-        root,
-        files,
-        hkp,
     ];
 
     rocket::custom(config, opt.verbose)

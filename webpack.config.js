@@ -8,8 +8,8 @@ module.exports = {
   entry: './web/index.js',
   output: {
     filename: 'site.js',
-    path: path.resolve(__dirname, 'dist', 'public'),
-    publicPath: '/static'
+    path: path.resolve(__dirname, 'dist', 'public', 'assets'),
+    publicPath: '/assets'
   },
   module: {
     rules: [
@@ -37,7 +37,7 @@ module.exports = {
   },
   plugins: [
     new html({
-      filename: '../templates/layout.html.hbs',
+      filename: '../../templates/layout.html.hbs',
       template: 'web/layout.html.hbs',
     }),
     new text({
@@ -45,7 +45,7 @@ module.exports = {
     }),
     new copy([
       {
-        from: 'web/*.html.hbs',
+        from: 'web/*.hbs',
         to: path.resolve(__dirname, 'dist', "templates"),
         ignore: [ 'layout.html.hbs' ],
         flatten: true
