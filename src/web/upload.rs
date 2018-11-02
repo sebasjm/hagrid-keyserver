@@ -7,7 +7,13 @@ use rocket::http::{ContentType, Status};
 use rocket::response::status::Custom;
 use rocket_contrib::Template;
 
+use types::Email;
+use mail::send_verification_mail;
+use web::{Domain, MailTemplateDir};
 use database::{Database, Polymorphic};
+
+use std::io::Read;
+use std::str::FromStr;
 
 mod template {
     #[derive(Serialize)]
@@ -17,82 +23,132 @@ mod template {
     }
 
     #[derive(Serialize)]
-    pub struct Context {
+    pub struct Verify {
         pub tokens: Vec<Token>,
     }
 }
 
-#[post("/keys", data = "<data>")]
+#[post("/pks/add", data = "<data>")]
 // signature requires the request to have a `Content-Type`
-pub fn multipart_upload(db: State<Polymorphic>, cont_type: &ContentType, data: Data) -> Result<Template, Custom<String>> {
-    // this and the next check can be implemented as a request guard but it seems like just
-    // more boilerplate than necessary
-    if !cont_type.is_form_data() {
-        return Err(Custom(
-            Status::BadRequest,
-            "Content-Type not multipart/form-data".into()
-        ));
-    }
-
-    let (_, boundary) = cont_type.params().find(|&(k, _)| k == "boundary").ok_or_else(
+pub fn multipart_upload(db: State<Polymorphic>, cont_type: &ContentType,
+                        data: Data, tmpl: State<MailTemplateDir>,
+                        domain: State<Domain>)
+    -> Result<Template, Custom<String>>
+{
+    if cont_type.is_form_data() {
+        // multipart/form-data
+        let (_, boundary) = cont_type.params().find(|&(k, _)| k == "boundary").ok_or_else(
             || Custom(
                 Status::BadRequest,
                 "`Content-Type: multipart/form-data` boundary param not provided".into()
-            )
-        )?;
+                )
+            )?;
 
-    process_upload(boundary, data, db.inner())
+        process_upload(boundary, data, db.inner(), &tmpl.0, &domain.0)
+    } else if cont_type.is_form() {
+        use rocket::request::FormItems;
+        use std::io::Cursor;
+
+        // application/x-www-form-urlencoded
+        let mut buf = Vec::default();
+
+        data.stream_to(&mut buf).or_else(|_| {
+            Err(Custom(Status::BadRequest,
+                       "`Content-Type: application/x-www-form-urlencoded` not valid".into()))
+        })?;
+
+        for (key, value) in FormItems::from(&*String::from_utf8_lossy(&buf)) {
+            let decoded_value = value.url_decode().or_else(|_| {
+                Err(Custom(Status::BadRequest,
+                           "`Content-Type: application/x-www-form-urlencoded` not valid".into()))
+            })?;
+
+            match key.as_str() {
+                "keytext" => {
+                    return process_key(Cursor::new(decoded_value.as_bytes()),
+                                       &db, &tmpl.0, &domain.0);
+                }
+                _ => { /* skip */ }
+            }
+        }
+
+        Err(Custom(Status::BadRequest, "Not a PGP public key".into()))
+    } else {
+        Err(Custom(Status::BadRequest, "Content-Type not a form".into()))
+    }
 }
 
-fn process_upload(boundary: &str, data: Data, db: &Polymorphic) -> Result<Template, Custom<String>> {
+fn process_upload(boundary: &str, data: Data, db: &Polymorphic, tmpl: &str,
+                  domain: &str)
+    -> Result<Template, Custom<String>>
+{
     // saves all fields, any field longer than 10kB goes to a temporary directory
     // Entries could implement FromData though that would give zero control over
     // how the files are saved; Multipart would be a good impl candidate though
     match Multipart::with_body(data.open(), boundary).save().temp() {
-        Full(entries) => process_entries(entries, db),
-        Partial(partial, _) => {
-            process_entries(partial.entries, db)
-        },
+        Full(entries) => process_multipart(entries, db, tmpl, domain),
+        Partial(partial, _) => process_multipart(partial.entries, db, tmpl, domain),
         Error(err) => Err(Custom(Status::InternalServerError, err.to_string())),
     }
 }
 
-// having a streaming output would be nice; there's one for returning a `Read` impl
-// but not one that you can `write()` to
-fn process_entries(entries: Entries, db: &Polymorphic) -> Result<Template, Custom<String>> {
-    use openpgp::TPK;
-
-    match entries.fields.get(&"key".to_string()) {
+fn process_multipart(entries: Entries, db: &Polymorphic, tmpl: &str,
+                     domain: &str)
+    -> Result<Template, Custom<String>>
+{
+    match entries.fields.get(&"keytext".to_string()) {
         Some(ent) if ent.len() == 1 => {
             let reader = ent[0].data.readable().map_err(|err| {
                 Custom(Status::InternalServerError, err.to_string())
             })?;
 
-            match TPK::from_reader(reader) {
-                Ok(tpk) => {
-                    match db.merge_or_publish(tpk) {
-                        Ok(tokens) => {
-                            let tokens = tokens
-                                .into_iter().map(|(uid,tok)| {
-                                    template::Token{ userid: uid.to_string(), token: tok }
-                                }).collect::<Vec<_>>();
-                            let context = template::Context{
-                                tokens: tokens
-                            };
-
-                            Ok(Template::render("upload", context))
-                        }
-                        Err(err) =>
-                            Err(Custom(Status::InternalServerError,
-                                       format!("{:?}", err))),
-                    }
-                }
-                Err(_) => Err(Custom(Status::BadRequest,
-                                     "Not a PGP public key".into())),
-            }
+            process_key(reader, db, tmpl, domain)
         }
         Some(_) | None =>
             Err(Custom(Status::BadRequest, "Not a PGP public key".into())),
     }
 }
 
+fn process_key<R>(reader: R, db: &Polymorphic, tmpl: &str, domain: &str)
+    -> Result<Template, Custom<String>> where R: Read
+{
+    use openpgp::{Reader, TPK};
+    let reader = Reader::from_reader(reader).or_else(|_| {
+        Err(Custom(Status::BadRequest,
+                   "`Content-Type: application/x-www-form-urlencoded` not valid".into()))
+    })?;
+
+    match TPK::from_reader(reader) {
+        Ok(tpk) => {
+            match db.merge_or_publish(tpk) {
+                Ok(tokens) => {
+                    let tokens = tokens
+                        .into_iter().map(|(uid,tok)| {
+                            template::Token{ userid: uid.to_string(), token: tok }
+                        }).collect::<Vec<_>>();
+
+                    // send out emails
+                    for tok in tokens.iter() {
+                        let &template::Token{ ref userid, ref token } = tok;
+
+                        Email::from_str(userid).and_then(|email| {
+                            send_verification_mail(&email, token, tmpl, domain)
+                        }).map_err(|err| {
+                            Custom(Status::InternalServerError, format!("{:?}", err))
+                        })?;
+                    }
+
+                    let context = template::Verify{
+                        tokens: tokens
+                    };
+
+                    Ok(Template::render("upload", context))
+                }
+                Err(err) =>
+                    Err(Custom(Status::InternalServerError,
+                               format!("{:?}", err))),
+            }
+        }
+        Err(_) => Err(Custom(Status::BadRequest, "Not a PGP public key".into())),
+    }
+}

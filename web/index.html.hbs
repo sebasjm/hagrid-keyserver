@@ -10,8 +10,8 @@
   </form>
 
   <h2>Upload your key</h2>
-  <form action="/keys" method=POST enctype=multipart/form-data>
-    <input type="file" id="key" name="key" placeholder="Your public key">
+  <form action="/pks/add" method=POST enctype=multipart/form-data>
+    <input type="file" id="keytext" name="keytext" placeholder="Your public key">
     <input type="submit" value="Upload">
   </form>
 {{/layout}}

@@ -23,10 +23,13 @@ extern crate rand;
 extern crate tempfile;
 extern crate parking_lot;
 extern crate structopt;
+extern crate lettre;
+extern crate lettre_email;
 
 mod web;
 mod database;
 mod types;
+mod mail;
 
 mod errors {
     error_chain!{
@@ -39,6 +42,7 @@ mod errors {
             StringUtf8Error(::std::string::FromUtf8Error);
             StrUtf8Error(::std::str::Utf8Error);
             HexError(::hex::FromHexError);
+            SendmailError(::lettre::sendmail::error::Error);
         }
     }
 }
@@ -62,6 +66,11 @@ pub struct Opt {
     /// Port and address to listen on.
     #[structopt(short = "l", long = "listen", default_value = "0.0.0.0:8080")]
     listen: String,
+    /// FQDN of the server. Used in templates.
+    #[structopt(short = "D", long = "domain", default_value = "localhost")]
+    domain: String,
+
+
  }
 
 fn main() {

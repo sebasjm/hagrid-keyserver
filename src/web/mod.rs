@@ -50,6 +50,8 @@ mod templates {
 }
 
 struct StaticDir(String);
+pub struct MailTemplateDir(String);
+pub struct Domain(String);
 
 impl<'a, 'r> FromRequest<'a, 'r> for queries::Hkp {
     type Error = ();
@@ -165,10 +167,13 @@ fn verify(db: rocket::State<Polymorphic>, token: String)
     }
 }
 
-#[get("/delete/<fpr>")]
-fn delete(db: rocket::State<Polymorphic>, fpr: String)
+#[get("/vks/delete/<fpr>")]
+fn delete(db: rocket::State<Polymorphic>, fpr: String,
+          tmpl: State<MailTemplateDir>, domain: State<Domain>)
     -> result::Result<Template, Custom<String>>
 {
+    use mail::send_confirmation_mail;
+
     let fpr = match Fingerprint::from_str(&fpr) {
         Ok(fpr) => fpr,
         Err(_) => {
@@ -286,6 +291,7 @@ pub fn serve(opt: &Opt, db: Polymorphic) -> Result<()> {
         .root(opt.base.clone())
         .extra("template_dir", format!("{}/templates", opt.base.display()))
         .extra("static_dir", format!("{}/public", opt.base.display()))
+        .extra("domain", opt.domain.clone())
         .finalize()?;
     let routes = routes![
         // infra
@@ -313,6 +319,23 @@ pub fn serve(opt: &Opt, db: Polymorphic) -> Result<()> {
 
             Ok(rocket.manage(StaticDir(static_dir)))
         }))
+        .attach(AdHoc::on_attach(|rocket| {
+            let static_dir = rocket.config()
+                .get_str("template_dir")
+                .unwrap()
+                .to_string();
+
+            Ok(rocket.manage(MailTemplateDir(static_dir)))
+        }))
+        .attach(AdHoc::on_attach(|rocket| {
+            let static_dir = rocket.config()
+                .get_str("domain")
+                .unwrap()
+                .to_string();
+
+            Ok(rocket.manage(Domain(static_dir)))
+        }))
+
         .mount("/", routes)
         .manage(db)
         .launch();
