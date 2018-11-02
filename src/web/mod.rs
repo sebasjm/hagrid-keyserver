@@ -67,16 +67,12 @@ impl<'a, 'r> FromRequest<'a, 'r> for queries::Hkp {
             (key, value)
         }).collect::<HashMap<_,_>>();
 
-        if fields.len() == 2 && fields.get("op").map(|x| x  == "get").unwrap_or(false) {
+        if fields.len() >= 2 && fields.get("op").map(|x| x  == "get").unwrap_or(false) {
             let search = fields.get("search").cloned().unwrap_or_default();
+            let maybe_fpr = Fingerprint::from_str(&search);
 
-            if search.len() == 16 + 2 && search.starts_with("0x") {
-                let maybe_fpr = Fingerprint::from_str(&search[2..]);
-
-                match maybe_fpr {
-                    Ok(fpr) => Outcome::Success(queries::Hkp::Fingerprint(fpr)),
-                    Err(_) => Outcome::Failure((Status::BadRequest, ())),
-                }
+            if let Ok(fpr) = maybe_fpr {
+                Outcome::Success(queries::Hkp::Fingerprint(fpr))
             } else {
                 match Email::from_str(&search) {
                     Ok(email) => Outcome::Success(queries::Hkp::Email(email)),
