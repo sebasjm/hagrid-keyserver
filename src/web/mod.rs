@@ -183,11 +183,17 @@ fn delete(db: rocket::State<Polymorphic>, fpr: String,
     };
 
     match db.request_deletion(fpr.clone()) {
-        Ok(token) => {
+        Ok((token,uids)) => {
             let context = templates::Delete{
                 fpr: fpr.to_string(),
-                token: token,
+                token: token.clone(),
             };
+
+            for uid in uids {
+                send_confirmation_mail(&uid, &token, &tmpl.0, &domain.0).map_err(|err| {
+                    Custom(Status::InternalServerError, format!("{:?}", err))
+                })?;
+            }
 
             Ok(Template::render("delete", context))
         }

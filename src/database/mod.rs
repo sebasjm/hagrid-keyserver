@@ -104,7 +104,7 @@ pub trait Database: Sync + Send {
         tpk.serialize(&mut cur).map(|_| cur.into_inner()).map_err(|e| format!("{}", e).into())
     }
 
-    fn merge_or_publish(&self, mut tpk: TPK) -> Result<Vec<(Email,String)>> {
+    fn merge_or_publish(&self, mut tpk: TPK) -> Result<Vec<(Email, String)>> {
         let fpr = Fingerprint::try_from(tpk.primary().fingerprint())?;
         let mut ret = Vec::default();
 
@@ -186,11 +186,26 @@ pub trait Database: Sync + Send {
         }
     }
 
-    fn request_deletion(&self, fpr: Fingerprint) -> Result<String> {
-        if self.by_fpr(&fpr).is_none() { return Err("Unknown key".into()); }
+    fn request_deletion(&self, fpr: Fingerprint) -> Result<(String, Vec<Email>)> {
+        match self.by_fpr(&fpr) {
+            Some(tpk) => {
+                let payload = Delete::new(fpr);
+                let tok = self.new_delete_token(payload)?;
+                let tpk = match TPK::from_bytes(&tpk) {
+                    Ok(tpk) => tpk,
+                    Err(e) => {
+                        return Err(format!("Failed to parse TPK: {:?}", e).into());
+                    }
+                };
+                let emails = tpk.userids().filter_map(|uid| {
+                    Email::try_from(uid.userid().clone()).ok()
+                }).collect::<Vec<_>>();
 
-        let payload = Delete::new(fpr);
-        self.new_delete_token(payload)
+                Ok((tok, emails))
+            }
+
+            None => Err("Unknown key".into()),
+        }
     }
 
     // if fpr = pop-token(tok) {
