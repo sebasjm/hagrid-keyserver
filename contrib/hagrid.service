@@ -1,0 +1,13 @@
+[Unit]
+Description=Hagrid Verifying Keyserver
+After=network.target
+
+[Service]
+ExecStart=/opt/garbage-pile/target/release/garbage-pile /opt/garbage-pile/dist
+WorkingDirectory=/opt/garbage-pile
+User=hagrid
+Group=hagrid
+StandardOutput=syslog
+
+[Install]
+WantedBy=multi-user.target

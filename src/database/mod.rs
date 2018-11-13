@@ -2,7 +2,7 @@ use std::io::Cursor;
 use std::convert::TryFrom;
 
 use time;
-use openpgp::{packet::Signature, TPK, packet::UserID, Packet, PacketPile, constants::SignatureType};
+use openpgp::{packet::Signature, TPK, packet::UserID, Packet, PacketPile, constants::SignatureType, serialize::Serialize};
 use Result;
 use types::{Fingerprint, Email};
 
