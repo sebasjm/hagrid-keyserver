@@ -28,7 +28,7 @@ pub fn test_uid_verification<D: Database>(db: &mut D) {
     let tpk = TPKBuilder::default()
         .add_userid(str_uid1)
         .add_userid(str_uid2)
-        .generate().unwrap();
+        .generate().unwrap().0;
     let mut uid1 = UserID::new();
     let mut uid2 = UserID::new();
 
@@ -219,7 +219,7 @@ pub fn test_uid_deletion<D: Database>(db: &mut D) {
     let tpk = TPKBuilder::default()
         .add_userid(str_uid1)
         .add_userid(str_uid2)
-        .generate().unwrap();
+        .generate().unwrap().0;
     let mut uid1 = UserID::new();
     let mut uid2 = UserID::new();
 
@@ -239,7 +239,7 @@ pub fn test_uid_deletion<D: Database>(db: &mut D) {
     let fpr = Fingerprint::try_from(tpk.fingerprint()).unwrap();
 
     // req. deletion
-    let del = db.request_deletion(fpr.clone()).unwrap();
+    let del = db.request_deletion(fpr.clone()).unwrap().0;
 
     // check it's still there 
     {

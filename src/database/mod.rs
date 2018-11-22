@@ -99,6 +99,7 @@ pub trait Database: Sync + Send {
 
     fn tpk_into_bytes(tpk: &TPK) -> Result<Vec<u8>> {
         use std::io::Cursor;
+        use openpgp::serialize::Serialize;
 
         let mut cur = Cursor::new(Vec::default());
         tpk.serialize(&mut cur).map(|_| cur.into_inner()).map_err(|e| format!("{}", e).into())

@@ -1,7 +1,7 @@
-Garbage Pile
-============
+Hagrid
+======
 
-Garbage Pile is a verifying OpenPGP key server. When a new key is uploaded a
+Hagrid is a verifying OpenPGP key server. When a new key is uploaded a
 token is sent to each user ID via email. This token can be used to verify the
 user ID. Keys can be queried by their verified user IDs (exact match) and their
 primary keys fingerprint. Key can be deleted by clicking a link send to all
@@ -10,7 +10,7 @@ user IDs.
 Quick Start
 -----------
 
-Building Garbage Pile required a working [Rust _nightly_
+Building Hagrid required a working [Rust _nightly_
 toolchain](https://rust-lang.org). The key server uses the filesystem to store
 keys, user IDs and tokens. To run it, supply the absolute path to where you
 want the database to live and the absolute path to the template directory.
@@ -24,7 +24,7 @@ This will spawn a web server listening on port 8080.
 Usage
 -----
 
-While Garbage Piles URL scheme is meant to be machine readable, it's not a REST API. The following URLs are handled.
+While Hagrids URL scheme is meant to be machine readable, it's not a REST API. The following URLs are handled.
 
 - `POST /keys` uploads a new key.
 
@@ -51,7 +51,7 @@ While Garbage Piles URL scheme is meant to be machine readable, it's not a REST 
 Building
 --------
 
-Garbage Pile consists of a Rust and a NPM project. While the web server is
+Hagrid consists of a Rust and a NPM project. While the web server is
 implemented in Rust, HTML templates and CSS is bundled using NPM and Webpack.
 Building the Rust part requires a working nightly Rust toolchain. The
 easiest way to get the toolchain is to download [rustup](https://rustup.rs).
@@ -68,10 +68,10 @@ cargo build --release
 ```
 
 After compilation a binary is placed in `target/release/` called
-`garbage-pile`. The binary is linked statically and can be copied everywhere.
+`hagrid`. The binary is linked statically and can be copied everywhere.
 
 ```bash
-cp target/release/garbage-pile /usr/local/bin
+cp target/release/hagrid /usr/local/bin
 ```
 
 Bundling the web assets requires npm 8 or later. After you have npm installed
@@ -87,12 +87,17 @@ directories under `public/` to a writable location. Then start the server with
 the _absolute_ path to the directory as argument:
 
 ```bash
-mkdir /var/garbage-pile
-cp -R dist/* /var/garbage-pile
-garbage-pile /var/garbage-pile
+mkdir /var/hagrid
+cp -R dist/* /var/hagrid
+hagrid /var/hagrid
 ```
 
 This will spawn the server in foreground, listening on `0.0.0.0:8080`. The
 `--listen` argument can be used to change port and listen address. The server
-will put all keys and runtime data under the base folder (`/var/garbage-pile`
+will put all keys and runtime data under the base folder (`/var/hagrid`
 in the above example).
+
+Community
+---------
+
+We're in `##hagrid` on Freenode.

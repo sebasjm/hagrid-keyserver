@@ -1,5 +1,5 @@
 {
-  "name": "garbage-pile",
+  "name": "hagrid",
   "version": "1.0.0",
   "description": "A Verifying OpenPGP Key Server",
   "main": "",
@@ -9,14 +9,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+ssh://git@gitlab.com/sequoia-pgp/garbage-pile.git"
+    "url": "git+ssh://git@gitlab.com/sequoia-pgp/hagrid.git"
   },
   "author": "kai@sequoia-pgp.org",
   "license": "GPL-3.0",
   "bugs": {
-    "url": "https://gitlab.com/sequoia-pgp/garbage-pile/issues"
+    "url": "https://gitlab.com/sequoia-pgp/hagrid/issues"
   },
-  "homepage": "https://gitlab.com/sequoia-pgp/garbage-pile#README",
+  "homepage": "https://gitlab.com/sequoia-pgp/hagrid",
   "dependencies": {
     "bootstrap": "^4.1.3",
     "jquery": "^3.3.1",
