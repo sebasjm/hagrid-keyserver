@@ -3,8 +3,8 @@ Description=Hagrid Verifying Keyserver
 After=network.target
 
 [Service]
-ExecStart=/opt/garbage-pile/target/release/garbage-pile /opt/garbage-pile/dist
-WorkingDirectory=/opt/garbage-pile
+ExecStart=/opt/hagrid/target/release/hagrid /opt/hagrid/dist
+WorkingDirectory=/opt/hagrid
 User=hagrid
 Group=hagrid
 StandardOutput=syslog
