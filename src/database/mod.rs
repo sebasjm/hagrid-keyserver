@@ -88,7 +88,10 @@ pub trait Database: Sync + Send {
         let pile = tpk.to_packet_pile().into_children().filter(|pkt| {
             match pkt {
                 &Packet::PublicKey(_) | &Packet::PublicSubkey(_) => true,
-                &Packet::Signature(ref sig) => sig.sigtype() == SignatureType::DirectKey,
+                &Packet::Signature(ref sig) =>
+                    sig.sigtype() == SignatureType::DirectKey
+                    || sig.sigtype() == SignatureType::SubkeyBinding
+                    || sig.sigtype() == SignatureType::PrimaryKeyBinding,
                 _ => false,
             }
         }).collect::<Vec<_>>();
