@@ -217,7 +217,7 @@ impl Database for Filesystem {
 mod tests {
     use super::*;
     use tempfile::TempDir;
-    use openpgp::tpk::TPKBuilder;
+    use sequoia_openpgp::tpk::TPKBuilder;
     use database::test;
 
     #[test]

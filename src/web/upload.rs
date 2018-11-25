@@ -112,7 +112,7 @@ fn process_multipart(entries: Entries, db: &Polymorphic, tmpl: &str,
 fn process_key<R>(reader: R, db: &Polymorphic, tmpl: &str, domain: &str)
     -> Result<Template, Custom<String>> where R: Read
 {
-    use openpgp::{Reader, TPK};
+    use sequoia_openpgp::{Reader, TPK};
     let reader = Reader::from_reader(reader).or_else(|_| {
         Err(Custom(Status::BadRequest,
                    "`Content-Type: application/x-www-form-urlencoded` not valid".into()))

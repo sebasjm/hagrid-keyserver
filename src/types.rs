@@ -1,7 +1,7 @@
 use std::str::FromStr;
 use std::convert::TryFrom;
 
-use openpgp::{self, packet::UserID};
+use sequoia_openpgp::{self, packet::UserID};
 use {Error, Result};
 
 #[derive(Serialize,Deserialize,Clone,Debug,Hash,PartialEq,Eq)]
@@ -38,13 +38,13 @@ impl FromStr for Email {
 #[derive(Serialize,Deserialize,Clone,Debug,Hash,PartialEq,Eq)]
 pub struct Fingerprint([u8; 20]);
 
-impl TryFrom<openpgp::Fingerprint> for Fingerprint {
+impl TryFrom<sequoia_openpgp::Fingerprint> for Fingerprint {
     type Error = Error;
 
-    fn try_from(fpr: openpgp::Fingerprint) -> Result<Self> {
+    fn try_from(fpr: sequoia_openpgp::Fingerprint) -> Result<Self> {
         match fpr {
-            openpgp::Fingerprint::V4(a) => Ok(Fingerprint(a)),
-            openpgp::Fingerprint::Invalid(_) => Err("invalid fingerprint".into()),
+            sequoia_openpgp::Fingerprint::V4(a) => Ok(Fingerprint(a)),
+            sequoia_openpgp::Fingerprint::Invalid(_) => Err("invalid fingerprint".into()),
         }
     }
 }
