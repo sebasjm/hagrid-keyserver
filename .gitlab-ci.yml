@@ -15,7 +15,7 @@ build:binary:
         - cargo build --release
     artifacts:
         paths:
-            - target/release/garbage-pile
+            - target/release/hagrid
 
 build:web:
     stage: build
