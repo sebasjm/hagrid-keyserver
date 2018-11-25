@@ -2,7 +2,7 @@ use std::io::Cursor;
 use std::convert::TryFrom;
 
 use time;
-use openpgp::{packet::Signature, TPK, packet::UserID, Packet, PacketPile, constants::SignatureType, serialize::Serialize};
+use sequoia_openpgp::{packet::Signature, TPK, packet::UserID, Packet, PacketPile, constants::SignatureType, serialize::Serialize};
 use Result;
 use types::{Fingerprint, Email};
 
@@ -26,16 +26,16 @@ pub struct Verify {
 
 impl Verify {
     pub fn new(uid: &UserID, sig: &[&Signature], fpr: Fingerprint) -> Result<Self> {
-        use openpgp::serialize::Serialize;
+        use sequoia_openpgp::serialize::Serialize;
 
         let mut cur = Cursor::new(Vec::default());
         let res: Result<()> = uid.serialize(&mut cur)
-            .map_err(|e| format!("openpgp: {}", e).into());
+            .map_err(|e| format!("sequoia_openpgp: {}", e).into());
         res?;
 
         for s in sig {
             let res: Result<()> = s.serialize(&mut cur)
-                .map_err(|e| format!("openpgp: {}", e).into());
+                .map_err(|e| format!("sequoia_openpgp: {}", e).into());
             res?;
         }
 
@@ -97,12 +97,12 @@ pub trait Database: Sync + Send {
         }).collect::<Vec<_>>();
 
         TPK::from_packet_pile(PacketPile::from_packets(pile))
-            .map_err(|e| format!("openpgp: {}", e).into())
+            .map_err(|e| format!("sequoia_openpgp: {}", e).into())
     }
 
     fn tpk_into_bytes(tpk: &TPK) -> Result<Vec<u8>> {
         use std::io::Cursor;
-        use openpgp::serialize::Serialize;
+        use sequoia_openpgp::serialize::Serialize;
 
         let mut cur = Cursor::new(Vec::default());
         tpk.serialize(&mut cur).map(|_| cur.into_inner()).map_err(|e| format!("{}", e).into())

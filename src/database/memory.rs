@@ -99,7 +99,7 @@ impl Memory {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use openpgp::tpk::TPKBuilder;
+    use sequoia_openpgp::tpk::TPKBuilder;
     use database::test;
 
     #[test]

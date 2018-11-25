@@ -18,8 +18,8 @@ use std::convert::TryFrom;
 use std::str::FromStr;
 
 use database::Database;
-use openpgp::tpk::{TPKBuilder, UserIDBinding};
-use openpgp::{Packet, packet::UserID, TPK, PacketPile};
+use sequoia_openpgp::tpk::{TPKBuilder, UserIDBinding};
+use sequoia_openpgp::{Packet, packet::UserID, TPK, PacketPile};
 use types::{Email, Fingerprint};
 
 pub fn test_uid_verification<D: Database>(db: &mut D) {

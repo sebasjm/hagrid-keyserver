@@ -16,7 +16,7 @@ extern crate hex;
 extern crate rocket_contrib;
 extern crate multipart;
 
-extern crate openpgp;
+extern crate sequoia_openpgp;
 #[macro_use] extern crate error_chain;
 #[macro_use] extern crate log;
 extern crate rand;

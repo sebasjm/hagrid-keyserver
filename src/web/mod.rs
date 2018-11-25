@@ -87,7 +87,7 @@ impl<'a, 'r> FromRequest<'a, 'r> for queries::Hkp {
 
 fn process_key(bytes: &[u8]) -> result::Result<String, Custom<String>> {
     use std::io::Write;
-    use openpgp::armor::{Writer, Kind};
+    use sequoia_openpgp::armor::{Writer, Kind};
 
     let key = || -> Result<String> {
         let mut buffer = Vec::default();
@@ -230,7 +230,7 @@ fn lookup(db: rocket::State<Polymorphic>, key: Option<queries::Hkp>)
     -> result::Result<String, Custom<String>>
 {
     use std::io::Write;
-    use openpgp::armor::{Writer, Kind};
+    use sequoia_openpgp::armor::{Writer, Kind};
 
     let maybe_key = match key {
         Some(queries::Hkp::Fingerprint(ref fpr)) => db.by_fpr(fpr),
