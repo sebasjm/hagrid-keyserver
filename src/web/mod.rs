@@ -6,7 +6,7 @@ use rocket::response::status::Custom;
 use rocket::response::NamedFile;
 use rocket::fairing::AdHoc;
 
-use rocket_contrib::Template;
+use rocket_contrib::templates::Template;
 use std::path::{Path, PathBuf};
 
 mod upload;
@@ -61,7 +61,10 @@ impl<'a, 'r> FromRequest<'a, 'r> for queries::Hkp {
         use std::collections::HashMap;
 
         let query = request.uri().query().unwrap_or("");
-        let fields = FormItems::from(query).map(|(k,v)| {
+        let fields = FormItems::from(query).map(|item| {
+
+            let (k, v) = item.key_value();
+
             let key = k.url_decode().unwrap_or_default();
             let value = v.url_decode().unwrap_or_default();
             (key, value)
@@ -291,8 +294,8 @@ pub fn serve(opt: &Opt, db: Polymorphic) -> Result<()> {
         .port(port)
         .workers(2)
         .root(opt.base.clone())
-        .extra("template_dir", format!("{}/templates", opt.base.display()))
-        .extra("static_dir", format!("{}/public", opt.base.display()))
+        .extra("template_dir", opt.base.join("templates").to_str().ok_or("Template path invalid")?)
+        .extra("static_dir", opt.base.join("public").to_str().ok_or("Static path invalid")?)
         .extra("domain", opt.domain.clone())
         .finalize()?;
     let routes = routes![
@@ -311,9 +314,9 @@ pub fn serve(opt: &Opt, db: Polymorphic) -> Result<()> {
         confirm,
     ];
 
-    rocket::custom(config, opt.verbose)
+    rocket::custom(config)
         .attach(Template::fairing())
-        .attach(AdHoc::on_attach(|rocket| {
+        .attach(AdHoc::on_attach("static_dir", |rocket| {
             let static_dir = rocket.config()
                 .get_str("static_dir")
                 .unwrap()
@@ -321,7 +324,7 @@ pub fn serve(opt: &Opt, db: Polymorphic) -> Result<()> {
 
             Ok(rocket.manage(StaticDir(static_dir)))
         }))
-        .attach(AdHoc::on_attach(|rocket| {
+        .attach(AdHoc::on_attach("template_dir", |rocket| {
             let static_dir = rocket.config()
                 .get_str("template_dir")
                 .unwrap()
@@ -329,7 +332,7 @@ pub fn serve(opt: &Opt, db: Polymorphic) -> Result<()> {
 
             Ok(rocket.manage(MailTemplateDir(static_dir)))
         }))
-        .attach(AdHoc::on_attach(|rocket| {
+        .attach(AdHoc::on_attach("domain", |rocket| {
             let static_dir = rocket.config()
                 .get_str("domain")
                 .unwrap()

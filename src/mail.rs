@@ -1,5 +1,4 @@
-use rocket_contrib::Template;
-
+use handlebars::Handlebars;
 use lettre::{SendmailTransport, EmailTransport};
 use lettre_email::EmailBuilder;
 
@@ -19,8 +18,21 @@ fn send_mail<T>(to: &Email, subject: &str, template_dir: &str,
                     template_base: &str, domain: &str, ctx: T)
     -> Result<()> where T: Serialize + Clone
 {
-    let html = Template::show(template_dir, format!("{}-html", template_base), ctx.clone());
-    let txt = Template::show(template_dir, format!("{}-txt", template_base), ctx);
+    // TODO: Should be done only on startup
+    let tmpl = format!("{}/{}", template_dir, template_base);
+    let mut handlebars = Handlebars::new();
+    handlebars.register_template_file("html", format!("{}-html.hbs", tmpl)).unwrap();
+    handlebars.register_template_file("txt", format!("{}-txt.hbs", tmpl)).unwrap();
+
+    let (html, txt) = {
+      if let (Ok(inner_html), Ok(inner_txt)) =
+        (handlebars.render("html", &ctx), handlebars.render("txt", &ctx)) {
+          (Some(inner_html), Some(inner_txt))
+      } else {
+          (None, None)
+      }
+    };
+
     let email = EmailBuilder::new()
         .to(to.to_string())
         .from(format!("noreply@{}", domain))
@@ -31,7 +43,6 @@ fn send_mail<T>(to: &Email, subject: &str, template_dir: &str,
         .build().unwrap();
 
     let mut sender = SendmailTransport::new();
-
     sender.send(&email)?;
     Ok(())
 }

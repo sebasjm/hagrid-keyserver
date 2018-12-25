@@ -5,7 +5,7 @@ use multipart::server::save::SaveResult::*;
 use rocket::{State, Data};
 use rocket::http::{ContentType, Status};
 use rocket::response::status::Custom;
-use rocket_contrib::Template;
+use rocket_contrib::templates::Template;
 
 use types::Email;
 use mail::send_verification_mail;
@@ -44,7 +44,7 @@ pub fn multipart_upload(db: State<Polymorphic>, cont_type: &ContentType,
                 )
             )?;
 
-        process_upload(boundary, data, db.inner(), &tmpl.0, &domain.0)
+        process_upload(boundary, data, db.inner(), &(tmpl.0)[..], &(domain.0)[..])
     } else if cont_type.is_form() {
         use rocket::request::FormItems;
         use std::io::Cursor;
@@ -57,7 +57,8 @@ pub fn multipart_upload(db: State<Polymorphic>, cont_type: &ContentType,
                        "`Content-Type: application/x-www-form-urlencoded` not valid".into()))
         })?;
 
-        for (key, value) in FormItems::from(&*String::from_utf8_lossy(&buf)) {
+        for item in FormItems::from(&*String::from_utf8_lossy(&buf)) {
+            let (key, value) = item.key_value();
             let decoded_value = value.url_decode().or_else(|_| {
                 Err(Custom(Status::BadRequest,
                            "`Content-Type: application/x-www-form-urlencoded` not valid".into()))
@@ -66,7 +67,7 @@ pub fn multipart_upload(db: State<Polymorphic>, cont_type: &ContentType,
             match key.as_str() {
                 "keytext" => {
                     return process_key(Cursor::new(decoded_value.as_bytes()),
-                                       &db, &tmpl.0, &domain.0);
+                                       &db, &(tmpl.0)[..], &(domain.0)[..]);
                 }
                 _ => { /* skip */ }
             }
@@ -112,11 +113,8 @@ fn process_multipart(entries: Entries, db: &Polymorphic, tmpl: &str,
 fn process_key<R>(reader: R, db: &Polymorphic, tmpl: &str, domain: &str)
     -> Result<Template, Custom<String>> where R: Read
 {
-    use sequoia_openpgp::{Reader, TPK};
-    let reader = Reader::from_reader(reader).or_else(|_| {
-        Err(Custom(Status::BadRequest,
-                   "`Content-Type: application/x-www-form-urlencoded` not valid".into()))
-    })?;
+    use sequoia_openpgp::TPK;
+    use sequoia_openpgp::parse::Parse;
 
     match TPK::from_reader(reader) {
         Ok(tpk) => {

@@ -21,6 +21,7 @@ structopt = "0.2"
 url = "1.6"
 hex = "0.3"
 lettre_email = "0.8"
+handlebars = "1.1.0"
 
 [dependencies.lettre]
 version = "0.8"
