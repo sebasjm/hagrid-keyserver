@@ -1,5 +1,4 @@
-#![feature(plugin, decl_macro, custom_derive)]
-#![plugin(rocket_codegen)]
+#![feature(proc_macro_hygiene, plugin, decl_macro)]
 #![recursion_limit = "1024"]
 #![feature(try_from)]
 
@@ -11,8 +10,8 @@ extern crate time;
 extern crate url;
 extern crate hex;
 
-#[cfg(not(test))] extern crate rocket;
-#[cfg(test)] extern crate rocket;
+#[cfg(not(test))] #[macro_use] extern crate rocket;
+#[cfg(test)] #[macro_use] extern crate rocket;
 extern crate rocket_contrib;
 extern crate multipart;
 
@@ -25,6 +24,7 @@ extern crate parking_lot;
 extern crate structopt;
 extern crate lettre;
 extern crate lettre_email;
+extern crate handlebars;
 
 mod web;
 mod database;

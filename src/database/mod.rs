@@ -2,7 +2,7 @@ use std::io::Cursor;
 use std::convert::TryFrom;
 
 use time;
-use sequoia_openpgp::{packet::Signature, TPK, packet::UserID, Packet, PacketPile, constants::SignatureType, serialize::Serialize};
+use sequoia_openpgp::{packet::Signature, TPK, packet::UserID, Packet, PacketPile, constants::SignatureType, parse::Parse};
 use Result;
 use types::{Fingerprint, Email};
 
