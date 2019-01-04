@@ -2,12 +2,15 @@ use std::collections::HashMap;
 use parking_lot::Mutex;
 
 use database::{Verify, Delete, Database};
-use types::{Email, Fingerprint};
+use types::{Email, Fingerprint, KeyID};
 use Result;
 
+#[derive(Debug)]
 pub struct Memory {
     fpr: Mutex<HashMap<Fingerprint, Box<[u8]>>>,
+    fpr_links: Mutex<HashMap<Fingerprint, Fingerprint>>,
     email: Mutex<HashMap<Email, Fingerprint>>,
+    kid: Mutex<HashMap<KeyID, Fingerprint>>,
     verify_token: Mutex<HashMap<String, Verify>>,
     delete_token: Mutex<HashMap<String, Delete>>,
 }
@@ -16,6 +19,8 @@ impl Default for Memory {
     fn default() -> Self {
         Memory{
             fpr: Mutex::new(HashMap::default()),
+            fpr_links: Mutex::new(HashMap::default()),
+            kid: Mutex::new(HashMap::default()),
             email: Mutex::new(HashMap::default()),
             verify_token: Mutex::new(HashMap::default()),
             delete_token: Mutex::new(HashMap::default()),
@@ -54,12 +59,28 @@ impl Database for Memory {
         }
     }
 
+    fn link_fpr(&self, from: &Fingerprint, fpr: &Fingerprint) {
+        self.fpr_links.lock().insert(from.clone(), fpr.clone());
+    }
+
+    fn unlink_fpr(&self, from: &Fingerprint, _: &Fingerprint) {
+        self.fpr_links.lock().remove(from);
+    }
+
     fn link_email(&self, email: &Email, fpr: &Fingerprint) {
         self.email.lock().insert(email.clone(), fpr.clone());
     }
 
     fn unlink_email(&self, email: &Email, _: &Fingerprint) {
         self.email.lock().remove(email);
+    }
+
+    fn link_kid(&self, kid: &KeyID, fpr: &Fingerprint) {
+        self.kid.lock().insert(kid.clone(), fpr.clone());
+    }
+
+    fn unlink_kid(&self, kid: &KeyID, _: &Fingerprint) {
+        self.kid.lock().remove(kid);
     }
 
     // (verified uid, fpr)
@@ -73,14 +94,26 @@ impl Database for Memory {
     }
 
     fn by_fpr(&self, fpr: &Fingerprint) -> Option<Box<[u8]>> {
-        self.fpr.lock().get(fpr).map(|x| x.clone())
+        let fprs = self.fpr.lock();
+        let links = self.fpr_links.lock();
+
+        fprs.get(fpr).map(|x| x.clone()).or_else(|| {
+            links.get(fpr).and_then(|fpr| fprs.get(fpr).map(|x| x.clone()))
+        })
     }
 
     fn by_email(&self, email: &Email) -> Option<Box<[u8]>> {
-        let by_email = self.email.lock();
         let fprs = self.fpr.lock();
+        let by_email = self.email.lock();
 
         by_email.get(email).and_then(|fpr| fprs.get(fpr).map(|x| x.clone()))
+    }
+
+    fn by_kid(&self, kid: &KeyID) -> Option<Box<[u8]>> {
+        let fprs = self.fpr.lock();
+        let by_kid = self.kid.lock();
+
+        by_kid.get(kid).and_then(|fpr| fprs.get(fpr).map(|x| x.clone()))
     }
 }
 
@@ -122,5 +155,19 @@ mod tests {
         let mut db = Memory::default();
 
         test::test_uid_verification(&mut db);
+    }
+
+    #[test]
+    fn subkey_lookup() {
+        let mut db = Memory::default();
+
+        test::test_subkey_lookup(&mut db);
+    }
+
+    #[test]
+    fn kid_lookup() {
+        let mut db = Memory::default();
+
+        test::test_kid_lookup(&mut db);
     }
 }

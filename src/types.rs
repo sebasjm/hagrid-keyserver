@@ -74,3 +74,52 @@ impl FromStr for Fingerprint {
         }
     }
 }
+
+#[derive(Serialize,Deserialize,Clone,Debug,Hash,PartialEq,Eq)]
+pub struct KeyID([u8; 8]);
+
+impl TryFrom<sequoia_openpgp::Fingerprint> for KeyID {
+    type Error = Error;
+
+    fn try_from(fpr: sequoia_openpgp::Fingerprint) -> Result<Self> {
+        match fpr {
+            sequoia_openpgp::Fingerprint::V4(a) => Ok(Fingerprint(a).into()),
+            sequoia_openpgp::Fingerprint::Invalid(_) => Err("invalid fingerprint".into()),
+        }
+    }
+}
+
+impl From<Fingerprint> for KeyID {
+    fn from(fpr: Fingerprint) -> KeyID {
+        let mut arr = [0u8; 8];
+
+        arr.copy_from_slice(&fpr.0[12..20]);
+        KeyID(arr)
+    }
+}
+
+impl ToString for KeyID {
+    fn to_string(&self) -> String {
+        format!("0x{}", hex::encode(&self.0[..]))
+    }
+}
+
+impl FromStr for KeyID {
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<KeyID> {
+        if !s.starts_with("0x") || s.len() != 16 + 2 {
+            return Err(format!("'{}' is not a valid long key ID", s).into());
+        }
+
+        let vec = hex::decode(&s[2..])?;
+        if vec.len() == 8 {
+            let mut arr = [0u8; 8];
+
+            arr.copy_from_slice(&vec[..]);
+            Ok(KeyID(arr))
+        } else {
+            Err(format!("'{}' is not a valid long key ID", s).into())
+        }
+    }
+}

@@ -19,8 +19,8 @@ use std::str::FromStr;
 
 use database::Database;
 use sequoia_openpgp::tpk::{TPKBuilder, UserIDBinding};
-use sequoia_openpgp::{Packet, packet::UserID, TPK, PacketPile};
-use types::{Email, Fingerprint};
+use sequoia_openpgp::{Packet, packet::UserID, TPK, PacketPile, parse::Parse};
+use types::{KeyID, Email, Fingerprint};
 
 pub fn test_uid_verification<D: Database>(db: &mut D) {
     let str_uid1 = "Test A <test_a@example.com>";
@@ -274,4 +274,46 @@ pub fn test_uid_deletion<D: Database>(db: &mut D) {
     assert!(db.by_fpr(&fpr).is_none());
     assert!(db.by_email(&email1).is_none());
     assert!(db.by_email(&email2).is_none());
+}
+
+pub fn test_subkey_lookup<D: Database>(db: &mut D) {
+    let tpk = TPKBuilder::default()
+        .add_userid("Testy <test@example.com>")
+        .add_signing_subkey()
+        .add_encryption_subkey()
+        .generate().unwrap().0;
+
+    // upload key
+    let _ = db.merge_or_publish(tpk.clone()).unwrap();
+    let primary_fpr = Fingerprint::try_from(tpk.fingerprint()).unwrap();
+    let sub1_fpr = Fingerprint::try_from(tpk.subkeys().next().map(|x| x.subkey().fingerprint()).unwrap()).unwrap();
+    let sub2_fpr = Fingerprint::try_from(tpk.subkeys().skip(1).next().map(|x| x.subkey().fingerprint()).unwrap()).unwrap();
+
+    let raw1 = db.by_fpr(&primary_fpr).unwrap();
+    let raw2 = db.by_fpr(&sub1_fpr).unwrap();
+    let raw3 = db.by_fpr(&sub2_fpr).unwrap();
+
+    assert_eq!(raw1, raw2);
+    assert_eq!(raw1, raw3);
+}
+
+pub fn test_kid_lookup<D: Database>(db: &mut D) {
+    let tpk = TPKBuilder::default()
+        .add_userid("Testy <test@example.com>")
+        .add_signing_subkey()
+        .add_encryption_subkey()
+        .generate().unwrap().0;
+
+    // upload key
+    let _ = db.merge_or_publish(tpk.clone()).unwrap();
+    let primary_kid = KeyID::try_from(tpk.fingerprint()).unwrap();
+    let sub1_kid = KeyID::try_from(tpk.subkeys().next().map(|x| x.subkey().fingerprint()).unwrap()).unwrap();
+    let sub2_kid = KeyID::try_from(tpk.subkeys().skip(1).next().map(|x| x.subkey().fingerprint()).unwrap()).unwrap();
+
+    let raw1 = db.by_kid(&primary_kid).unwrap();
+    let raw2 = db.by_kid(&sub1_kid).unwrap();
+    let raw3 = db.by_kid(&sub2_kid).unwrap();
+
+    assert_eq!(raw1, raw2);
+    assert_eq!(raw1, raw3);
 }

@@ -12,7 +12,7 @@ use std::path::{Path, PathBuf};
 mod upload;
 
 use database::{Polymorphic, Database};
-use types::{Fingerprint, Email};
+use types::{Fingerprint, Email, KeyID};
 use errors::Result;
 use Opt;
 
@@ -131,6 +131,21 @@ fn by_email(db: rocket::State<Polymorphic>, email: String)
 {
     let maybe_key = match Email::from_str(&email) {
         Ok(ref email) => db.by_email(email),
+        Err(_) => None,
+    };
+
+    match maybe_key {
+        Some(ref bytes) => process_key(bytes),
+        None => Ok("No such key :-(".to_string()),
+    }
+}
+
+#[get("/by-kid/<kid>")]
+fn by_kid(db: rocket::State<Polymorphic>, kid: String)
+    -> result::Result<String, Custom<String>>
+{
+    let maybe_key = match KeyID::from_str(&kid) {
+        Ok(ref key) => db.by_kid(key),
         Err(_) => None,
     };
 
@@ -305,6 +320,7 @@ pub fn serve(opt: &Opt, db: Polymorphic) -> Result<()> {
         // nginx-supported lookup
         by_email,
         by_fpr,
+        by_kid,
         // HKP
         lookup,
         upload::multipart_upload,

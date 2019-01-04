@@ -4,7 +4,7 @@ use std::convert::TryFrom;
 use time;
 use sequoia_openpgp::{packet::Signature, TPK, packet::UserID, Packet, PacketPile, constants::SignatureType, parse::Parse};
 use Result;
-use types::{Fingerprint, Email};
+use types::{Fingerprint, Email, KeyID};
 
 mod fs;
 pub use self::fs::Filesystem;
@@ -75,29 +75,35 @@ pub trait Database: Sync + Send {
     fn link_email(&self, email: &Email, fpr: &Fingerprint);
     fn unlink_email(&self, email: &Email, fpr: &Fingerprint);
 
+    fn link_kid(&self, kid: &KeyID, fpr: &Fingerprint);
+    fn unlink_kid(&self, kid: &KeyID, fpr: &Fingerprint);
+
+    fn link_fpr(&self, from: &Fingerprint, to: &Fingerprint);
+    fn unlink_fpr(&self, from: &Fingerprint, to: &Fingerprint);
+
     // (verified uid, fpr)
     fn pop_verify_token(&self, token: &str) -> Option<Verify>;
     // fpr
     fn pop_delete_token(&self, token: &str) -> Option<Delete>;
 
     fn by_fpr(&self, fpr: &Fingerprint) -> Option<Box<[u8]>>;
+    fn by_kid(&self, kid: &KeyID) -> Option<Box<[u8]>>;
     fn by_email(&self, email: &Email) -> Option<Box<[u8]>>;
-    // fn by_kid<'a>(&self, fpr: &str) -> Option<&[u8]>;
 
     fn strip_userids(tpk: TPK) -> Result<TPK> {
         let pile = tpk.to_packet_pile().into_children().filter(|pkt| {
             match pkt {
                 &Packet::PublicKey(_) | &Packet::PublicSubkey(_) => true,
-                &Packet::Signature(ref sig) =>
+                &Packet::Signature(ref sig) => {
                     sig.sigtype() == SignatureType::DirectKey
                     || sig.sigtype() == SignatureType::SubkeyBinding
-                    || sig.sigtype() == SignatureType::PrimaryKeyBinding,
+                }
                 _ => false,
             }
         }).collect::<Vec<_>>();
 
         TPK::from_packet_pile(PacketPile::from_packets(pile))
-            .map_err(|e| format!("sequoia_openpgp: {}", e).into())
+            .map_err(|e| format!("openpgp: {}", e).into())
     }
 
     fn tpk_into_bytes(tpk: &TPK) -> Result<Vec<u8>> {
@@ -108,24 +114,47 @@ pub trait Database: Sync + Send {
         tpk.serialize(&mut cur).map(|_| cur.into_inner()).map_err(|e| format!("{}", e).into())
     }
 
+    fn link_subkeys(&self, fpr: &Fingerprint, subkeys: Vec<sequoia_openpgp::Fingerprint>) -> Result<()> {
+        // link (subkey) kid & and subkey fpr
+        self.link_kid(&fpr.clone().into(), &fpr);
+
+        for sub_fpr in subkeys {
+            let sub_fpr = Fingerprint::try_from(sub_fpr)?;
+
+            self.link_kid(&sub_fpr.clone().into(), &fpr);
+            self.link_fpr(&sub_fpr, &fpr);
+        }
+
+        Ok(())
+    }
+
     fn merge_or_publish(&self, mut tpk: TPK) -> Result<Vec<(Email, String)>> {
+        use sequoia_openpgp::RevocationStatus;
+
         let fpr = Fingerprint::try_from(tpk.primary().fingerprint())?;
         let mut ret = Vec::default();
 
         // update verify tokens
         for uid in tpk.userids() {
-            let email = Email::try_from(uid.userid().clone())?;
+            match uid.revoked() {
+                RevocationStatus::Revoked(_) => { /* skip */ }
+                RevocationStatus::CouldBe(_) |
+                RevocationStatus::NotAsFarAsWeKnow => {
+                    let email = Email::try_from(uid.userid().clone())?;
 
-            if self.by_email(&email).is_none() {
-                let payload = Verify::new(
-                    uid.userid(),
-                    &uid.selfsigs().collect::<Vec<_>>(),
-                    fpr.clone())?;
+                    if self.by_email(&email).is_none() {
+                        let payload = Verify::new(
+                            uid.userid(),
+                            &uid.selfsigs().collect::<Vec<_>>(),
+                            fpr.clone())?;
 
-                // XXX: send mail
-                ret.push((email, self.new_verify_token(payload)?));
+                        ret.push((email, self.new_verify_token(payload)?));
+                    }
+                }
             }
         }
+
+        let subkeys = tpk.subkeys().map(|s| s.subkey().fingerprint()).collect::<Vec<_>>();
 
         tpk = Self::strip_userids(tpk)?;
 
@@ -134,10 +163,11 @@ pub trait Database: Sync + Send {
             match self.by_fpr(&fpr).map(|x| x.to_vec()) {
                 Some(old) => {
                     let new = TPK::from_bytes(&old).unwrap();
-                    let new = new.merge(tpk.clone()).unwrap();
-                    let new = Self::tpk_into_bytes(&new)?;
+                    let tpk = new.merge(tpk.clone()).unwrap();
+                    let new = Self::tpk_into_bytes(&tpk)?;
 
                     if self.compare_and_swap(&fpr, Some(&old), Some(&new))? {
+                        self.link_subkeys(&fpr, subkeys)?;
                         return Ok(ret);
                     }
                 }
@@ -146,6 +176,7 @@ pub trait Database: Sync + Send {
                     let fresh = Self::tpk_into_bytes(&tpk)?;
 
                     if self.compare_and_swap(&fpr, None, Some(&fresh))? {
+                        self.link_subkeys(&fpr, subkeys)?;
                         return Ok(ret);
                     }
                 }

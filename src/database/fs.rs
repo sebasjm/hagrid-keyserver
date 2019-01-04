@@ -10,7 +10,7 @@ use url;
 
 use database::{Verify, Delete, Database};
 use Result;
-use types::{Email, Fingerprint};
+use types::{Email, Fingerprint, KeyID};
 
 pub struct Filesystem {
     base: PathBuf,
@@ -49,6 +49,7 @@ impl Filesystem {
         create_dir_all(base.join("scratch_pad"))?;
         create_dir_all(base.join("public").join("by-fpr"))?;
         create_dir_all(base.join("public").join("by-email"))?;
+        create_dir_all(base.join("public").join("by-kid"))?;
 
         info!("Opened base dir '{}'", base.display());
         Ok(Filesystem{
@@ -155,6 +156,64 @@ impl Database for Filesystem {
         }
     }
 
+    fn link_kid(&self, kid: &KeyID, fpr: &Fingerprint) {
+        let target = self.base.join("public").join("by-fpr").join(fpr.to_string());
+        let link = self.base.join("public").join("by-kid").join(kid.to_string());
+
+        if link.exists() {
+            let _ = remove_file(link.clone());
+        }
+
+        let _ = symlink(target, link);
+    }
+
+    fn unlink_kid(&self, kid: &KeyID, fpr: &Fingerprint) {
+        let link = self.base.join("public").join("by-kid").join(kid.to_string());
+
+        match read_link(link.clone()) {
+            Ok(target) => {
+                let expected = self.base.join("public").join("by-fpr").join(fpr.to_string());
+
+                if target == expected {
+                    let _ = remove_file(link);
+                }
+            }
+            Err(_) => {}
+        }
+    }
+
+    fn link_fpr(&self, from: &Fingerprint, fpr: &Fingerprint) {
+        let target = self.base.join("public").join("by-fpr").join(fpr.to_string());
+        let link = self.base.join("public").join("by-fpr").join(from.to_string());
+
+        if link == target { return; }
+        if link.exists() {
+            match link.metadata() {
+                Ok(ref meta) if meta.file_type().is_symlink() => {
+                    let _ = remove_file(link.clone());
+                }
+                _ => {}
+            }
+        }
+
+        let _ = symlink(target, link);
+    }
+
+    fn unlink_fpr(&self, from: &Fingerprint, fpr: &Fingerprint) {
+        let link = self.base.join("public").join("by-fpr").join(from.to_string());
+
+        match read_link(link.clone()) {
+            Ok(target) => {
+                let expected = self.base.join("public").join("by-fpr").join(fpr.to_string());
+
+                if target == expected {
+                    let _ = remove_file(link);
+                }
+            }
+            Err(_) => {}
+        }
+    }
+
     fn pop_verify_token(&self, token: &str) -> Option<Verify> {
         self.pop_token("verification_tokens", token).ok().and_then(|raw| {
             str::from_utf8(&raw).ok().map(|s| s.to_string())
@@ -192,6 +251,31 @@ impl Database for Filesystem {
 
         let email = url::form_urlencoded::byte_serialize(email.to_string().as_bytes()).collect::<String>();
         let path = self.base.join("public").join("by-email").join(email);
+
+        fs::canonicalize(path).ok()
+            .and_then(|p| {
+                if p.starts_with(&self.base) {
+                    Some(p)
+                } else {
+                    None
+                }
+            }).and_then(|p| {
+                File::open(p).ok()
+            }).and_then(|mut fd| {
+                let mut buf = Vec::default();
+                if fd.read_to_end(&mut buf).is_ok() {
+                    Some(buf.into_boxed_slice())
+                } else {
+                    None
+                }
+            })
+    }
+
+    // XXX: slow
+    fn by_kid(&self, kid: &KeyID) -> Option<Box<[u8]>> {
+        use std::fs;
+
+        let path = self.base.join("public").join("by-kid").join(kid.to_string());
 
         fs::canonicalize(path).ok()
             .and_then(|p| {
@@ -256,5 +340,21 @@ mod tests {
         let mut db = Filesystem::new(tmpdir.path()).unwrap();
 
         test::test_uid_deletion(&mut db);
+    }
+
+    #[test]
+    fn subkey_lookup() {
+        let tmpdir = TempDir::new().unwrap();
+        let mut db = Filesystem::new(tmpdir.path()).unwrap();
+
+        test::test_subkey_lookup(&mut db);
+    }
+
+    #[test]
+    fn kid_lookup() {
+        let tmpdir = TempDir::new().unwrap();
+        let mut db = Filesystem::new(tmpdir.path()).unwrap();
+
+        test::test_kid_lookup(&mut db);
     }
 }

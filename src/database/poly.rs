@@ -1,6 +1,6 @@
 use errors::Result;
 use database::{Verify, Delete, Database, Filesystem, Memory};
-use types::{Fingerprint, Email};
+use types::{Fingerprint, Email, KeyID};
 
 pub enum Polymorphic {
     Memory(Memory),
@@ -26,6 +26,34 @@ impl Database for Polymorphic {
         match self {
             &Polymorphic::Memory(ref db) => db.compare_and_swap(fpr, present, new),
             &Polymorphic::Filesystem(ref db) => db.compare_and_swap(fpr, present, new),
+        }
+    }
+
+    fn link_fpr(&self, from: &Fingerprint, fpr: &Fingerprint) {
+        match self {
+            &Polymorphic::Memory(ref db) => db.link_fpr(from, fpr),
+            &Polymorphic::Filesystem(ref db) => db.link_fpr(from, fpr),
+        }
+    }
+
+    fn unlink_fpr(&self, from: &Fingerprint, fpr: &Fingerprint) {
+        match self {
+            &Polymorphic::Memory(ref db) => db.unlink_fpr(from, fpr),
+            &Polymorphic::Filesystem(ref db) => db.unlink_fpr(from, fpr),
+        }
+    }
+
+    fn link_kid(&self, kid: &KeyID, fpr: &Fingerprint) {
+        match self {
+            &Polymorphic::Memory(ref db) => db.link_kid(kid, fpr),
+            &Polymorphic::Filesystem(ref db) => db.link_kid(kid, fpr),
+        }
+    }
+
+    fn unlink_kid(&self, kid: &KeyID, fpr: &Fingerprint) {
+        match self {
+            &Polymorphic::Memory(ref db) => db.unlink_kid(kid, fpr),
+            &Polymorphic::Filesystem(ref db) => db.unlink_kid(kid, fpr),
         }
     }
 
@@ -68,6 +96,13 @@ impl Database for Polymorphic {
         match self {
             &Polymorphic::Memory(ref db) => db.by_email(email),
             &Polymorphic::Filesystem(ref db) => db.by_email(email),
+        }
+    }
+
+    fn by_kid(&self, kid: &KeyID) -> Option<Box<[u8]>> {
+        match self {
+            &Polymorphic::Memory(ref db) => db.by_kid(kid),
+            &Polymorphic::Filesystem(ref db) => db.by_kid(kid),
         }
     }
 }

@@ -10,8 +10,7 @@ extern crate time;
 extern crate url;
 extern crate hex;
 
-#[cfg(not(test))] #[macro_use] extern crate rocket;
-#[cfg(test)] #[macro_use] extern crate rocket;
+#[macro_use] extern crate rocket;
 extern crate rocket_contrib;
 extern crate multipart;
 
