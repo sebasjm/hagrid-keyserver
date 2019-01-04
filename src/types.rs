@@ -1,8 +1,10 @@
 use std::str::FromStr;
 use std::convert::TryFrom;
+use std::result;
 
 use sequoia_openpgp::{self, packet::UserID};
 use {Error, Result};
+use serde::{Serialize, Serializer, Deserializer, Deserialize};
 
 #[derive(Serialize,Deserialize,Clone,Debug,Hash,PartialEq,Eq)]
 pub struct Email(String);
@@ -35,7 +37,7 @@ impl FromStr for Email {
     }
 }
 
-#[derive(Serialize,Deserialize,Clone,Debug,Hash,PartialEq,Eq)]
+#[derive(Clone,Debug,Hash,PartialEq,Eq)]
 pub struct Fingerprint([u8; 20]);
 
 impl TryFrom<sequoia_openpgp::Fingerprint> for Fingerprint {
@@ -52,6 +54,24 @@ impl TryFrom<sequoia_openpgp::Fingerprint> for Fingerprint {
 impl ToString for Fingerprint {
     fn to_string(&self) -> String {
         format!("0x{}", hex::encode(&self.0[..]))
+    }
+}
+
+impl Serialize for Fingerprint {
+    fn serialize<S>(&self, serializer: S) -> result::Result<S::Ok, S::Error>
+    where S: Serializer
+    {
+        serializer.serialize_str(&self.to_string())
+    }
+}
+
+impl<'de> Deserialize<'de> for Fingerprint {
+    fn deserialize<D>(deserializer: D) -> result::Result<Self, D::Error>
+    where D: Deserializer<'de>
+    {
+        use serde::de::Error;
+        String::deserialize(deserializer)
+            .and_then(|string| Self::from_str(&string).map_err(|err| Error::custom(err.to_string())))
     }
 }
 

@@ -1,10 +1,12 @@
 use std::io::Cursor;
 use std::convert::TryFrom;
+use std::result;
 
 use time;
 use sequoia_openpgp::{packet::Signature, TPK, packet::UserID, Packet, PacketPile, constants::SignatureType, parse::Parse};
 use Result;
 use types::{Fingerprint, Email, KeyID};
+use serde::{Serializer, Deserializer, Deserialize};
 
 mod fs;
 pub use self::fs::Filesystem;
@@ -19,9 +21,25 @@ mod test;
 #[derive(Serialize,Deserialize,Clone,Debug)]
 pub struct Verify {
     created: i64,
+    #[serde(serialize_with = "as_base64", deserialize_with = "from_base64")]
     packets: Box<[u8]>,
     fpr: Fingerprint,
     email: Email,
+}
+
+fn as_base64<S>(d: &Box<[u8]>, serializer: S) -> result::Result<S::Ok, S::Error>
+    where S: Serializer
+{
+    serializer.serialize_str(&base64::encode(&d))
+}
+
+fn from_base64<'de, D>(deserializer: D) -> result::Result<Box<[u8]>, D::Error>
+    where D: Deserializer<'de>
+{
+    use serde::de::Error;
+    String::deserialize(deserializer)
+        .and_then(|string| base64::decode(&string).map_err(|err| Error::custom(err.to_string())))
+        .map(|bytes| bytes.into_boxed_slice())
 }
 
 impl Verify {
@@ -62,9 +80,6 @@ impl Delete {
         }
     }
 }
-
-// uid -> uidsig+
-// subkey -> subkeysig+
 
 pub trait Database: Sync + Send {
     fn new_verify_token(&self, payload: Verify) -> Result<String>;

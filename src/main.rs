@@ -24,6 +24,7 @@ extern crate structopt;
 extern crate lettre;
 extern crate lettre_email;
 extern crate handlebars;
+extern crate base64;
 
 mod web;
 mod database;
