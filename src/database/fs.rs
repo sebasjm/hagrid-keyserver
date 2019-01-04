@@ -117,7 +117,16 @@ impl Database for Filesystem {
                     if old.is_some() { remove_file(target.clone())?; }
                     else { return Err(format!("stray file {}", target.display()).into()); }
                 }
-                let _ = tmp.persist(target)?;
+                let _ = tmp.persist(&target)?;
+
+                // fix permissions to 640
+                if cfg!(unix) {
+                    use std::os::unix::fs::PermissionsExt;
+                    use std::fs::{set_permissions, Permissions};
+
+                    let perm = Permissions::from_mode(0o640);
+                    set_permissions(target, perm)?;
+                }
 
                 Ok(true)
             }
