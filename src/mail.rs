@@ -15,7 +15,7 @@ pub struct Context{
 }
 
 fn send_mail<T>(to: &Email, subject: &str, template_dir: &str,
-                    template_base: &str, domain: &str, ctx: T)
+                    template_base: &str, from: &str, ctx: T)
     -> Result<()> where T: Serialize + Clone
 {
     // TODO: Should be done only on startup
@@ -35,7 +35,7 @@ fn send_mail<T>(to: &Email, subject: &str, template_dir: &str,
 
     let email = EmailBuilder::new()
         .to(to.to_string())
-        .from(format!("noreply@{}", domain))
+        .from(from)
         .subject(subject)
         .alternative(
             html.ok_or("Email template failed to render")?,
@@ -48,7 +48,7 @@ fn send_mail<T>(to: &Email, subject: &str, template_dir: &str,
 }
 
 pub fn send_verification_mail(userid: &Email, token: &str, template_dir: &str,
-                              domain: &str)
+                              domain: &str, from: &str)
 -> Result<()>
 {
     let ctx = Context{
@@ -58,11 +58,11 @@ pub fn send_verification_mail(userid: &Email, token: &str, template_dir: &str,
     };
 
     send_mail(userid, "Please verify your email address", template_dir,
-              "verify-email", domain, ctx)
+              "verify-email", from, ctx)
 }
 
 pub fn send_confirmation_mail(userid: &Email, token: &str, template_dir: &str,
-                              domain: &str)
+                              domain: &str, from: &str)
 -> Result<()>
 {
     let ctx = Context{
@@ -72,5 +72,5 @@ pub fn send_confirmation_mail(userid: &Email, token: &str, template_dir: &str,
     };
 
     send_mail(userid, "Please confirm deletion of your key", template_dir,
-              "confirm-email", domain, ctx)
+              "confirm-email", from, ctx)
 }

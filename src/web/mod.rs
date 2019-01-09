@@ -52,6 +52,7 @@ mod templates {
 struct StaticDir(String);
 pub struct MailTemplateDir(String);
 pub struct Domain(String);
+pub struct From(String);
 
 impl<'a, 'r> FromRequest<'a, 'r> for queries::Hkp {
     type Error = ();
@@ -189,7 +190,7 @@ fn verify(db: rocket::State<Polymorphic>, token: String)
 
 #[get("/vks/delete/<fpr>")]
 fn delete(db: rocket::State<Polymorphic>, fpr: String,
-          tmpl: State<MailTemplateDir>, domain: State<Domain>)
+          tmpl: State<MailTemplateDir>, domain: State<Domain>, from: State<From>)
     -> result::Result<Template, Custom<String>>
 {
     use mail::send_confirmation_mail;
@@ -210,7 +211,7 @@ fn delete(db: rocket::State<Polymorphic>, fpr: String,
             };
 
             for uid in uids {
-                send_confirmation_mail(&uid, &token, &tmpl.0, &domain.0)
+                send_confirmation_mail(&uid, &token, &tmpl.0, &domain.0, &from.0)
                     .map_err(|err| {
                         Custom(Status::InternalServerError,
                                format!("{:?}", err))
@@ -405,6 +406,7 @@ pub fn serve(opt: &Opt, db: Polymorphic) -> Result<()> {
         .extra("static_dir", opt.base.join("public").to_str()
                .ok_or("Static path invalid")?)
         .extra("domain", opt.domain.clone())
+        .extra("from", opt.from.clone())
         .finalize()?;
     let routes = routes![
         // infra
@@ -442,12 +444,20 @@ pub fn serve(opt: &Opt, db: Polymorphic) -> Result<()> {
             Ok(rocket.manage(MailTemplateDir(static_dir)))
         }))
         .attach(AdHoc::on_attach("domain", |rocket| {
-            let static_dir = rocket.config()
+            let domain = rocket.config()
                 .get_str("domain")
                 .unwrap()
                 .to_string();
 
-            Ok(rocket.manage(Domain(static_dir)))
+            Ok(rocket.manage(Domain(domain)))
+        }))
+        .attach(AdHoc::on_attach("from", |rocket| {
+            let from = rocket.config()
+                .get_str("from")
+                .unwrap()
+                .to_string();
+
+            Ok(rocket.manage(From(from)))
         }))
 
         .mount("/", routes)

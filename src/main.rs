@@ -69,8 +69,8 @@ pub struct Opt {
     /// FQDN of the server. Used in templates.
     #[structopt(short = "D", long = "domain", default_value = "localhost")]
     domain: String,
-
-
+    #[structopt(short = "F", long = "from", default_value = "noreply@localhost")]
+    from: String,
  }
 
 fn main() {
