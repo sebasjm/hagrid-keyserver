@@ -4,7 +4,7 @@ Hagrid
 Hagrid is a verifying OpenPGP key server. When a new key is uploaded a
 token is sent to each user ID via email. This token can be used to verify the
 user ID. Keys can be queried by their verified user IDs (exact match) and their
-primary keys fingerprint. Key can be deleted by clicking a link send to all
+primary keys fingerprint. Keys can be deleted by clicking a link send to all
 user IDs.
 
 Quick Start
@@ -21,38 +21,47 @@ cargo run -- `pwd`/dist
 
 This will spawn a web server listening on port 8080.
 
+Hagrid uses `sendmail` for mailing, so you also need a working local mailer
+setup. The FROM field of the mails can be configured with the `-F` switch.
+
 Usage
 -----
 
-While Hagrids URL scheme is meant to be machine readable, it's not a REST API. The following URLs are handled.
+Hagrid implements basic HKP (`op=get` and `op=index`) so tools like GnuPG and
+OpenKeychain can use it directly. The differences to SKS are
 
-- `POST /keys` uploads a new key.
+ - no support for `op=vindex`,
+ - `mp=1` is always assumed,
+ - only exact matches for user IDs are returned,
+ - `op=index` returns either one or no keys and
+ - all packets that aren't public keys, user IDs or signatures are filters out.
 
-- `GET /keys?fpr=<base 64 fingerprint>` retrieves the key with the given
-  fingerprint. The fingerprint is encoded using the [URL-safe
-  variant](https://docs.rs/base64/0.9.3/base64/enum.CharacterSet.html) of base
-  64 (`-` and `_` instead of `+` and `/`).
+Uploading a key via the HKP interface will trigger verification emails to be
+send.
 
-- `GET /keys?uid=<base 64 user ID>` retrieves the key with the given user ID. Only
-  exact matches are accepted. The user ID is encoded using the [URL-safe
-  variant](https://docs.rs/base64/0.9.3/base64/enum.CharacterSet.html) of base
-  64 (`-` and `_` instead of `+` and `/`).
+Hagrid has it's own URL scheme to fetch keys, verify user IDs and delete keys.
+It's meant to be machine readable, but it's not a REST API. The following URLs
+are handled.
 
-- `GET verify/<Token>` verifies a user ID using a token string send by email.
+- `GET /by-fpr<fingerprint>` retrieves the key with the given fingerprint.
+- `GET /by-kid<key ID>` retrieves the key with the given long key ID.
+- `GET /by-email<URL-encoded user ID>` retrieves the key with the given user
+  ID. Only exact matches are accepted.
+- `GET /vks/verify/<token>` verifies a user ID using a token string send by
+  email.
+- `GET /vks/delete/<fingerprint>` requests deletion of the key with the given
+  fingerprint.
+- `GET /vks/confirm/<token>` confirms a keys deletion request using a token
+  string send by email.
 
-- `GET delete/<base 64 fingerprint>` requests deletion of the key with the given
-  fingerprint. The fingerprint is encoded using the [URL-safe
-  variant](https://docs.rs/base64/0.9.3/base64/enum.CharacterSet.html) of base
-  64 (`-` and `_` instead of `+` and `/`).
-
-- `GET confirm/<Token>` confirms a keys deletion request using a token string send
-  by email.
+Keys can also be fetched by their subkeys fingerprint and key ID. A key won't
+show up until at least one user ID is verified.
 
 Building
 --------
 
 Hagrid consists of a Rust and a NPM project. While the web server is
-implemented in Rust, HTML templates and CSS is bundled using NPM and Webpack.
+implemented in Rust, templates and CSS is bundled using NPM and Webpack.
 Building the Rust part requires a working nightly Rust toolchain. The
 easiest way to get the toolchain is to download [rustup](https://rustup.rs).
 After rustup is installed, get the nightly compiler and tools:
@@ -96,6 +105,16 @@ This will spawn the server in foreground, listening on `0.0.0.0:8080`. The
 `--listen` argument can be used to change port and listen address. The server
 will put all keys and runtime data under the base folder (`/var/hagrid`
 in the above example).
+
+Reverse Proxy
+-------------
+
+Hagrid is designed to defer lookups to reverse proxy server like Nginx and
+Apache. The key database is a set of 3 directories with static files in them.
+The directory structure reflects Hagrids URL scheme. This way, lookups via
+`by-fpr`, `by-email` and `by-kid` can be handled by (multiple) simple HTTP
+server(s). A sample configuration for Nginx is part of the repository
+(`nginx.conf`).
 
 Community
 ---------
