@@ -24,8 +24,8 @@ mod queries {
 
     #[derive(Debug)]
     pub enum Hkp {
-        Fingerprint(Fingerprint),
-        Email(Email),
+        Fingerprint{ fpr: Fingerprint, index: bool },
+        Email{ email: Email, index: bool },
     }
 }
 
@@ -70,15 +70,21 @@ impl<'a, 'r> FromRequest<'a, 'r> for queries::Hkp {
             (key, value)
         }).collect::<HashMap<_,_>>();
 
-        if fields.len() >= 2 && fields.get("op").map(|x| x  == "get").unwrap_or(false) {
+        if fields.len() >= 2 && fields.get("op").map(|x| x  == "get" || x == "index").unwrap_or(false) {
+            let index = fields.get("op").map(|x| x == "index")
+                .unwrap_or(false);
             let search = fields.get("search").cloned().unwrap_or_default();
             let maybe_fpr = Fingerprint::from_str(&search);
 
             if let Ok(fpr) = maybe_fpr {
-                Outcome::Success(queries::Hkp::Fingerprint(fpr))
+                Outcome::Success(queries::Hkp::Fingerprint{
+                    fpr: fpr, index: index
+                })
             } else {
                 match Email::from_str(&search) {
-                    Ok(email) => Outcome::Success(queries::Hkp::Email(email)),
+                    Ok(email) => Outcome::Success(queries::Hkp::Email{
+                        email: email, index: index
+                    }),
                     Err(_) => Outcome::Failure((Status::BadRequest, ())),
                 }
             }
@@ -204,9 +210,11 @@ fn delete(db: rocket::State<Polymorphic>, fpr: String,
             };
 
             for uid in uids {
-                send_confirmation_mail(&uid, &token, &tmpl.0, &domain.0).map_err(|err| {
-                    Custom(Status::InternalServerError, format!("{:?}", err))
-                })?;
+                send_confirmation_mail(&uid, &token, &tmpl.0, &domain.0)
+                    .map_err(|err| {
+                        Custom(Status::InternalServerError,
+                               format!("{:?}", err))
+                    })?;
             }
 
             Ok(Template::render("delete", context))
@@ -248,20 +256,27 @@ fn lookup(db: rocket::State<Polymorphic>, key: Option<queries::Hkp>)
     -> result::Result<String, Custom<String>>
 {
     use std::io::Write;
+    use sequoia_openpgp::RevocationStatus;
+    use sequoia_openpgp::{TPK, parse::Parse};
     use sequoia_openpgp::armor::{Writer, Kind};
 
-    let maybe_key = match key {
-        Some(queries::Hkp::Fingerprint(ref fpr)) => db.by_fpr(fpr),
-        Some(queries::Hkp::Email(ref email)) => db.by_email(email),
+    let (maybe_key,index) = match key {
+        Some(queries::Hkp::Fingerprint{ ref fpr, index }) => {
+            (db.by_fpr(fpr),index)
+        }
+        Some(queries::Hkp::Email{ ref email, index }) => {
+            (db.by_email(email),index)
+        }
         None => { return Ok("nothing to do".to_string()); }
     };
 
     match maybe_key {
-        Some(bytes) => {
+        Some(ref bytes) if !index => {
             let key = || -> Result<String> {
                 let mut buffer = Vec::default();
                 {
-                    let mut writer = Writer::new(&mut buffer, Kind::PublicKey, &[])?;
+                    let mut writer = Writer::new(&mut buffer, Kind::PublicKey,
+                                                 &[])?;
                     writer.write_all(&bytes)?;
                 }
 
@@ -275,7 +290,83 @@ fn lookup(db: rocket::State<Polymorphic>, key: Option<queries::Hkp>)
                                "Failed to ASCII armor key".to_string())),
             }
         }
-        None => Ok("No such key :-(".to_string()),
+        None if !index => Ok("No such key :-(".to_string()),
+
+        Some(ref bytes) if index => {
+            let tpk = TPK::from_bytes(bytes)
+                .map_err(|e| Custom(Status::InternalServerError,
+                                    format!("{}", e)))?;
+            let mut out = String::default();
+            let p = tpk.primary();
+
+            let ctime = tpk
+                .primary_key_signature()
+                .and_then(|x| x.signature_creation_time())
+                .map(|x| format!("{}", x.to_timespec().sec))
+                .unwrap_or_default();
+            let extime = tpk
+                .primary_key_signature()
+                .and_then(|x| x.signature_expiration_time())
+                .map(|x| format!("{}", x))
+                .unwrap_or_default();
+            let is_exp = tpk
+                .primary_key_signature()
+                .and_then(|x| {
+                    if x.signature_expired() { "e" } else { "" }.into()
+                })
+                .unwrap_or_default();
+            let is_rev =
+                if tpk.revoked() != RevocationStatus::NotAsFarAsWeKnow {
+                    "r"
+                } else {
+                    ""
+                };
+            let algo: u8 = p.pk_algo().into();
+
+            out.push_str("info:1:1\r\n");
+            out.push_str(&format!("pub:{}:{}:{}:{}:{}:{}{}\r\n",
+                                 p.fingerprint().to_string().replace(" ",""),
+                                 algo,
+                                 p.mpis().bits(),
+                                 ctime,extime,is_exp,is_rev));
+
+            for uid in tpk.userids() {
+                let u =
+                    url::form_urlencoded::byte_serialize(uid.userid().userid())
+                    .fold(String::default(),|acc,x| acc + x);
+                let ctime = uid
+                    .binding_signature()
+                    .and_then(|x| x.signature_creation_time())
+                    .map(|x| format!("{}", x.to_timespec().sec))
+                    .unwrap_or_default();
+                let extime = uid
+                    .binding_signature()
+                    .and_then(|x| x.signature_expiration_time())
+                    .map(|x| format!("{}", x))
+                    .unwrap_or_default();
+                let is_exp = uid
+                    .binding_signature()
+                    .and_then(|x| {
+                        if x.signature_expired() { "e" } else { "" }.into()
+                    })
+                    .unwrap_or_default();
+                let is_rev =
+                    if uid.revoked() != RevocationStatus::NotAsFarAsWeKnow {
+                        "r"
+                    } else {
+                        ""
+                    };
+
+                out.push_str(&format!("uid:{}:{}:{}:{}{}\r\n",
+                                      u,ctime,extime,is_exp,is_rev));
+            }
+            Ok(out)
+        }
+        None if index => {
+            Ok("info:1:0\r\n".into())
+        }
+
+        _ => unreachable!(),
     }
 }
 
@@ -309,8 +400,10 @@ pub fn serve(opt: &Opt, db: Polymorphic) -> Result<()> {
         .port(port)
         .workers(2)
         .root(opt.base.clone())
-        .extra("template_dir", opt.base.join("templates").to_str().ok_or("Template path invalid")?)
-        .extra("static_dir", opt.base.join("public").to_str().ok_or("Static path invalid")?)
+        .extra("template_dir", opt.base.join("templates").to_str()
+               .ok_or("Template path invalid")?)
+        .extra("static_dir", opt.base.join("public").to_str()
+               .ok_or("Static path invalid")?)
         .extra("domain", opt.domain.clone())
         .finalize()?;
     let routes = routes![
@@ -362,7 +455,3 @@ pub fn serve(opt: &Opt, db: Polymorphic) -> Result<()> {
         .launch();
     Ok(())
 }
-
-//POST /keys
-//GET /keys/<fpr>
-
