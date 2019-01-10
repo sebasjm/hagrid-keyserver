@@ -7,9 +7,11 @@ use rocket::http::{ContentType, Status};
 use rocket::response::status::Custom;
 use rocket_contrib::templates::Template;
 
+use handlebars::Handlebars;
+
 use types::Email;
 use mail::send_verification_mail;
-use web::{From, Domain, MailTemplateDir};
+use web::{From, Domain, MailTemplates};
 use database::{Database, Polymorphic};
 
 use std::io::Read;
@@ -31,7 +33,7 @@ mod template {
 #[post("/pks/add", data = "<data>")]
 // signature requires the request to have a `Content-Type`
 pub fn multipart_upload(db: State<Polymorphic>, cont_type: &ContentType,
-                        data: Data, tmpl: State<MailTemplateDir>,
+                        data: Data, tmpl: State<MailTemplates>,
                         domain: State<Domain>, from: State<From>)
     -> Result<Template, Custom<String>>
 {
@@ -79,7 +81,7 @@ pub fn multipart_upload(db: State<Polymorphic>, cont_type: &ContentType,
     }
 }
 
-fn process_upload(boundary: &str, data: Data, db: &Polymorphic, tmpl: &str,
+fn process_upload(boundary: &str, data: Data, db: &Polymorphic, mail_templates: &Handlebars,
                   domain: &str, from: &str)
     -> Result<Template, Custom<String>>
 {
@@ -87,13 +89,13 @@ fn process_upload(boundary: &str, data: Data, db: &Polymorphic, tmpl: &str,
     // Entries could implement FromData though that would give zero control over
     // how the files are saved; Multipart would be a good impl candidate though
     match Multipart::with_body(data.open(), boundary).save().temp() {
-        Full(entries) => process_multipart(entries, db, tmpl, domain, from),
-        Partial(partial, _) => process_multipart(partial.entries, db, tmpl, domain, from),
+        Full(entries) => process_multipart(entries, db, mail_templates, domain, from),
+        Partial(partial, _) => process_multipart(partial.entries, db, mail_templates, domain, from),
         Error(err) => Err(Custom(Status::InternalServerError, err.to_string())),
     }
 }
 
-fn process_multipart(entries: Entries, db: &Polymorphic, tmpl: &str,
+fn process_multipart(entries: Entries, db: &Polymorphic, mail_templates: &Handlebars,
                      domain: &str, from: &str)
     -> Result<Template, Custom<String>>
 {
@@ -103,14 +105,14 @@ fn process_multipart(entries: Entries, db: &Polymorphic, tmpl: &str,
                 Custom(Status::InternalServerError, err.to_string())
             })?;
 
-            process_key(reader, db, tmpl, domain, from)
+            process_key(reader, db, mail_templates, domain, from)
         }
         Some(_) | None =>
             Err(Custom(Status::BadRequest, "Not a PGP public key".into())),
     }
 }
 
-fn process_key<R>(reader: R, db: &Polymorphic, tmpl: &str, domain: &str, from: &str)
+fn process_key<R>(reader: R, db: &Polymorphic, mail_templates: &Handlebars, domain: &str, from: &str)
     -> Result<Template, Custom<String>> where R: Read
 {
     use sequoia_openpgp::TPK;
@@ -130,7 +132,7 @@ fn process_key<R>(reader: R, db: &Polymorphic, tmpl: &str, domain: &str, from: &
                         let &template::Token{ ref userid, ref token } = tok;
 
                         Email::from_str(userid).and_then(|email| {
-                            send_verification_mail(&email, token, tmpl, domain, from)
+                            send_verification_mail(&email, token, mail_templates, domain, from)
                         }).map_err(|err| {
                             Custom(Status::InternalServerError, format!("{:?}", err))
                         })?;
