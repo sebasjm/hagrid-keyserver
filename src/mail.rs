@@ -14,19 +14,15 @@ pub struct Context{
     pub domain: String,
 }
 
-fn send_mail<T>(to: &Email, subject: &str, template_dir: &str,
-                    template_base: &str, from: &str, ctx: T)
+fn send_mail<T>(to: &Email, subject: &str, mail_templates: &Handlebars,
+                    template: &str, from: &str, ctx: T)
     -> Result<()> where T: Serialize + Clone
 {
-    // TODO: Should be done only on startup
-    let tmpl = format!("{}/{}", template_dir, template_base);
-    let mut handlebars = Handlebars::new();
-    handlebars.register_template_file("html", format!("{}-html.hbs", tmpl)).unwrap();
-    handlebars.register_template_file("txt", format!("{}-txt.hbs", tmpl)).unwrap();
-
+    let tmpl_html = format!("{}-html", template);
+    let tmpl_txt = format!("{}-txt", template);
     let (html, txt) = {
       if let (Ok(inner_html), Ok(inner_txt)) =
-        (handlebars.render("html", &ctx), handlebars.render("txt", &ctx)) {
+        (mail_templates.render(&tmpl_html, &ctx), mail_templates.render(&tmpl_txt, &ctx)) {
           (Some(inner_html), Some(inner_txt))
       } else {
           (None, None)
@@ -47,7 +43,7 @@ fn send_mail<T>(to: &Email, subject: &str, template_dir: &str,
     Ok(())
 }
 
-pub fn send_verification_mail(userid: &Email, token: &str, template_dir: &str,
+pub fn send_verification_mail(userid: &Email, token: &str, mail_templates: &Handlebars,
                               domain: &str, from: &str)
 -> Result<()>
 {
@@ -57,11 +53,11 @@ pub fn send_verification_mail(userid: &Email, token: &str, template_dir: &str,
         domain: domain.to_string(),
     };
 
-    send_mail(userid, "Please verify your email address", template_dir,
-              "verify-email", from, ctx)
+    send_mail(userid, "Please verify your email address", mail_templates,
+              "verify", from, ctx)
 }
 
-pub fn send_confirmation_mail(userid: &Email, token: &str, template_dir: &str,
+pub fn send_confirmation_mail(userid: &Email, token: &str, mail_templates: &Handlebars,
                               domain: &str, from: &str)
 -> Result<()>
 {
@@ -71,6 +67,6 @@ pub fn send_confirmation_mail(userid: &Email, token: &str, template_dir: &str,
         domain: domain.to_string(),
     };
 
-    send_mail(userid, "Please confirm deletion of your key", template_dir,
-              "confirm-email", from, ctx)
+    send_mail(userid, "Please confirm deletion of your key", mail_templates,
+              "confirm", from, ctx)
 }

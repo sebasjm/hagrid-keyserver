@@ -5,8 +5,9 @@ use rocket::request::{self, Request, FromRequest};
 use rocket::response::status::Custom;
 use rocket::response::NamedFile;
 use rocket::fairing::AdHoc;
-
 use rocket_contrib::templates::Template;
+
+use handlebars::Handlebars;
 use std::path::{Path, PathBuf};
 
 mod upload;
@@ -50,9 +51,9 @@ mod templates {
 }
 
 struct StaticDir(String);
-pub struct MailTemplateDir(String);
 pub struct Domain(String);
 pub struct From(String);
+pub struct MailTemplates(Handlebars);
 
 impl<'a, 'r> FromRequest<'a, 'r> for queries::Hkp {
     type Error = ();
@@ -190,7 +191,7 @@ fn verify(db: rocket::State<Polymorphic>, token: String)
 
 #[get("/vks/delete/<fpr>")]
 fn delete(db: rocket::State<Polymorphic>, fpr: String,
-          tmpl: State<MailTemplateDir>, domain: State<Domain>, from: State<From>)
+          tmpl: State<MailTemplates>, domain: State<Domain>, from: State<From>)
     -> result::Result<Template, Custom<String>>
 {
     use mail::send_confirmation_mail;
@@ -435,14 +436,6 @@ pub fn serve(opt: &Opt, db: Polymorphic) -> Result<()> {
 
             Ok(rocket.manage(StaticDir(static_dir)))
         }))
-        .attach(AdHoc::on_attach("template_dir", |rocket| {
-            let static_dir = rocket.config()
-                .get_str("template_dir")
-                .unwrap()
-                .to_string();
-
-            Ok(rocket.manage(MailTemplateDir(static_dir)))
-        }))
         .attach(AdHoc::on_attach("domain", |rocket| {
             let domain = rocket.config()
                 .get_str("domain")
@@ -458,6 +451,25 @@ pub fn serve(opt: &Opt, db: Polymorphic) -> Result<()> {
                 .to_string();
 
             Ok(rocket.manage(From(from)))
+        }))
+        .attach(AdHoc::on_attach("mail_templates", |rocket| {
+            let dir: PathBuf = rocket.config()
+                .get_str("template_dir")
+                .unwrap()
+                .to_string()
+                .into();
+            let confirm_html = dir.join("confirm-email-html.hbs");
+            let confirm_txt = dir.join("confirm-email-txt.hbs");
+            let verify_html = dir.join("verify-email-html.hbs");
+            let verify_txt = dir.join("verify-email-txt.hbs");
+    let mut handlebars = Handlebars::new();
+
+    handlebars.register_template_file("confirm-html", confirm_html).unwrap();
+    handlebars.register_template_file("confirm-txt", confirm_txt).unwrap();
+    handlebars.register_template_file("verify-html", verify_html).unwrap();
+    handlebars.register_template_file("verify-txt", verify_txt).unwrap();
+
+            Ok(rocket.manage(MailTemplates(handlebars)))
         }))
 
         .mount("/", routes)
