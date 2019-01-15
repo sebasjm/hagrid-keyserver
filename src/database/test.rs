@@ -19,7 +19,7 @@ use std::str::FromStr;
 
 use database::Database;
 use sequoia_openpgp::tpk::{TPKBuilder, UserIDBinding};
-use sequoia_openpgp::{Packet, packet::UserID, TPK, PacketPile, parse::Parse};
+use sequoia_openpgp::{Packet, packet::UserID, TPK, PacketPile, parse::Parse, RevocationStatus, constants::ReasonForRevocation, constants::SignatureType};
 use types::{KeyID, Email, Fingerprint};
 
 pub fn test_uid_verification<D: Database>(db: &mut D) {
@@ -316,4 +316,57 @@ pub fn test_kid_lookup<D: Database>(db: &mut D) {
 
     assert_eq!(raw1, raw2);
     assert_eq!(raw1, raw3);
+}
+
+pub fn test_uid_revocation<D: Database>(db: &mut D) {
+    use std::{thread, time};
+
+    let str_uid1 = "Test A <test_a@example.com>";
+    let str_uid2 = "Test B <test_b@example.com>";
+    let tpk = TPKBuilder::default()
+        .add_userid(str_uid1)
+        .add_userid(str_uid2)
+        .generate().unwrap().0;
+    let mut uid1 = UserID::new();
+    let mut uid2 = UserID::new();
+
+    uid1.set_userid_from_bytes(str_uid1.as_bytes());
+    uid2.set_userid_from_bytes(str_uid2.as_bytes());
+
+    let email1 = Email::from_str(str_uid1).unwrap();
+    let email2 = Email::from_str(str_uid2).unwrap();
+
+    // upload key
+    let tokens = db.merge_or_publish(tpk.clone()).unwrap();
+    let fpr = Fingerprint::try_from(tpk.fingerprint()).unwrap();
+
+    // verify uid
+    assert_eq!(tokens.len(), 2);
+    assert!(db.verify_token(&tokens[0].1).unwrap().is_some());
+    assert!(db.verify_token(&tokens[1].1).unwrap().is_some());
+
+    // fetch both uids
+    assert!(db.by_email(&email1).is_some());
+    assert!(db.by_email(&email2).is_some());
+
+    thread::sleep(time::Duration::from_secs(2));
+
+    // revoke one uid
+    let sig = {
+        let uid = tpk.userids().find(|b| *b.userid() == uid2).unwrap();
+        assert_eq!(RevocationStatus::NotAsFarAsWeKnow, uid.revoked());
+
+        let mut keypair = tpk.primary().clone().into_keypair().unwrap();
+        uid.revoke(&mut keypair,
+                   ReasonForRevocation::UIDRetired,
+                   b"It was the maid :/").unwrap()
+    };
+    assert_eq!(sig.sigtype(), SignatureType::CertificateRevocation);
+    let tpk = tpk.merge_packets(vec![sig.to_packet()]).unwrap();
+    let tokens = db.merge_or_publish(tpk.clone()).unwrap();
+    assert_eq!(tokens.len(), 0);
+
+    // fail to fetch by one uid, fail by another
+    assert!(db.by_email(&email1).is_some());
+    assert!(db.by_email(&email2).is_none());
 }

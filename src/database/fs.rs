@@ -366,4 +366,12 @@ mod tests {
 
         test::test_kid_lookup(&mut db);
     }
+
+    #[test]
+    fn uid_revocation() {
+        let tmpdir = TempDir::new().unwrap();
+        let mut db = Filesystem::new(tmpdir.path()).unwrap();
+
+        test::test_uid_revocation(&mut db);
+    }
 }

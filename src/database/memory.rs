@@ -170,4 +170,11 @@ mod tests {
 
         test::test_kid_lookup(&mut db);
     }
+
+    #[test]
+    fn uid_revocation() {
+        let mut db = Memory::default();
+
+        test::test_uid_revocation(&mut db);
+    }
 }

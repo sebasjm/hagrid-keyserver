@@ -143,29 +143,35 @@ pub trait Database: Sync + Send {
         Ok(())
     }
 
+    fn unlink_userids(&self, fpr: &Fingerprint, userids: Vec<Email>) {
+        for uid in userids {
+            self.unlink_email(&uid, fpr);
+        }
+    }
+
     fn merge_or_publish(&self, mut tpk: TPK) -> Result<Vec<(Email, String)>> {
         use sequoia_openpgp::RevocationStatus;
 
         let fpr = Fingerprint::try_from(tpk.primary().fingerprint())?;
-        let mut ret = Vec::default();
+        let mut active_uids = Vec::default();
+        let mut revoked_uids = Vec::default();
 
         // update verify tokens
         for uid in tpk.userids() {
+            let email = Email::try_from(uid.userid().clone())?;
+
             match uid.revoked() {
-                RevocationStatus::Revoked(_) => { /* skip */ }
-                RevocationStatus::CouldBe(_) |
-                RevocationStatus::NotAsFarAsWeKnow => {
-                    let email = Email::try_from(uid.userid().clone())?;
-
-                    if self.by_email(&email).is_none() {
-                        let payload = Verify::new(
-                            uid.userid(),
-                            &uid.selfsigs().collect::<Vec<_>>(),
-                            fpr.clone())?;
-
-                        ret.push((email, self.new_verify_token(payload)?));
-                    }
+                RevocationStatus::CouldBe(_) | RevocationStatus::Revoked(_) => {
+                    revoked_uids.push(email);
                 }
+                RevocationStatus::NotAsFarAsWeKnow if self.by_email(&email).is_none() => {
+                    let payload = Verify::new(
+                        uid.userid(),
+                        &uid.selfsigs().collect::<Vec<_>>(),
+                        fpr.clone())?;
+                    active_uids.push((email, self.new_verify_token(payload)?));
+                }
+                _ => {}
             }
         }
 
@@ -183,7 +189,8 @@ pub trait Database: Sync + Send {
 
                     if self.compare_and_swap(&fpr, Some(&old), Some(&new))? {
                         self.link_subkeys(&fpr, subkeys)?;
-                        return Ok(ret);
+                        self.unlink_userids(&fpr, revoked_uids);
+                        return Ok(active_uids);
                     }
                 }
 
@@ -192,7 +199,8 @@ pub trait Database: Sync + Send {
 
                     if self.compare_and_swap(&fpr, None, Some(&fresh))? {
                         self.link_subkeys(&fpr, subkeys)?;
-                        return Ok(ret);
+                        self.unlink_userids(&fpr, revoked_uids);
+                        return Ok(active_uids);
                     }
                 }
             }
