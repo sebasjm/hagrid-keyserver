@@ -3,7 +3,7 @@ use rocket::{State, Outcome};
 use rocket::http::Status;
 use rocket::request::{self, Request, FromRequest};
 use rocket::response::status::Custom;
-use rocket::response::NamedFile;
+use rocket::response::{Response, NamedFile};
 use rocket::fairing::AdHoc;
 use rocket_contrib::templates::Template;
 
@@ -96,9 +96,11 @@ impl<'a, 'r> FromRequest<'a, 'r> for queries::Hkp {
     }
 }
 
-fn process_key(bytes: &[u8]) -> result::Result<String, Custom<String>> {
+fn key_to_response<'a,'b>(bytes: &'a[u8]) -> Response<'b> {
     use std::io::Write;
     use sequoia_openpgp::armor::{Writer, Kind};
+    use std::io::Cursor;
+    use rocket::http::{Status, ContentType};
 
     let key = || -> Result<String> {
         let mut buffer = Vec::default();
@@ -111,56 +113,91 @@ fn process_key(bytes: &[u8]) -> result::Result<String, Custom<String>> {
     }();
 
     match key {
-        Ok(s) => Ok(s),
+        Ok(s) =>
+            Response::build()
+            .status(Status::Ok)
+            .header(ContentType::new("application", "pgp-keys"))
+            .sized_body(Cursor::new(s))
+            .finalize(),
         Err(_) =>
-            Err(Custom(Status::InternalServerError,
-                       "Failed to ASCII armor key".to_string())),
+            Response::build()
+            .status(Status::InternalServerError)
+            .header(ContentType::Plain)
+            .sized_body(Cursor::new("Failed to ASCII armor key"))
+            .finalize(),
     }
 }
 
 #[get("/by-fpr/<fpr>")]
 fn by_fpr(db: rocket::State<Polymorphic>, fpr: String)
-    -> result::Result<String, Custom<String>>
+    -> Response
 {
+    use std::io::Cursor;
+    use rocket::http::{Status, ContentType};
+
     let maybe_key = match Fingerprint::from_str(&fpr) {
         Ok(ref fpr) => db.by_fpr(fpr),
         Err(_) => None,
     };
 
     match maybe_key {
-        Some(ref bytes) => process_key(bytes),
-        None => Ok("No such key :-(".to_string()),
+        Some(ref bytes) => key_to_response(bytes),
+        None =>
+            Response::build()
+            .status(Status::NotFound)
+            .header(ContentType::Plain)
+            .sized_body(Cursor::new("No such key :-("))
+            .finalize(),
     }
 }
 
 #[get("/by-email/<email>")]
 fn by_email(db: rocket::State<Polymorphic>, email: String)
-    -> result::Result<String, Custom<String>>
+    -> Response
 {
+    use std::io::Cursor;
+    use rocket::http::{Status, ContentType};
+
     let maybe_key = match Email::from_str(&email) {
         Ok(ref email) => db.by_email(email),
         Err(_) => None,
     };
 
     match maybe_key {
-        Some(ref bytes) => process_key(bytes),
-        None => Ok("No such key :-(".to_string()),
+        Some(ref bytes) => key_to_response(bytes),
+        None =>
+            Response::build()
+            .status(Status::NotFound)
+            .header(ContentType::Plain)
+            .sized_body(Cursor::new("No such key :-("))
+            .finalize(),
     }
 }
 
 #[get("/by-kid/<kid>")]
 fn by_kid(db: rocket::State<Polymorphic>, kid: String)
-    -> result::Result<String, Custom<String>>
+    -> Response
 {
+    use std::io::Cursor;
+    use rocket::http::{Status, ContentType};
+
     let maybe_key = match KeyID::from_str(&kid) {
         Ok(ref key) => db.by_kid(key),
         Err(_) => None,
     };
 
     match maybe_key {
-        Some(ref bytes) => process_key(bytes),
-        None => Ok("No such key :-(".to_string()),
+        Some(ref bytes) => {
+            key_to_response(bytes)
+        }
+        None =>
+            Response::build()
+            .status(Status::NotFound)
+            .header(ContentType::Plain)
+            .sized_body(Cursor::new("No such key :-("))
+            .finalize(),
     }
+
 }
 
 #[get("/vks/verify/<token>")]
