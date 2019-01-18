@@ -355,7 +355,7 @@ fn lookup(db: rocket::State<Polymorphic>, key: Option<queries::Hkp>)
                 })
                 .unwrap_or_default();
             let is_rev =
-                if tpk.revoked() != RevocationStatus::NotAsFarAsWeKnow {
+                if tpk.revoked(None) != RevocationStatus::NotAsFarAsWeKnow {
                     "r"
                 } else {
                     ""
@@ -390,7 +390,7 @@ fn lookup(db: rocket::State<Polymorphic>, key: Option<queries::Hkp>)
                     })
                     .unwrap_or_default();
                 let is_rev =
-                    if uid.revoked() != RevocationStatus::NotAsFarAsWeKnow {
+                    if uid.revoked(None) != RevocationStatus::NotAsFarAsWeKnow {
                         "r"
                     } else {
                         ""

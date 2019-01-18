@@ -160,7 +160,7 @@ pub trait Database: Sync + Send {
         for uid in tpk.userids() {
             let email = Email::try_from(uid.userid().clone())?;
 
-            match uid.revoked() {
+            match uid.revoked(None) {
                 RevocationStatus::CouldBe(_) | RevocationStatus::Revoked(_) => {
                     revoked_uids.push(email);
                 }

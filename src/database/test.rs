@@ -338,7 +338,6 @@ pub fn test_uid_revocation<D: Database>(db: &mut D) {
 
     // upload key
     let tokens = db.merge_or_publish(tpk.clone()).unwrap();
-    let fpr = Fingerprint::try_from(tpk.fingerprint()).unwrap();
 
     // verify uid
     assert_eq!(tokens.len(), 2);
@@ -354,7 +353,7 @@ pub fn test_uid_revocation<D: Database>(db: &mut D) {
     // revoke one uid
     let sig = {
         let uid = tpk.userids().find(|b| *b.userid() == uid2).unwrap();
-        assert_eq!(RevocationStatus::NotAsFarAsWeKnow, uid.revoked());
+        assert_eq!(RevocationStatus::NotAsFarAsWeKnow, uid.revoked(None));
 
         let mut keypair = tpk.primary().clone().into_keypair().unwrap();
         uid.revoke(&mut keypair,
