@@ -1,12 +1,16 @@
 {{#> layout }}
-  <h1>Tokens</h1>
+  <h1>Key uploaded</h1>
+  <p>Your key can be fetched by its fingerprint and long key ID.</p>
   {{#if tokens}}
+    <p>We also sent verification links to the following email addresses:</p>
     <ul>
       {{#each tokens}}
-        <li>{{userid}}: <a href="/vks/verify/{{token}}"><tt>{{token}}</tt></a></li>
+        <li>{{userid}}</li>
       {{/each}}
     </ul>
+    <p>These links can be used to allow your key be fetch by email address.</p>
   {{else}}
-    <em>No new user IDs</em>
+    <p>There were no new unverified email addresses in this key.</p>
   {{/if}}
+  <p>You can delete the key <a href="/vks/delete/{{ fpr }}">here</a>.
 {{/layout}}
