@@ -99,7 +99,7 @@ fn process_multipart(entries: Entries, db: &Polymorphic, mail_templates: &Handle
                      domain: &str, from: &str)
     -> Result<Template, Custom<String>>
 {
-    match entries.fields.get(&"keytext".to_string()) {
+    match entries.fields.get("keytext") {
         Some(ent) if ent.len() == 1 => {
             let reader = ent[0].data.readable().map_err(|err| {
                 Custom(Status::InternalServerError, err.to_string())
