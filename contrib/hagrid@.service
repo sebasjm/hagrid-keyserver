@@ -3,7 +3,7 @@ Description=Hagrid Verifying Keyserver
 After=network.target
 
 [Service]
-ExecStart=/opt/hagrid/target/release/hagrid /opt/hagrid/dist
+ExecStart=/opt/hagrid/target/release/hagrid /opt/hagrid/dist -D %i -F hagrid@%i
 WorkingDirectory=/opt/hagrid
 User=hagrid
 Group=hagrid
