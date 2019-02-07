@@ -3,36 +3,40 @@
 #![feature(try_from)]
 
 extern crate serde;
-#[macro_use] extern crate serde_derive;
+#[macro_use]
+extern crate serde_derive;
 extern crate serde_json;
 
+extern crate hex;
 extern crate time;
 extern crate url;
-extern crate hex;
 
-#[macro_use] extern crate rocket;
-extern crate rocket_contrib;
+#[macro_use]
+extern crate rocket;
 extern crate multipart;
+extern crate rocket_contrib;
 
 extern crate sequoia_openpgp;
-#[macro_use] extern crate error_chain;
-#[macro_use] extern crate log;
-extern crate rand;
-extern crate tempfile;
-extern crate parking_lot;
-extern crate structopt;
+#[macro_use]
+extern crate error_chain;
+#[macro_use]
+extern crate log;
+extern crate base64;
+extern crate handlebars;
 extern crate lettre;
 extern crate lettre_email;
-extern crate handlebars;
-extern crate base64;
+extern crate parking_lot;
+extern crate rand;
+extern crate structopt;
+extern crate tempfile;
 
-mod web;
 mod database;
-mod types;
 mod mail;
+mod types;
+mod web;
 
 mod errors {
-    error_chain!{
+    error_chain! {
         foreign_links {
             Fmt(::std::fmt::Error);
             Io(::std::io::Error);
@@ -52,7 +56,10 @@ use std::path::PathBuf;
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
-#[structopt(name = "garbage", about = "Garbage Pile - The verifying OpenPGP key server.")]
+#[structopt(
+    name = "garbage",
+    about = "Garbage Pile - The verifying OpenPGP key server."
+)]
 pub struct Opt {
     /// More verbose output. Disabled when running as daemon.
     #[structopt(short = "v", long = "verbose")]
@@ -69,9 +76,13 @@ pub struct Opt {
     /// FQDN of the server. Used in templates.
     #[structopt(short = "D", long = "domain", default_value = "localhost")]
     domain: String,
-    #[structopt(short = "F", long = "from", default_value = "noreply@localhost")]
+    #[structopt(
+        short = "F",
+        long = "from",
+        default_value = "noreply@localhost"
+    )]
     from: String,
- }
+}
 
 fn main() {
     use database::{Filesystem, Polymorphic};

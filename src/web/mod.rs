@@ -1,10 +1,10 @@
 use rocket;
-use rocket::{State, Outcome};
-use rocket::http::Status;
-use rocket::request::{self, Request, FromRequest};
-use rocket::response::status::Custom;
-use rocket::response::{Response, NamedFile};
 use rocket::fairing::AdHoc;
+use rocket::http::Status;
+use rocket::request::{self, FromRequest, Request};
+use rocket::response::status::Custom;
+use rocket::response::{NamedFile, Response};
+use rocket::{Outcome, State};
 use rocket_contrib::templates::Template;
 
 use handlebars::Handlebars;
@@ -12,21 +12,21 @@ use std::path::{Path, PathBuf};
 
 mod upload;
 
-use database::{Polymorphic, Database};
-use types::{Fingerprint, Email, KeyID};
+use database::{Database, Polymorphic};
 use errors::Result;
+use types::{Email, Fingerprint, KeyID};
 use Opt;
 
-use std::str::FromStr;
 use std::result;
+use std::str::FromStr;
 
 mod queries {
-    use types::{Fingerprint, Email};
+    use types::{Email, Fingerprint};
 
     #[derive(Debug)]
     pub enum Hkp {
-        Fingerprint{ fpr: Fingerprint, index: bool },
-        Email{ email: Email, index: bool },
+        Fingerprint { fpr: Fingerprint, index: bool },
+        Email { email: Email, index: bool },
     }
 }
 
@@ -58,35 +58,46 @@ pub struct MailTemplates(Handlebars);
 impl<'a, 'r> FromRequest<'a, 'r> for queries::Hkp {
     type Error = ();
 
-    fn from_request(request: &'a Request<'r>) -> request::Outcome<queries::Hkp, ()> {
+    fn from_request(
+        request: &'a Request<'r>,
+    ) -> request::Outcome<queries::Hkp, ()> {
         use rocket::request::FormItems;
         use std::collections::HashMap;
 
         let query = request.uri().query().unwrap_or("");
-        let fields = FormItems::from(query).map(|item| {
+        let fields = FormItems::from(query)
+            .map(|item| {
+                let (k, v) = item.key_value();
 
-            let (k, v) = item.key_value();
+                let key = k.url_decode().unwrap_or_default();
+                let value = v.url_decode().unwrap_or_default();
+                (key, value)
+            })
+            .collect::<HashMap<_, _>>();
 
-            let key = k.url_decode().unwrap_or_default();
-            let value = v.url_decode().unwrap_or_default();
-            (key, value)
-        }).collect::<HashMap<_,_>>();
-
-        if fields.len() >= 2 && fields.get("op").map(|x| x  == "get" || x == "index").unwrap_or(false) {
-            let index = fields.get("op").map(|x| x == "index")
-                .unwrap_or(false);
+        if fields.len() >= 2
+            && fields
+                .get("op")
+                .map(|x| x == "get" || x == "index")
+                .unwrap_or(false)
+        {
+            let index = fields.get("op").map(|x| x == "index").unwrap_or(false);
             let search = fields.get("search").cloned().unwrap_or_default();
             let maybe_fpr = Fingerprint::from_str(&search);
 
             if let Ok(fpr) = maybe_fpr {
-                Outcome::Success(queries::Hkp::Fingerprint{
-                    fpr: fpr, index: index
+                Outcome::Success(queries::Hkp::Fingerprint {
+                    fpr: fpr,
+                    index: index,
                 })
             } else {
                 match Email::from_str(&search) {
-                    Ok(email) => Outcome::Success(queries::Hkp::Email{
-                        email: email, index: index
-                    }),
+                    Ok(email) => {
+                        Outcome::Success(queries::Hkp::Email {
+                            email: email,
+                            index: index,
+                        })
+                    }
                     Err(_) => Outcome::Failure((Status::BadRequest, ())),
                 }
             }
@@ -96,11 +107,11 @@ impl<'a, 'r> FromRequest<'a, 'r> for queries::Hkp {
     }
 }
 
-fn key_to_response<'a,'b>(bytes: &'a[u8]) -> Response<'b> {
-    use std::io::Write;
-    use sequoia_openpgp::armor::{Writer, Kind};
+fn key_to_response<'a, 'b>(bytes: &'a [u8]) -> Response<'b> {
+    use rocket::http::{ContentType, Status};
+    use sequoia_openpgp::armor::{Kind, Writer};
     use std::io::Cursor;
-    use rocket::http::{Status, ContentType};
+    use std::io::Write;
 
     let key = || -> Result<String> {
         let mut buffer = Vec::default();
@@ -113,27 +124,27 @@ fn key_to_response<'a,'b>(bytes: &'a[u8]) -> Response<'b> {
     }();
 
     match key {
-        Ok(s) =>
+        Ok(s) => {
             Response::build()
-            .status(Status::Ok)
-            .header(ContentType::new("application", "pgp-keys"))
-            .sized_body(Cursor::new(s))
-            .finalize(),
-        Err(_) =>
+                .status(Status::Ok)
+                .header(ContentType::new("application", "pgp-keys"))
+                .sized_body(Cursor::new(s))
+                .finalize()
+        }
+        Err(_) => {
             Response::build()
-            .status(Status::InternalServerError)
-            .header(ContentType::Plain)
-            .sized_body(Cursor::new("Failed to ASCII armor key"))
-            .finalize(),
+                .status(Status::InternalServerError)
+                .header(ContentType::Plain)
+                .sized_body(Cursor::new("Failed to ASCII armor key"))
+                .finalize()
+        }
     }
 }
 
 #[get("/by-fpr/<fpr>")]
-fn by_fpr(db: rocket::State<Polymorphic>, fpr: String)
-    -> Response
-{
+fn by_fpr(db: rocket::State<Polymorphic>, fpr: String) -> Response {
+    use rocket::http::{ContentType, Status};
     use std::io::Cursor;
-    use rocket::http::{Status, ContentType};
 
     let maybe_key = match Fingerprint::from_str(&fpr) {
         Ok(ref fpr) => db.by_fpr(fpr),
@@ -142,21 +153,20 @@ fn by_fpr(db: rocket::State<Polymorphic>, fpr: String)
 
     match maybe_key {
         Some(ref bytes) => key_to_response(bytes),
-        None =>
+        None => {
             Response::build()
-            .status(Status::NotFound)
-            .header(ContentType::Plain)
-            .sized_body(Cursor::new("No such key :-("))
-            .finalize(),
+                .status(Status::NotFound)
+                .header(ContentType::Plain)
+                .sized_body(Cursor::new("No such key :-("))
+                .finalize()
+        }
     }
 }
 
 #[get("/by-email/<email>")]
-fn by_email(db: rocket::State<Polymorphic>, email: String)
-    -> Response
-{
+fn by_email(db: rocket::State<Polymorphic>, email: String) -> Response {
+    use rocket::http::{ContentType, Status};
     use std::io::Cursor;
-    use rocket::http::{Status, ContentType};
 
     let maybe_key = match Email::from_str(&email) {
         Ok(ref email) => db.by_email(email),
@@ -165,21 +175,20 @@ fn by_email(db: rocket::State<Polymorphic>, email: String)
 
     match maybe_key {
         Some(ref bytes) => key_to_response(bytes),
-        None =>
+        None => {
             Response::build()
-            .status(Status::NotFound)
-            .header(ContentType::Plain)
-            .sized_body(Cursor::new("No such key :-("))
-            .finalize(),
+                .status(Status::NotFound)
+                .header(ContentType::Plain)
+                .sized_body(Cursor::new("No such key :-("))
+                .finalize()
+        }
     }
 }
 
 #[get("/by-kid/<kid>")]
-fn by_kid(db: rocket::State<Polymorphic>, kid: String)
-    -> Response
-{
+fn by_kid(db: rocket::State<Polymorphic>, kid: String) -> Response {
+    use rocket::http::{ContentType, Status};
     use std::io::Cursor;
-    use rocket::http::{Status, ContentType};
 
     let maybe_key = match KeyID::from_str(&kid) {
         Ok(ref key) => db.by_kid(key),
@@ -187,26 +196,24 @@ fn by_kid(db: rocket::State<Polymorphic>, kid: String)
     };
 
     match maybe_key {
-        Some(ref bytes) => {
-            key_to_response(bytes)
-        }
-        None =>
+        Some(ref bytes) => key_to_response(bytes),
+        None => {
             Response::build()
-            .status(Status::NotFound)
-            .header(ContentType::Plain)
-            .sized_body(Cursor::new("No such key :-("))
-            .finalize(),
+                .status(Status::NotFound)
+                .header(ContentType::Plain)
+                .sized_body(Cursor::new("No such key :-("))
+                .finalize()
+        }
     }
-
 }
 
 #[get("/vks/verify/<token>")]
-fn verify(db: rocket::State<Polymorphic>, token: String)
-    -> result::Result<Template, Custom<String>>
-{
+fn verify(
+    db: rocket::State<Polymorphic>, token: String,
+) -> result::Result<Template, Custom<String>> {
     match db.verify_token(&token) {
         Ok(Some((userid, fpr))) => {
-            let context = templates::Verify{
+            let context = templates::Verify {
                 verified: true,
                 userid: userid.to_string(),
                 fpr: fpr.to_string(),
@@ -215,7 +222,7 @@ fn verify(db: rocket::State<Polymorphic>, token: String)
             Ok(Template::render("verify", context))
         }
         Ok(None) | Err(_) => {
-            let context = templates::Verify{
+            let context = templates::Verify {
                 verified: false,
                 userid: "".into(),
                 fpr: "".into(),
@@ -227,58 +234,56 @@ fn verify(db: rocket::State<Polymorphic>, token: String)
 }
 
 #[get("/vks/delete/<fpr>")]
-fn delete(db: rocket::State<Polymorphic>, fpr: String,
-          tmpl: State<MailTemplates>, domain: State<Domain>, from: State<From>)
-    -> result::Result<Template, Custom<String>>
-{
+fn delete(
+    db: rocket::State<Polymorphic>, fpr: String, tmpl: State<MailTemplates>,
+    domain: State<Domain>, from: State<From>,
+) -> result::Result<Template, Custom<String>> {
     use mail::send_confirmation_mail;
 
     let fpr = match Fingerprint::from_str(&fpr) {
         Ok(fpr) => fpr,
         Err(_) => {
-            return Err(Custom(Status::BadRequest,
-                              "Invalid fingerprint".to_string()));
+            return Err(Custom(
+                Status::BadRequest,
+                "Invalid fingerprint".to_string(),
+            ));
         }
     };
 
     match db.request_deletion(fpr.clone()) {
-        Ok((token,uids)) => {
-            let context = templates::Delete{
+        Ok((token, uids)) => {
+            let context = templates::Delete {
                 fpr: fpr.to_string(),
                 token: token.clone(),
             };
 
             for uid in uids {
-                send_confirmation_mail(&uid, &token, &tmpl.0, &domain.0, &from.0)
-                    .map_err(|err| {
-                        Custom(Status::InternalServerError,
-                               format!("{:?}", err))
-                    })?;
+                send_confirmation_mail(
+                    &uid, &token, &tmpl.0, &domain.0, &from.0,
+                )
+                .map_err(|err| {
+                    Custom(Status::InternalServerError, format!("{:?}", err))
+                })?;
             }
 
             Ok(Template::render("delete", context))
         }
-        Err(e) => Err(Custom(Status::InternalServerError,
-                             format!("{}", e))),
+        Err(e) => Err(Custom(Status::InternalServerError, format!("{}", e))),
     }
 }
 
 #[get("/vks/confirm/<token>")]
-fn confirm(db: rocket::State<Polymorphic>, token: String)
-    -> result::Result<Template, Custom<String>>
-{
+fn confirm(
+    db: rocket::State<Polymorphic>, token: String,
+) -> result::Result<Template, Custom<String>> {
     match db.confirm_deletion(&token) {
         Ok(true) => {
-            let context = templates::Confirm{
-                deleted: true,
-            };
+            let context = templates::Confirm { deleted: true };
 
             Ok(Template::render("confirm", context))
         }
         Ok(false) | Err(_) => {
-            let context = templates::Confirm{
-                deleted: false,
-            };
+            let context = templates::Confirm { deleted: false };
 
             Ok(Template::render("confirm", context))
         }
@@ -291,22 +296,24 @@ fn files(file: PathBuf, static_dir: State<StaticDir>) -> Option<NamedFile> {
 }
 
 #[get("/pks/lookup")]
-fn lookup(db: rocket::State<Polymorphic>, key: Option<queries::Hkp>)
-    -> result::Result<String, Custom<String>>
-{
-    use std::io::Write;
+fn lookup(
+    db: rocket::State<Polymorphic>, key: Option<queries::Hkp>,
+) -> result::Result<String, Custom<String>> {
+    use sequoia_openpgp::armor::{Kind, Writer};
     use sequoia_openpgp::RevocationStatus;
-    use sequoia_openpgp::{TPK, parse::Parse};
-    use sequoia_openpgp::armor::{Writer, Kind};
+    use sequoia_openpgp::{parse::Parse, TPK};
+    use std::io::Write;
 
-    let (maybe_key,index) = match key {
-        Some(queries::Hkp::Fingerprint{ ref fpr, index }) => {
-            (db.by_fpr(fpr),index)
+    let (maybe_key, index) = match key {
+        Some(queries::Hkp::Fingerprint { ref fpr, index }) => {
+            (db.by_fpr(fpr), index)
         }
-        Some(queries::Hkp::Email{ ref email, index }) => {
-            (db.by_email(email),index)
+        Some(queries::Hkp::Email { ref email, index }) => {
+            (db.by_email(email), index)
         }
-        None => { return Ok("nothing to do".to_string()); }
+        None => {
+            return Ok("nothing to do".to_string());
+        }
     };
 
     match maybe_key {
@@ -314,8 +321,8 @@ fn lookup(db: rocket::State<Polymorphic>, key: Option<queries::Hkp>)
             let key = || -> Result<String> {
                 let mut buffer = Vec::default();
                 {
-                    let mut writer = Writer::new(&mut buffer, Kind::PublicKey,
-                                                 &[])?;
+                    let mut writer =
+                        Writer::new(&mut buffer, Kind::PublicKey, &[])?;
                     writer.write_all(&bytes)?;
                 }
 
@@ -324,17 +331,20 @@ fn lookup(db: rocket::State<Polymorphic>, key: Option<queries::Hkp>)
 
             match key {
                 Ok(s) => Ok(s),
-                Err(_) =>
-                    Err(Custom(Status::InternalServerError,
-                               "Failed to ASCII armor key".to_string())),
+                Err(_) => {
+                    Err(Custom(
+                        Status::InternalServerError,
+                        "Failed to ASCII armor key".to_string(),
+                    ))
+                }
             }
         }
         None if !index => Ok("No such key :-(".to_string()),
 
         Some(ref bytes) if index => {
-            let tpk = TPK::from_bytes(bytes)
-                .map_err(|e| Custom(Status::InternalServerError,
-                                    format!("{}", e)))?;
+            let tpk = TPK::from_bytes(bytes).map_err(|e| {
+                Custom(Status::InternalServerError, format!("{}", e))
+            })?;
             let mut out = String::default();
             let p = tpk.primary();
 
@@ -363,16 +373,21 @@ fn lookup(db: rocket::State<Polymorphic>, key: Option<queries::Hkp>)
             let algo: u8 = p.pk_algo().into();
 
             out.push_str("info:1:1\r\n");
-            out.push_str(&format!("pub:{}:{}:{}:{}:{}:{}{}\r\n",
-                                 p.fingerprint().to_string().replace(" ",""),
-                                 algo,
-                                 p.mpis().bits(),
-                                 ctime,extime,is_exp,is_rev));
+            out.push_str(&format!(
+                "pub:{}:{}:{}:{}:{}:{}{}\r\n",
+                p.fingerprint().to_string().replace(" ", ""),
+                algo,
+                p.mpis().bits(),
+                ctime,
+                extime,
+                is_exp,
+                is_rev
+            ));
 
             for uid in tpk.userids() {
                 let u =
                     url::form_urlencoded::byte_serialize(uid.userid().userid())
-                    .fold(String::default(),|acc,x| acc + x);
+                        .fold(String::default(), |acc, x| acc + x);
                 let ctime = uid
                     .binding_signature()
                     .and_then(|x| x.signature_creation_time())
@@ -389,21 +404,22 @@ fn lookup(db: rocket::State<Polymorphic>, key: Option<queries::Hkp>)
                         if x.signature_expired() { "e" } else { "" }.into()
                     })
                     .unwrap_or_default();
-                let is_rev =
-                    if uid.revoked(None) != RevocationStatus::NotAsFarAsWeKnow {
-                        "r"
-                    } else {
-                        ""
-                    };
+                let is_rev = if uid.revoked(None)
+                    != RevocationStatus::NotAsFarAsWeKnow
+                {
+                    "r"
+                } else {
+                    ""
+                };
 
-                out.push_str(&format!("uid:{}:{}:{}:{}{}\r\n",
-                                      u,ctime,extime,is_exp,is_rev));
+                out.push_str(&format!(
+                    "uid:{}:{}:{}:{}{}\r\n",
+                    u, ctime, extime, is_exp, is_rev
+                ));
             }
             Ok(out)
         }
-        None if index => {
-            Ok("info:1:0\r\n".into())
-        }
+        None if index => Ok("info:1:0\r\n".into()),
 
         _ => unreachable!(),
     }
@@ -424,14 +440,14 @@ pub fn serve(opt: &Opt, db: Polymorphic) -> Result<()> {
         Some(p) => {
             let addr = opt.listen[0..p].to_string();
             let port = if p < opt.listen.len() - 1 {
-                u16::from_str(&opt.listen[p+1..]).ok().unwrap_or(8080)
+                u16::from_str(&opt.listen[p + 1..]).ok().unwrap_or(8080)
             } else {
                 8080
             };
 
             (addr, port)
         }
-        None => (opt.listen.to_string(), 8080)
+        None => (opt.listen.to_string(), 8080),
     };
 
     let config = Config::build(Environment::Staging)
@@ -439,10 +455,17 @@ pub fn serve(opt: &Opt, db: Polymorphic) -> Result<()> {
         .port(port)
         .workers(2)
         .root(opt.base.clone())
-        .extra("template_dir", opt.base.join("templates").to_str()
-               .ok_or("Template path invalid")?)
-        .extra("static_dir", opt.base.join("public").to_str()
-               .ok_or("Static path invalid")?)
+        .extra(
+            "template_dir",
+            opt.base
+                .join("templates")
+                .to_str()
+                .ok_or("Template path invalid")?,
+        )
+        .extra(
+            "static_dir",
+            opt.base.join("public").to_str().ok_or("Static path invalid")?,
+        )
         .extra("domain", opt.domain.clone())
         .extra("from", opt.from.clone())
         .finalize()?;
@@ -466,31 +489,24 @@ pub fn serve(opt: &Opt, db: Polymorphic) -> Result<()> {
     rocket::custom(config)
         .attach(Template::fairing())
         .attach(AdHoc::on_attach("static_dir", |rocket| {
-            let static_dir = rocket.config()
-                .get_str("static_dir")
-                .unwrap()
-                .to_string();
+            let static_dir =
+                rocket.config().get_str("static_dir").unwrap().to_string();
 
             Ok(rocket.manage(StaticDir(static_dir)))
         }))
         .attach(AdHoc::on_attach("domain", |rocket| {
-            let domain = rocket.config()
-                .get_str("domain")
-                .unwrap()
-                .to_string();
+            let domain = rocket.config().get_str("domain").unwrap().to_string();
 
             Ok(rocket.manage(Domain(domain)))
         }))
         .attach(AdHoc::on_attach("from", |rocket| {
-            let from = rocket.config()
-                .get_str("from")
-                .unwrap()
-                .to_string();
+            let from = rocket.config().get_str("from").unwrap().to_string();
 
             Ok(rocket.manage(From(from)))
         }))
         .attach(AdHoc::on_attach("mail_templates", |rocket| {
-            let dir: PathBuf = rocket.config()
+            let dir: PathBuf = rocket
+                .config()
                 .get_str("template_dir")
                 .unwrap()
                 .to_string()
@@ -499,16 +515,23 @@ pub fn serve(opt: &Opt, db: Polymorphic) -> Result<()> {
             let confirm_txt = dir.join("confirm-email-txt.hbs");
             let verify_html = dir.join("verify-email-html.hbs");
             let verify_txt = dir.join("verify-email-txt.hbs");
-    let mut handlebars = Handlebars::new();
+            let mut handlebars = Handlebars::new();
 
-    handlebars.register_template_file("confirm-html", confirm_html).unwrap();
-    handlebars.register_template_file("confirm-txt", confirm_txt).unwrap();
-    handlebars.register_template_file("verify-html", verify_html).unwrap();
-    handlebars.register_template_file("verify-txt", verify_txt).unwrap();
+            handlebars
+                .register_template_file("confirm-html", confirm_html)
+                .unwrap();
+            handlebars
+                .register_template_file("confirm-txt", confirm_txt)
+                .unwrap();
+            handlebars
+                .register_template_file("verify-html", verify_html)
+                .unwrap();
+            handlebars
+                .register_template_file("verify-txt", verify_txt)
+                .unwrap();
 
             Ok(rocket.manage(MailTemplates(handlebars)))
         }))
-
         .mount("/", routes)
         .manage(db)
         .launch();

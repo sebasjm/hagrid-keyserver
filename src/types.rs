@@ -1,12 +1,12 @@
-use std::str::FromStr;
 use std::convert::TryFrom;
 use std::result;
+use std::str::FromStr;
 
 use sequoia_openpgp::{self, packet::UserID};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use {Error, Result};
-use serde::{Serialize, Serializer, Deserializer, Deserialize};
 
-#[derive(Serialize,Deserialize,Clone,Debug,Hash,PartialEq,Eq)]
+#[derive(Serialize, Deserialize, Clone, Debug, Hash, PartialEq, Eq)]
 pub struct Email(String);
 
 impl TryFrom<UserID> for Email {
@@ -20,7 +20,9 @@ impl TryFrom<UserID> for Email {
 }
 
 impl ToString for Email {
-    fn to_string(&self) -> String { self.0.clone() }
+    fn to_string(&self) -> String {
+        self.0.clone()
+    }
 }
 
 impl FromStr for Email {
@@ -37,7 +39,7 @@ impl FromStr for Email {
     }
 }
 
-#[derive(Clone,Debug,Hash,PartialEq,Eq)]
+#[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub struct Fingerprint([u8; 20]);
 
 impl TryFrom<sequoia_openpgp::Fingerprint> for Fingerprint {
@@ -46,7 +48,9 @@ impl TryFrom<sequoia_openpgp::Fingerprint> for Fingerprint {
     fn try_from(fpr: sequoia_openpgp::Fingerprint) -> Result<Self> {
         match fpr {
             sequoia_openpgp::Fingerprint::V4(a) => Ok(Fingerprint(a)),
-            sequoia_openpgp::Fingerprint::Invalid(_) => Err("invalid fingerprint".into()),
+            sequoia_openpgp::Fingerprint::Invalid(_) => {
+                Err("invalid fingerprint".into())
+            }
         }
     }
 }
@@ -59,7 +63,8 @@ impl ToString for Fingerprint {
 
 impl Serialize for Fingerprint {
     fn serialize<S>(&self, serializer: S) -> result::Result<S::Ok, S::Error>
-    where S: Serializer
+    where
+        S: Serializer,
     {
         serializer.serialize_str(&self.to_string())
     }
@@ -67,11 +72,14 @@ impl Serialize for Fingerprint {
 
 impl<'de> Deserialize<'de> for Fingerprint {
     fn deserialize<D>(deserializer: D) -> result::Result<Self, D::Error>
-    where D: Deserializer<'de>
+    where
+        D: Deserializer<'de>,
     {
         use serde::de::Error;
-        String::deserialize(deserializer)
-            .and_then(|string| Self::from_str(&string).map_err(|err| Error::custom(err.to_string())))
+        String::deserialize(deserializer).and_then(|string| {
+            Self::from_str(&string)
+                .map_err(|err| Error::custom(err.to_string()))
+        })
     }
 }
 
@@ -95,7 +103,7 @@ impl FromStr for Fingerprint {
     }
 }
 
-#[derive(Serialize,Deserialize,Clone,Debug,Hash,PartialEq,Eq)]
+#[derive(Serialize, Deserialize, Clone, Debug, Hash, PartialEq, Eq)]
 pub struct KeyID([u8; 8]);
 
 impl TryFrom<sequoia_openpgp::Fingerprint> for KeyID {
@@ -104,7 +112,9 @@ impl TryFrom<sequoia_openpgp::Fingerprint> for KeyID {
     fn try_from(fpr: sequoia_openpgp::Fingerprint) -> Result<Self> {
         match fpr {
             sequoia_openpgp::Fingerprint::V4(a) => Ok(Fingerprint(a).into()),
-            sequoia_openpgp::Fingerprint::Invalid(_) => Err("invalid fingerprint".into()),
+            sequoia_openpgp::Fingerprint::Invalid(_) => {
+                Err("invalid fingerprint".into())
+            }
         }
     }
 }

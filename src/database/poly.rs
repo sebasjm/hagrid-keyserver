@@ -1,6 +1,6 @@
+use database::{Database, Delete, Filesystem, Memory, Verify};
 use errors::Result;
-use database::{Verify, Delete, Database, Filesystem, Memory};
-use types::{Fingerprint, Email, KeyID};
+use types::{Email, Fingerprint, KeyID};
 
 pub enum Polymorphic {
     Memory(Memory),
@@ -22,10 +22,16 @@ impl Database for Polymorphic {
         }
     }
 
-    fn compare_and_swap(&self, fpr: &Fingerprint, present: Option<&[u8]>, new: Option<&[u8]>) -> Result<bool> {
+    fn compare_and_swap(
+        &self, fpr: &Fingerprint, present: Option<&[u8]>, new: Option<&[u8]>,
+    ) -> Result<bool> {
         match self {
-            &Polymorphic::Memory(ref db) => db.compare_and_swap(fpr, present, new),
-            &Polymorphic::Filesystem(ref db) => db.compare_and_swap(fpr, present, new),
+            &Polymorphic::Memory(ref db) => {
+                db.compare_and_swap(fpr, present, new)
+            }
+            &Polymorphic::Filesystem(ref db) => {
+                db.compare_and_swap(fpr, present, new)
+            }
         }
     }
 

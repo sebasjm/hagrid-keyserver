@@ -9,7 +9,7 @@
 // pub & verify
 // req del one
 // fetch by uid & fpr
-// confirm 
+// confirm
 // fetch by uid & fpr
 // confirm again
 // fetch by uid & fpr
@@ -19,8 +19,11 @@ use std::str::FromStr;
 
 use database::Database;
 use sequoia_openpgp::tpk::{TPKBuilder, UserIDBinding};
-use sequoia_openpgp::{Packet, packet::UserID, TPK, PacketPile, parse::Parse, RevocationStatus, constants::ReasonForRevocation, constants::SignatureType};
-use types::{KeyID, Email, Fingerprint};
+use sequoia_openpgp::{
+    constants::ReasonForRevocation, constants::SignatureType, packet::UserID,
+    parse::Parse, Packet, PacketPile, RevocationStatus, TPK,
+};
+use types::{Email, Fingerprint, KeyID};
 
 pub fn test_uid_verification<D: Database>(db: &mut D) {
     let str_uid1 = "Test A <test_a@example.com>";
@@ -28,7 +31,9 @@ pub fn test_uid_verification<D: Database>(db: &mut D) {
     let tpk = TPKBuilder::default()
         .add_userid(str_uid1)
         .add_userid(str_uid2)
-        .generate().unwrap().0;
+        .generate()
+        .unwrap()
+        .0;
     let mut uid1 = UserID::new();
     let mut uid2 = UserID::new();
 
@@ -73,7 +78,9 @@ pub fn test_uid_verification<D: Database>(db: &mut D) {
         let uid = key.userids().next().unwrap().userid().clone();
 
         assert!((uid == uid1) ^ (uid == uid2));
-        let email = Email::from_str(&String::from_utf8(uid.userid().to_vec()).unwrap()).unwrap();
+        let email =
+            Email::from_str(&String::from_utf8(uid.userid().to_vec()).unwrap())
+                .unwrap();
         assert_eq!(db.by_email(&email).unwrap(), raw);
 
         if email1 == email {
@@ -100,7 +107,9 @@ pub fn test_uid_verification<D: Database>(db: &mut D) {
         let uid = key.userids().next().unwrap().userid().clone();
 
         assert!((uid == uid1) ^ (uid == uid2));
-        let email = Email::from_str(&String::from_utf8(uid.userid().to_vec()).unwrap()).unwrap();
+        let email =
+            Email::from_str(&String::from_utf8(uid.userid().to_vec()).unwrap())
+                .unwrap();
         assert_eq!(db.by_email(&email).unwrap(), raw);
 
         if email1 == email {
@@ -129,27 +138,34 @@ pub fn test_uid_verification<D: Database>(db: &mut D) {
 
         assert_eq!(db.by_email(&email1).unwrap(), raw);
         assert_eq!(db.by_email(&email2).unwrap(), raw);
-        assert!(((myuid1 == uid1) & (myuid2 == uid2)) ^ ((myuid1 == uid2) & (myuid2 == uid1)));
+        assert!(
+            ((myuid1 == uid1) & (myuid2 == uid2))
+                ^ ((myuid1 == uid2) & (myuid2 == uid1))
+        );
     }
 
     // upload again
-    assert_eq!(db.merge_or_publish(tpk.clone()).unwrap(), Vec::<(Email,String)>::default());
+    assert_eq!(
+        db.merge_or_publish(tpk.clone()).unwrap(),
+        Vec::<(Email, String)>::default()
+    );
 
     // publish w/ one uid less
     {
-        let packets = tpk.clone()
-            .to_packet_pile()
-            .into_children()
-            .filter(|pkt| {
+        let packets =
+            tpk.clone().to_packet_pile().into_children().filter(|pkt| {
                 match pkt {
                     Packet::UserID(ref uid) => *uid != uid1,
-                    _ => true
+                    _ => true,
                 }
             });
         let pile = PacketPile::from_packets(packets.collect());
         let short_tpk = TPK::from_packet_pile(pile).unwrap();
 
-        assert_eq!(db.merge_or_publish(short_tpk.clone()).unwrap(), Vec::<(Email,String)>::default());
+        assert_eq!(
+            db.merge_or_publish(short_tpk.clone()).unwrap(),
+            Vec::<(Email, String)>::default()
+        );
 
         // fetch by fpr
         let raw = db.by_fpr(&fpr).unwrap();
@@ -164,20 +180,25 @@ pub fn test_uid_verification<D: Database>(db: &mut D) {
 
         assert_eq!(db.by_email(&email1).unwrap(), raw);
         assert_eq!(db.by_email(&email2).unwrap(), raw);
-        assert!(((myuid1 == uid1) & (myuid2 == uid2)) ^ ((myuid1 == uid2) & (myuid2 == uid1)));
+        assert!(
+            ((myuid1 == uid1) & (myuid2 == uid2))
+                ^ ((myuid1 == uid2) & (myuid2 == uid1))
+        );
     }
 
     // publish w/one uid more
     {
-        let mut packets = tpk.clone()
+        let mut packets = tpk
+            .clone()
             .to_packet_pile()
             .into_children()
             .filter(|pkt| {
                 match pkt {
                     Packet::UserID(ref uid) => *uid != uid1,
-                    _ => true
+                    _ => true,
                 }
-            }).collect::<Vec<_>>();
+            })
+            .collect::<Vec<_>>();
         let str_uid3 = "Test C <test_c@example.com>";
         let mut uid3 = UserID::new();
         uid3.set_userid_from_bytes(str_uid3.as_bytes());
@@ -187,7 +208,8 @@ pub fn test_uid_verification<D: Database>(db: &mut D) {
         let bind = UserIDBinding::new(key, uid3.clone(), key).unwrap();
 
         packets.push(Packet::UserID(uid3.clone()));
-        packets.push(Packet::Signature(bind.selfsigs().next().unwrap().clone()));
+        packets
+            .push(Packet::Signature(bind.selfsigs().next().unwrap().clone()));
 
         let pile = PacketPile::from_packets(packets);
         let ext_tpk = TPK::from_packet_pile(pile).unwrap();
@@ -208,7 +230,10 @@ pub fn test_uid_verification<D: Database>(db: &mut D) {
 
         assert_eq!(db.by_email(&email1).unwrap(), raw);
         assert_eq!(db.by_email(&email2).unwrap(), raw);
-        assert!(((myuid1 == uid1) & (myuid2 == uid2)) ^ ((myuid1 == uid2) & (myuid2 == uid1)));
+        assert!(
+            ((myuid1 == uid1) & (myuid2 == uid2))
+                ^ ((myuid1 == uid2) & (myuid2 == uid1))
+        );
         assert!(db.by_email(&email3).is_none());
     }
 }
@@ -219,7 +244,9 @@ pub fn test_uid_deletion<D: Database>(db: &mut D) {
     let tpk = TPKBuilder::default()
         .add_userid(str_uid1)
         .add_userid(str_uid2)
-        .generate().unwrap().0;
+        .generate()
+        .unwrap()
+        .0;
     let mut uid1 = UserID::new();
     let mut uid2 = UserID::new();
 
@@ -241,7 +268,7 @@ pub fn test_uid_deletion<D: Database>(db: &mut D) {
     // req. deletion
     let del = db.request_deletion(fpr.clone()).unwrap().0;
 
-    // check it's still there 
+    // check it's still there
     {
         // fetch by fpr
         let raw = db.by_fpr(&fpr).unwrap();
@@ -256,7 +283,10 @@ pub fn test_uid_deletion<D: Database>(db: &mut D) {
 
         assert_eq!(db.by_email(&email1).unwrap(), raw);
         assert_eq!(db.by_email(&email2).unwrap(), raw);
-        assert!(((myuid1 == uid1) & (myuid2 == uid2)) ^ ((myuid1 == uid2) & (myuid2 == uid1)));
+        assert!(
+            ((myuid1 == uid1) & (myuid2 == uid2))
+                ^ ((myuid1 == uid2) & (myuid2 == uid1))
+        );
     }
 
     // confirm deletion
@@ -281,13 +311,21 @@ pub fn test_subkey_lookup<D: Database>(db: &mut D) {
         .add_userid("Testy <test@example.com>")
         .add_signing_subkey()
         .add_encryption_subkey()
-        .generate().unwrap().0;
+        .generate()
+        .unwrap()
+        .0;
 
     // upload key
     let _ = db.merge_or_publish(tpk.clone()).unwrap();
     let primary_fpr = Fingerprint::try_from(tpk.fingerprint()).unwrap();
-    let sub1_fpr = Fingerprint::try_from(tpk.subkeys().next().map(|x| x.subkey().fingerprint()).unwrap()).unwrap();
-    let sub2_fpr = Fingerprint::try_from(tpk.subkeys().skip(1).next().map(|x| x.subkey().fingerprint()).unwrap()).unwrap();
+    let sub1_fpr = Fingerprint::try_from(
+        tpk.subkeys().next().map(|x| x.subkey().fingerprint()).unwrap(),
+    )
+    .unwrap();
+    let sub2_fpr = Fingerprint::try_from(
+        tpk.subkeys().skip(1).next().map(|x| x.subkey().fingerprint()).unwrap(),
+    )
+    .unwrap();
 
     let raw1 = db.by_fpr(&primary_fpr).unwrap();
     let raw2 = db.by_fpr(&sub1_fpr).unwrap();
@@ -302,13 +340,21 @@ pub fn test_kid_lookup<D: Database>(db: &mut D) {
         .add_userid("Testy <test@example.com>")
         .add_signing_subkey()
         .add_encryption_subkey()
-        .generate().unwrap().0;
+        .generate()
+        .unwrap()
+        .0;
 
     // upload key
     let _ = db.merge_or_publish(tpk.clone()).unwrap();
     let primary_kid = KeyID::try_from(tpk.fingerprint()).unwrap();
-    let sub1_kid = KeyID::try_from(tpk.subkeys().next().map(|x| x.subkey().fingerprint()).unwrap()).unwrap();
-    let sub2_kid = KeyID::try_from(tpk.subkeys().skip(1).next().map(|x| x.subkey().fingerprint()).unwrap()).unwrap();
+    let sub1_kid = KeyID::try_from(
+        tpk.subkeys().next().map(|x| x.subkey().fingerprint()).unwrap(),
+    )
+    .unwrap();
+    let sub2_kid = KeyID::try_from(
+        tpk.subkeys().skip(1).next().map(|x| x.subkey().fingerprint()).unwrap(),
+    )
+    .unwrap();
 
     let raw1 = db.by_kid(&primary_kid).unwrap();
     let raw2 = db.by_kid(&sub1_kid).unwrap();
@@ -326,7 +372,9 @@ pub fn test_uid_revocation<D: Database>(db: &mut D) {
     let tpk = TPKBuilder::default()
         .add_userid(str_uid1)
         .add_userid(str_uid2)
-        .generate().unwrap().0;
+        .generate()
+        .unwrap()
+        .0;
     let mut uid1 = UserID::new();
     let mut uid2 = UserID::new();
 
@@ -356,9 +404,12 @@ pub fn test_uid_revocation<D: Database>(db: &mut D) {
         assert_eq!(RevocationStatus::NotAsFarAsWeKnow, uid.revoked(None));
 
         let mut keypair = tpk.primary().clone().into_keypair().unwrap();
-        uid.revoke(&mut keypair,
-                   ReasonForRevocation::UIDRetired,
-                   b"It was the maid :/").unwrap()
+        uid.revoke(
+            &mut keypair,
+            ReasonForRevocation::UIDRetired,
+            b"It was the maid :/",
+        )
+        .unwrap()
     };
     assert_eq!(sig.sigtype(), SignatureType::CertificateRevocation);
     let tpk = tpk.merge_packets(vec![sig.to_packet()]).unwrap();

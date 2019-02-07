@@ -1,7 +1,7 @@
-use std::collections::HashMap;
 use parking_lot::Mutex;
+use std::collections::HashMap;
 
-use database::{Verify, Delete, Database};
+use database::{Database, Delete, Verify};
 use types::{Email, Fingerprint, KeyID};
 use Result;
 
@@ -17,7 +17,7 @@ pub struct Memory {
 
 impl Default for Memory {
     fn default() -> Self {
-        Memory{
+        Memory {
             fpr: Mutex::new(HashMap::default()),
             fpr_links: Mutex::new(HashMap::default()),
             kid: Mutex::new(HashMap::default()),
@@ -43,7 +43,9 @@ impl Database for Memory {
         Ok(token)
     }
 
-    fn compare_and_swap(&self, fpr: &Fingerprint, present: Option<&[u8]>, new: Option<&[u8]>) -> Result<bool> {
+    fn compare_and_swap(
+        &self, fpr: &Fingerprint, present: Option<&[u8]>, new: Option<&[u8]>,
+    ) -> Result<bool> {
         let mut fprs = self.fpr.lock();
 
         if fprs.get(fpr).map(|x| &x[..]) == present {
@@ -119,8 +121,8 @@ impl Database for Memory {
 
 impl Memory {
     pub fn new_token() -> String {
-        use rand::{thread_rng, Rng};
         use rand::distributions::Alphanumeric;
+        use rand::{thread_rng, Rng};
 
         let mut rng = thread_rng();
         // samples from [a-zA-Z0-9]
@@ -132,8 +134,8 @@ impl Memory {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use sequoia_openpgp::tpk::TPKBuilder;
     use database::test;
+    use sequoia_openpgp::tpk::TPKBuilder;
 
     #[test]
     fn new() {
