@@ -172,8 +172,9 @@ pub trait Database: Sync + Send {
         use sequoia_openpgp::RevocationStatus;
 
         let fpr = Fingerprint::try_from(tpk.primary().fingerprint())?;
+        let mut all_uids = Vec::default();
         let mut active_uids = Vec::default();
-        let mut revoked_uids = Vec::default();
+        let mut verified_uids = Vec::default();
 
         // update verify tokens
         for uid in tpk.userids() {
@@ -181,19 +182,51 @@ pub trait Database: Sync + Send {
 
             match uid.revoked(None) {
                 RevocationStatus::CouldBe(_) | RevocationStatus::Revoked(_) => {
-                    revoked_uids.push(email);
+                    match self.by_email(&email) {
+                        None => {}
+                        Some(other_tpk) => {
+                            match TPK::from_bytes(&other_tpk) {
+                                Ok(other_tpk) => {
+                                    all_uids
+                                        .push((email, other_tpk.fingerprint()));
+                                }
+                                Err(_) => {}
+                            }
+                        }
+                    };
                 }
-                RevocationStatus::NotAsFarAsWeKnow
-                    if self.by_email(&email).is_none() =>
-                {
-                    let payload = Verify::new(
-                        uid.userid(),
-                        &uid.selfsigs().collect::<Vec<_>>(),
-                        fpr.clone(),
-                    )?;
-                    active_uids.push((email, self.new_verify_token(payload)?));
+                RevocationStatus::NotAsFarAsWeKnow => {
+                    let add_to_verified = match self.by_email(&email) {
+                        None => false,
+                        Some(other_tpk) => {
+                            match TPK::from_bytes(&other_tpk) {
+                                Ok(other_tpk) => {
+                                    all_uids.push((
+                                        email.clone(),
+                                        other_tpk.fingerprint(),
+                                    ));
+                                    other_tpk.fingerprint() == tpk.fingerprint()
+                                }
+                                Err(_) => false,
+                            }
+                        }
+                    };
+
+                    if add_to_verified {
+                        verified_uids.push(email.clone());
+                    } else {
+                        let payload = Verify::new(
+                            uid.userid(),
+                            &uid.selfsigs().collect::<Vec<_>>(),
+                            fpr.clone(),
+                        )?;
+
+                        active_uids.push((
+                            email.clone(),
+                            self.new_verify_token(payload)?,
+                        ));
+                    }
                 }
-                _ => {}
             }
         }
 
@@ -201,6 +234,10 @@ pub trait Database: Sync + Send {
             tpk.subkeys().map(|s| s.subkey().fingerprint()).collect::<Vec<_>>();
 
         tpk = Self::strip_userids(tpk)?;
+
+        for (email, fpr) in all_uids {
+            self.unlink_email(&email, &Fingerprint::try_from(fpr).unwrap());
+        }
 
         for _ in 0..100
         /* while cas failed */
@@ -214,7 +251,10 @@ pub trait Database: Sync + Send {
 
                     if self.compare_and_swap(&fpr, Some(&old), Some(&new))? {
                         self.link_subkeys(&fpr, subkeys)?;
-                        self.unlink_userids(&fpr, revoked_uids);
+                        for email in verified_uids {
+                            self.link_email(&email, &fpr);
+                        }
+
                         return Ok(active_uids);
                     }
                 }
@@ -224,7 +264,7 @@ pub trait Database: Sync + Send {
 
                     if self.compare_and_swap(&fpr, None, Some(&fresh))? {
                         self.link_subkeys(&fpr, subkeys)?;
-                        self.unlink_userids(&fpr, revoked_uids);
+
                         return Ok(active_uids);
                     }
                 }

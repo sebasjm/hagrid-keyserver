@@ -238,6 +238,64 @@ pub fn test_uid_verification<D: Database>(db: &mut D) {
     }
 }
 
+pub fn test_reupload<D: Database>(db: &mut D) {
+    let str_uid1 = "Test A <test_a@example.com>";
+    let str_uid2 = "Test B <test_b@example.com>";
+    let tpk = TPKBuilder::default()
+        .add_userid(str_uid1)
+        .add_userid(str_uid2)
+        .generate().unwrap().0;
+    let mut uid1 = UserID::new();
+    let mut uid2 = UserID::new();
+
+    uid1.set_userid_from_bytes(str_uid1.as_bytes());
+    uid2.set_userid_from_bytes(str_uid2.as_bytes());
+
+    let email1 = Email::from_str(str_uid1).unwrap();
+    let email2 = Email::from_str(str_uid2).unwrap();
+
+    // upload key
+    let tokens = db.merge_or_publish(tpk.clone()).unwrap();
+
+    // verify 1st uid
+    assert!(db.verify_token(&tokens[0].1).unwrap().is_some());
+    assert!(db.by_email(&email2).is_none() ^ db.by_email(&email1).is_none());
+
+    // reupload
+    let tokens = db.merge_or_publish(tpk.clone()).unwrap();
+
+    assert_eq!(tokens.len(), 1);
+    assert!(db.by_email(&email2).is_none() ^ db.by_email(&email1).is_none());
+}
+
+pub fn test_uid_replacement<D: Database>(db: &mut D) {
+    let str_uid = "Test A <test_a@example.com>";
+    let tpk1 = TPKBuilder::default()
+        .add_userid(str_uid)
+        .generate().unwrap().0;
+     let tpk2 = TPKBuilder::default()
+        .add_userid(str_uid)
+        .generate().unwrap().0;
+
+    let email = Email::from_str(str_uid).unwrap();
+    let fpr1 = tpk1.fingerprint();
+    let fpr2 = tpk2.fingerprint();
+
+    // upload key
+    let tokens = db.merge_or_publish(tpk1.clone()).unwrap();
+
+    // verify 1st uid
+    assert!(db.verify_token(&tokens[0].1).unwrap().is_some());
+    assert_eq!(TPK::from_bytes(&db.by_email(&email).unwrap()).unwrap().fingerprint(), fpr1);
+
+    // replace
+    let tokens = db.merge_or_publish(tpk2.clone()).unwrap();
+
+    assert!(db.by_email(&email).is_none());
+    assert!(db.verify_token(&tokens[0].1).unwrap().is_some());
+    assert_eq!(TPK::from_bytes(&db.by_email(&email).unwrap()).unwrap().fingerprint(), fpr2);
+}
+
 pub fn test_uid_deletion<D: Database>(db: &mut D) {
     let str_uid1 = "Test A <test_a@example.com>";
     let str_uid2 = "Test B <test_b@example.com>";

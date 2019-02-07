@@ -429,4 +429,20 @@ mod tests {
 
         test::test_uid_revocation(&mut db);
     }
+
+    #[test]
+    fn key_reupload() {
+        let tmpdir = TempDir::new().unwrap();
+        let mut db = Filesystem::new(tmpdir.path()).unwrap();
+
+        test::test_reupload(&mut db);
+    }
+
+    #[test]
+    fn uid_replacement() {
+        let tmpdir = TempDir::new().unwrap();
+        let mut db = Filesystem::new(tmpdir.path()).unwrap();
+
+        test::test_uid_replacement(&mut db);
+    }
 }
