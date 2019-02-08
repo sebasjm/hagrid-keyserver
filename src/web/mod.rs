@@ -54,6 +54,12 @@ mod templates {
         pub commit: String,
         pub version: String,
     }
+
+    #[derive(Serialize)]
+    pub struct Index {
+        pub commit: String,
+        pub version: String,
+    }
 }
 
 struct StaticDir(String);
@@ -447,9 +453,12 @@ fn lookup(
 
 #[get("/")]
 fn root() -> Template {
-    use std::collections::HashMap;
+    let context = templates::Index {
+        version: env!("VERGEN_SEMVER").to_string(),
+        commit: env!("VERGEN_SHA_SHORT").to_string(),
+    };
 
-    Template::render("index", HashMap::<String, String>::default())
+    Template::render("index", context)
 }
 
 pub fn serve(opt: &Opt, db: Polymorphic) -> Result<()> {
