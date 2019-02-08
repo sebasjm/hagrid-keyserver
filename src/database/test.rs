@@ -482,3 +482,33 @@ pub fn test_uid_revocation<D: Database>(db: &mut D) {
     assert!(db.by_email(&email1).is_some());
     assert!(db.by_email(&email2).is_none());
 }
+
+pub fn test_steal_uid<D: Database>(db: &mut D) {
+    let str_uid1 = "Test A <test_a@example.com>";
+    let tpk1 = TPKBuilder::default().add_userid(str_uid1).generate().unwrap().0;
+    let tpk2 = TPKBuilder::default().add_userid(str_uid1).generate().unwrap().0;
+    let mut uid1 = UserID::new();
+
+    uid1.set_userid_from_bytes(str_uid1.as_bytes());
+
+    let email1 = Email::from_str(str_uid1).unwrap();
+
+    // upload key
+    let tokens = db.merge_or_publish(tpk1.clone()).unwrap();
+
+    // verify uid
+    assert!(db.verify_token(&tokens[0].1).unwrap().is_some());
+    assert!(db.by_email(&email1).is_some());
+
+    // upload 2nd key with same uid
+    let tokens = db.merge_or_publish(tpk2.clone()).unwrap();
+
+    assert_eq!(tokens.len(), 1);
+    assert!(db.by_email(&email1).is_none());
+    assert!(db.verify_token(&tokens[0].1).unwrap().is_some());
+
+    assert_eq!(
+        TPK::from_bytes(&db.by_email(&email1).unwrap()).unwrap().fingerprint(),
+        tpk2.fingerprint()
+    );
+}

@@ -445,4 +445,12 @@ mod tests {
 
         test::test_uid_replacement(&mut db);
     }
+
+    #[test]
+    fn uid_stealing() {
+        let tmpdir = TempDir::new().unwrap();
+        let mut db = Filesystem::new(tmpdir.path()).unwrap();
+
+        test::test_steal_uid(&mut db);
+    }
 }
