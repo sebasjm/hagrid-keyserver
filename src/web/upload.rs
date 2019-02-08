@@ -27,6 +27,8 @@ mod template {
     #[derive(Serialize)]
     pub struct Verify {
         pub tokens: Vec<Token>,
+        pub commit: String,
+        pub version: String,
     }
 }
 
@@ -170,7 +172,11 @@ where
                             })?;
                     }
 
-                    let context = template::Verify { tokens: tokens };
+                    let context = template::Verify {
+                        tokens: tokens,
+                        version: env!("VERGEN_SEMVER").to_string(),
+                        commit: env!("VERGEN_SHA_SHORT").to_string(),
+                    };
 
                     Ok(Template::render("upload", context))
                 }

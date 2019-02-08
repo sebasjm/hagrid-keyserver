@@ -2,6 +2,7 @@
 name = "hagrid"
 version = "0.1.0"
 authors = ["Kai Michaelis <kai@sequoia-pgp.org>"]
+build = "build.rs"
 
 [dependencies]
 rocket = "0"
@@ -34,3 +35,6 @@ features = ["file-transport", "sendmail-transport"]
 version = "0"
 default-features = false
 features = ["handlebars_templates"]
+
+[build-dependencies]
+vergen = "3"

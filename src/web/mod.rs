@@ -36,17 +36,23 @@ mod templates {
         pub verified: bool,
         pub userid: String,
         pub fpr: String,
+        pub commit: String,
+        pub version: String,
     }
 
     #[derive(Serialize)]
     pub struct Delete {
         pub token: String,
         pub fpr: String,
+        pub commit: String,
+        pub version: String,
     }
 
     #[derive(Serialize)]
     pub struct Confirm {
         pub deleted: bool,
+        pub commit: String,
+        pub version: String,
     }
 }
 
@@ -217,6 +223,8 @@ fn verify(
                 verified: true,
                 userid: userid.to_string(),
                 fpr: fpr.to_string(),
+                version: env!("VERGEN_SEMVER").to_string(),
+                commit: env!("VERGEN_SHA_SHORT").to_string(),
             };
 
             Ok(Template::render("verify", context))
@@ -226,6 +234,8 @@ fn verify(
                 verified: false,
                 userid: "".into(),
                 fpr: "".into(),
+                version: env!("VERGEN_SEMVER").to_string(),
+                commit: env!("VERGEN_SHA_SHORT").to_string(),
             };
 
             Ok(Template::render("verify", context))
@@ -255,6 +265,8 @@ fn delete(
             let context = templates::Delete {
                 fpr: fpr.to_string(),
                 token: token.clone(),
+                version: env!("VERGEN_SEMVER").to_string(),
+                commit: env!("VERGEN_SHA_SHORT").to_string(),
             };
 
             for uid in uids {
@@ -278,12 +290,20 @@ fn confirm(
 ) -> result::Result<Template, Custom<String>> {
     match db.confirm_deletion(&token) {
         Ok(true) => {
-            let context = templates::Confirm { deleted: true };
+            let context = templates::Confirm {
+                deleted: true,
+                version: env!("VERGEN_SEMVER").to_string(),
+                commit: env!("VERGEN_SHA_SHORT").to_string(),
+            };
 
             Ok(Template::render("confirm", context))
         }
         Ok(false) | Err(_) => {
-            let context = templates::Confirm { deleted: false };
+            let context = templates::Confirm {
+                deleted: false,
+                version: env!("VERGEN_SEMVER").to_string(),
+                commit: env!("VERGEN_SHA_SHORT").to_string(),
+            };
 
             Ok(Template::render("confirm", context))
         }
