@@ -118,7 +118,7 @@ pub trait Database: Sync + Send {
 
     fn strip_userids(tpk: TPK) -> Result<TPK> {
         let pile = tpk
-            .to_packet_pile()
+            .into_packet_pile()
             .into_children()
             .filter(|pkt| {
                 match pkt {

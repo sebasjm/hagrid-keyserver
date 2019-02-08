@@ -153,7 +153,7 @@ pub fn test_uid_verification<D: Database>(db: &mut D) {
     // publish w/ one uid less
     {
         let packets =
-            tpk.clone().to_packet_pile().into_children().filter(|pkt| {
+            tpk.clone().into_packet_pile().into_children().filter(|pkt| {
                 match pkt {
                     Packet::UserID(ref uid) => *uid != uid1,
                     _ => true,
@@ -190,7 +190,7 @@ pub fn test_uid_verification<D: Database>(db: &mut D) {
     {
         let mut packets = tpk
             .clone()
-            .to_packet_pile()
+            .into_packet_pile()
             .into_children()
             .filter(|pkt| {
                 match pkt {
@@ -244,7 +244,9 @@ pub fn test_reupload<D: Database>(db: &mut D) {
     let tpk = TPKBuilder::default()
         .add_userid(str_uid1)
         .add_userid(str_uid2)
-        .generate().unwrap().0;
+        .generate()
+        .unwrap()
+        .0;
     let mut uid1 = UserID::new();
     let mut uid2 = UserID::new();
 
@@ -270,12 +272,8 @@ pub fn test_reupload<D: Database>(db: &mut D) {
 
 pub fn test_uid_replacement<D: Database>(db: &mut D) {
     let str_uid = "Test A <test_a@example.com>";
-    let tpk1 = TPKBuilder::default()
-        .add_userid(str_uid)
-        .generate().unwrap().0;
-     let tpk2 = TPKBuilder::default()
-        .add_userid(str_uid)
-        .generate().unwrap().0;
+    let tpk1 = TPKBuilder::default().add_userid(str_uid).generate().unwrap().0;
+    let tpk2 = TPKBuilder::default().add_userid(str_uid).generate().unwrap().0;
 
     let email = Email::from_str(str_uid).unwrap();
     let fpr1 = tpk1.fingerprint();
@@ -286,14 +284,20 @@ pub fn test_uid_replacement<D: Database>(db: &mut D) {
 
     // verify 1st uid
     assert!(db.verify_token(&tokens[0].1).unwrap().is_some());
-    assert_eq!(TPK::from_bytes(&db.by_email(&email).unwrap()).unwrap().fingerprint(), fpr1);
+    assert_eq!(
+        TPK::from_bytes(&db.by_email(&email).unwrap()).unwrap().fingerprint(),
+        fpr1
+    );
 
     // replace
     let tokens = db.merge_or_publish(tpk2.clone()).unwrap();
 
     assert!(db.by_email(&email).is_none());
     assert!(db.verify_token(&tokens[0].1).unwrap().is_some());
-    assert_eq!(TPK::from_bytes(&db.by_email(&email).unwrap()).unwrap().fingerprint(), fpr2);
+    assert_eq!(
+        TPK::from_bytes(&db.by_email(&email).unwrap()).unwrap().fingerprint(),
+        fpr2
+    );
 }
 
 pub fn test_uid_deletion<D: Database>(db: &mut D) {
@@ -470,7 +474,7 @@ pub fn test_uid_revocation<D: Database>(db: &mut D) {
         .unwrap()
     };
     assert_eq!(sig.sigtype(), SignatureType::CertificateRevocation);
-    let tpk = tpk.merge_packets(vec![sig.to_packet()]).unwrap();
+    let tpk = tpk.merge_packets(vec![sig.into()]).unwrap();
     let tokens = db.merge_or_publish(tpk.clone()).unwrap();
     assert_eq!(tokens.len(), 0);
 
