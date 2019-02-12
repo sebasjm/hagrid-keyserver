@@ -1,4 +1,6 @@
 /node_modules
 /target
 **/*.rs.bk
-/dist
+/dist/public/by-*
+/dist/verification_tokens/*
+/dist/deletion_tokens/*

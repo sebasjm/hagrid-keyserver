@@ -1,0 +1,13 @@
+{{#> layout}}
+{{#if verified }}
+  <h1>Email verified</h1>
+  <p>You've verified <em>{{ userid }}</em> successfully. Everybody who knows
+  your email address is now able to find your key. You can <a href="/vks/delete/{{
+  fpr }}">delete</a> your key any time you want.</p>
+{{else}}
+  <h1>Email verification failed</h1>
+  <p>We don't recognize the token you provided. It's either wrong or expired.
+  Upload your key again to get another verification token sent to you.</p>
+{{/if}}
+{{/layout}}
+
