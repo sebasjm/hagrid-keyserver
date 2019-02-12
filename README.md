@@ -34,7 +34,7 @@ OpenKeychain can use it directly. The differences to SKS are
  - `mp=1` is always assumed,
  - only exact matches for user IDs are returned,
  - `op=index` returns either one or no keys and
- - all packets that aren't public keys, user IDs or signatures are filters out.
+ - all packets that aren't public keys, user IDs or signatures are filtered out.
 
 Uploading a key via the HKP interface will trigger verification emails to be
 send.
@@ -43,9 +43,9 @@ Hagrid has it's own URL scheme to fetch keys, verify user IDs and delete keys.
 It's meant to be machine readable, but it's not a REST API. The following URLs
 are handled.
 
-- `GET /by-fpr<fingerprint>` retrieves the key with the given fingerprint.
-- `GET /by-kid<key ID>` retrieves the key with the given long key ID.
-- `GET /by-email<URL-encoded user ID>` retrieves the key with the given user
+- `GET /by-fpr/<fingerprint>` retrieves the key with the given fingerprint.
+- `GET /by-kid/<key ID>` retrieves the key with the given long key ID.
+- `GET /by-email/<URL-encoded user ID>` retrieves the key with the given user
   ID. Only exact matches are accepted.
 - `GET /vks/verify/<token>` verifies a user ID using a token string send by
   email.
@@ -67,7 +67,8 @@ easiest way to get the toolchain is to download [rustup](https://rustup.rs).
 After rustup is installed, get the nightly compiler and tools:
 
 ```bash
-rustup default nightly
+cd hagrid
+rustup override set nightly
 ```
 
 The web server can now be built with the cargo command:
@@ -96,14 +97,14 @@ directories under `public/` to a writable location. Then start the server with
 the _absolute_ path to the directory as argument:
 
 ```bash
-mkdir /var/hagrid
-cp -R dist/* /var/hagrid
-hagrid /var/hagrid
+mkdir /var/lib/hagrid
+cp -R dist/* /var/lib/hagrid
+hagrid /var/lib/hagrid
 ```
 
 This will spawn the server in foreground, listening on `0.0.0.0:8080`. The
 `--listen` argument can be used to change port and listen address. The server
-will put all keys and runtime data under the base folder (`/var/hagrid`
+will put all keys and runtime data under the base folder (`/var/lib/hagrid`
 in the above example).
 
 Reverse Proxy
