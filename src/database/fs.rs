@@ -1,7 +1,7 @@
-use std::fs::{create_dir_all, read_link, remove_file, File};
+use std::fs::{create_dir, create_dir_all, read_link, remove_file, File};
 use std::io::{Read, Write};
 use std::os::unix::fs::symlink;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::str;
 
 use serde_json;
@@ -14,7 +14,23 @@ use Result;
 
 pub struct Filesystem {
     base: PathBuf,
+    base_by_keyid: PathBuf,
+    base_by_fingerprint: PathBuf,
+    base_by_email: PathBuf,
 }
+
+/// Returns the given path, ensuring that the parent directory exists.
+///
+/// Use this on paths returned by .path_to_* before creating the
+/// object.
+fn ensure_parent(path: &Path) -> Result<&Path> {
+    let parent = path.parent().unwrap();
+    if ! parent.exists() {
+        create_dir(parent)?;
+    }
+    Ok(path)
+}
+
 
 impl Filesystem {
     pub fn new<P: Into<PathBuf>>(base: P) -> Result<Self> {
@@ -59,12 +75,36 @@ impl Filesystem {
         create_dir_all(base.join("verification_tokens"))?;
         create_dir_all(base.join("deletion_tokens"))?;
         create_dir_all(base.join("scratch_pad"))?;
-        create_dir_all(base.join("public").join("by-fpr"))?;
-        create_dir_all(base.join("public").join("by-email"))?;
-        create_dir_all(base.join("public").join("by-kid"))?;
+
+        let base_by_keyid = base.join("public").join("by-keyid");
+        let base_by_fingerprint = base.join("public").join("by-fingerprint");
+        let base_by_email = base.join("public").join("by-email");
+        create_dir_all(&base_by_keyid)?;
+        create_dir_all(&base_by_fingerprint)?;
+        create_dir_all(&base_by_email)?;
 
         info!("Opened base dir '{}'", base.display());
-        Ok(Filesystem { base: base })
+        Ok(Filesystem {
+            base: base,
+            base_by_keyid: base_by_keyid,
+            base_by_fingerprint: base_by_fingerprint,
+            base_by_email: base_by_email,
+        })
+    }
+
+    /// Returns the path to the given KeyID.
+    fn path_to_keyid(&self, keyid: &KeyID) -> PathBuf {
+        self.base_by_keyid.join(keyid.to_string())
+    }
+
+    /// Returns the path to the given Fingerprint.
+    fn path_to_fingerprint(&self, fingerprint: &Fingerprint) -> PathBuf {
+        self.base_by_fingerprint.join(fingerprint.to_string())
+    }
+
+    /// Returns the path to the given Email.
+    fn path_to_email(&self, email: &str) -> PathBuf {
+        self.base_by_email.join(email.to_string())
     }
 
     fn new_token<'a>(&self, base: &'a str) -> Result<(File, String)> {
@@ -116,8 +156,7 @@ impl Database for Filesystem {
     fn compare_and_swap(
         &self, fpr: &Fingerprint, old: Option<&[u8]>, new: Option<&[u8]>,
     ) -> Result<bool> {
-        let target =
-            self.base.join("public").join("by-fpr").join(fpr.to_string());
+        let target = self.path_to_fingerprint(fpr);
         let dir = self.base.join("scratch_pad");
 
         match new {
@@ -137,7 +176,7 @@ impl Database for Filesystem {
                         );
                     }
                 }
-                let _ = tmp.persist(&target)?;
+                let _ = tmp.persist(ensure_parent(&target)?)?;
 
                 // fix permissions to 640
                 if cfg!(unix) {
@@ -161,30 +200,25 @@ impl Database for Filesystem {
         let email =
             url::form_urlencoded::byte_serialize(email.to_string().as_bytes())
                 .collect::<String>();
-        let target =
-            self.base.join("public").join("by-fpr").join(fpr.to_string());
-        let link = self.base.join("public").join("by-email").join(email);
+        let target = self.path_to_fingerprint(fpr);
+        let link = self.path_to_email(&email);
 
         if link.exists() {
             let _ = remove_file(link.clone());
         }
 
-        let _ = symlink(target, link);
+        let _ = symlink(target, ensure_parent(&link).unwrap());
     }
 
     fn unlink_email(&self, email: &Email, fpr: &Fingerprint) {
         let email =
             url::form_urlencoded::byte_serialize(email.to_string().as_bytes())
                 .collect::<String>();
-        let link = self.base.join("public").join("by-email").join(email);
+        let link = self.path_to_email(&email);
 
         match read_link(link.clone()) {
             Ok(target) => {
-                let expected = self
-                    .base
-                    .join("public")
-                    .join("by-fpr")
-                    .join(fpr.to_string());
+                let expected = self.path_to_fingerprint(fpr);
 
                 if target == expected {
                     let _ = remove_file(link);
@@ -195,29 +229,22 @@ impl Database for Filesystem {
     }
 
     fn link_kid(&self, kid: &KeyID, fpr: &Fingerprint) {
-        let target =
-            self.base.join("public").join("by-fpr").join(fpr.to_string());
-        let link =
-            self.base.join("public").join("by-kid").join(kid.to_string());
+        let target = self.path_to_fingerprint(fpr);
+        let link = self.path_to_keyid(kid);
 
         if link.exists() {
             let _ = remove_file(link.clone());
         }
 
-        let _ = symlink(target, link);
+        let _ = symlink(target, ensure_parent(&link).unwrap());
     }
 
     fn unlink_kid(&self, kid: &KeyID, fpr: &Fingerprint) {
-        let link =
-            self.base.join("public").join("by-kid").join(kid.to_string());
+        let link = self.path_to_keyid(kid);
 
         match read_link(link.clone()) {
             Ok(target) => {
-                let expected = self
-                    .base
-                    .join("public")
-                    .join("by-fpr")
-                    .join(fpr.to_string());
+                let expected = self.path_to_fingerprint(fpr);
 
                 if target == expected {
                     let _ = remove_file(link);
@@ -228,10 +255,8 @@ impl Database for Filesystem {
     }
 
     fn link_fpr(&self, from: &Fingerprint, fpr: &Fingerprint) {
-        let target =
-            self.base.join("public").join("by-fpr").join(fpr.to_string());
-        let link =
-            self.base.join("public").join("by-fpr").join(from.to_string());
+        let target = self.path_to_fingerprint(fpr);
+        let link = self.path_to_fingerprint(from);
 
         if link == target {
             return;
@@ -245,20 +270,15 @@ impl Database for Filesystem {
             }
         }
 
-        let _ = symlink(target, link);
+        let _ = symlink(target, ensure_parent(&link).unwrap());
     }
 
     fn unlink_fpr(&self, from: &Fingerprint, fpr: &Fingerprint) {
-        let link =
-            self.base.join("public").join("by-fpr").join(from.to_string());
+        let link = self.path_to_fingerprint(from);
 
         match read_link(link.clone()) {
             Ok(target) => {
-                let expected = self
-                    .base
-                    .join("public")
-                    .join("by-fpr")
-                    .join(fpr.to_string());
+                let expected = self.path_to_fingerprint(fpr);
 
                 if target == expected {
                     let _ = remove_file(link);
@@ -287,8 +307,7 @@ impl Database for Filesystem {
 
     // XXX: slow
     fn by_fpr(&self, fpr: &Fingerprint) -> Option<Box<[u8]>> {
-        let target =
-            self.base.join("public").join("by-fpr").join(fpr.to_string());
+        let target = self.path_to_fingerprint(fpr);
 
         File::open(target).ok().and_then(|mut fd| {
             let mut buf = Vec::default();
@@ -307,7 +326,7 @@ impl Database for Filesystem {
         let email =
             url::form_urlencoded::byte_serialize(email.to_string().as_bytes())
                 .collect::<String>();
-        let path = self.base.join("public").join("by-email").join(email);
+        let path = self.path_to_email(&email);
 
         fs::canonicalize(path)
             .ok()
@@ -335,8 +354,7 @@ impl Database for Filesystem {
     fn by_kid(&self, kid: &KeyID) -> Option<Box<[u8]>> {
         use std::fs;
 
-        let path =
-            self.base.join("public").join("by-kid").join(kid.to_string());
+        let path = self.path_to_keyid(kid);
 
         fs::canonicalize(path)
             .ok()
