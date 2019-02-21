@@ -57,7 +57,7 @@ impl TryFrom<sequoia_openpgp::Fingerprint> for Fingerprint {
 
 impl ToString for Fingerprint {
     fn to_string(&self) -> String {
-        format!("0x{}", hex::encode(&self.0[..]))
+        hex::encode(&self.0[..])
     }
 }
 
@@ -86,12 +86,16 @@ impl<'de> Deserialize<'de> for Fingerprint {
 impl FromStr for Fingerprint {
     type Err = Error;
 
-    fn from_str(s: &str) -> Result<Fingerprint> {
-        if !s.starts_with("0x") || s.len() != 40 + 2 {
+    fn from_str(mut s: &str) -> Result<Fingerprint> {
+        if s.starts_with("0x") {
+            s = &s[2..];
+        }
+
+        if s.len() != 40 {
             return Err(format!("'{}' is not a valid fingerprint", s).into());
         }
 
-        let vec = hex::decode(&s[2..])?;
+        let vec = hex::decode(s)?;
         if vec.len() == 20 {
             let mut arr = [0u8; 20];
 
@@ -130,19 +134,23 @@ impl From<Fingerprint> for KeyID {
 
 impl ToString for KeyID {
     fn to_string(&self) -> String {
-        format!("0x{}", hex::encode(&self.0[..]))
+        hex::encode(&self.0[..])
     }
 }
 
 impl FromStr for KeyID {
     type Err = Error;
 
-    fn from_str(s: &str) -> Result<KeyID> {
-        if !s.starts_with("0x") || s.len() != 16 + 2 {
+    fn from_str(mut s: &str) -> Result<KeyID> {
+        if s.starts_with("0x") {
+            s = &s[2..];
+        }
+
+        if s.len() != 16 {
             return Err(format!("'{}' is not a valid long key ID", s).into());
         }
 
-        let vec = hex::decode(&s[2..])?;
+        let vec = hex::decode(s)?;
         if vec.len() == 8 {
             let mut arr = [0u8; 8];
 
