@@ -43,8 +43,9 @@ Hagrid has it's own URL scheme to fetch keys, verify user IDs and delete keys.
 It's meant to be machine readable, but it's not a REST API. The following URLs
 are handled.
 
-- `GET /by-fpr/<fingerprint>` retrieves the key with the given fingerprint.
-- `GET /by-kid/<key ID>` retrieves the key with the given long key ID.
+- `GET /by-fingerprint/<fingerprint>` retrieves the key with the given
+  fingerprint.
+- `GET /by-keyid/<key ID>` retrieves the key with the given long key ID.
 - `GET /by-email/<URL-encoded user ID>` retrieves the key with the given user
   ID. Only exact matches are accepted.
 - `GET /vks/verify/<token>` verifies a user ID using a token string send by

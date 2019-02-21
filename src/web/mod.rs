@@ -153,8 +153,8 @@ fn key_to_response<'a, 'b>(bytes: &'a [u8]) -> Response<'b> {
     }
 }
 
-#[get("/by-fpr/<fpr>")]
-fn by_fpr(db: rocket::State<Polymorphic>, fpr: String) -> Response {
+#[get("/by-fingerprint/<fpr>")]
+fn by_fingerprint(db: rocket::State<Polymorphic>, fpr: String) -> Response {
     use rocket::http::{ContentType, Status};
     use std::io::Cursor;
 
@@ -197,8 +197,8 @@ fn by_email(db: rocket::State<Polymorphic>, email: String) -> Response {
     }
 }
 
-#[get("/by-kid/<kid>")]
-fn by_kid(db: rocket::State<Polymorphic>, kid: String) -> Response {
+#[get("/by-keyid/<kid>")]
+fn by_keyid(db: rocket::State<Polymorphic>, kid: String) -> Response {
     use rocket::http::{ContentType, Status};
     use std::io::Cursor;
 
@@ -504,8 +504,8 @@ pub fn serve(opt: &Opt, db: Polymorphic) -> Result<()> {
         files,
         // nginx-supported lookup
         by_email,
-        by_fpr,
-        by_kid,
+        by_fingerprint,
+        by_keyid,
         // HKP
         lookup,
         upload::multipart_upload,
