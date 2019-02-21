@@ -61,9 +61,7 @@ show up until at least one user ID is verified.
 Building
 --------
 
-Hagrid consists of a Rust and a NPM project. While the web server is
-implemented in Rust, templates and CSS is bundled using NPM and Webpack.
-Building the Rust part requires a working nightly Rust toolchain. The
+Building Hagrid requires a working nightly Rust toolchain. The
 easiest way to get the toolchain is to download [rustup](https://rustup.rs).
 After rustup is installed, get the nightly compiler and tools:
 
@@ -85,15 +83,7 @@ After compilation a binary is placed in `target/release/` called
 cp target/release/hagrid /usr/local/bin
 ```
 
-Bundling the web assets requires npm 8 or later. After you have npm installed
-fetch all dependencies and build the assets:
-
-```bash
-npm install
-npm run build
-```
-
-The web assets are placed in `dist/`. To deploy the key server copy all
+To deploy the key server copy all
 directories under `public/` to a writable location. Then start the server with
 the _absolute_ path to the directory as argument:
 
