@@ -210,7 +210,7 @@ pub fn test_uid_verification<D: Database>(db: &mut D) {
 
         packets.push(Packet::UserID(uid3.clone()));
         packets
-            .push(Packet::Signature(bind.selfsigs()[1].clone()));
+            .push(Packet::Signature(bind.selfsigs()[0].clone()));
 
         let pile : PacketPile = packets.into();
         let ext_tpk = TPK::from_packet_pile(pile).unwrap();
