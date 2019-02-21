@@ -159,7 +159,7 @@ pub fn test_uid_verification<D: Database>(db: &mut D) {
                     _ => true,
                 }
             });
-        let pile = PacketPile::from_packets(packets.collect());
+        let pile : PacketPile = packets.collect::<Vec<Packet>>().into();
         let short_tpk = TPK::from_packet_pile(pile).unwrap();
 
         assert_eq!(
@@ -205,13 +205,14 @@ pub fn test_uid_verification<D: Database>(db: &mut D) {
 
         let email3 = Email::from_str(str_uid3).unwrap();
         let key = tpk.primary();
-        let bind = UserIDBinding::new(key, uid3.clone(), key).unwrap();
+        let mut signer = key.clone().into_keypair().unwrap();
+        let bind = UserIDBinding::new(key, uid3.clone(), &mut signer).unwrap();
 
         packets.push(Packet::UserID(uid3.clone()));
         packets
-            .push(Packet::Signature(bind.selfsigs().next().unwrap().clone()));
+            .push(Packet::Signature(bind.selfsigs()[1].clone()));
 
-        let pile = PacketPile::from_packets(packets);
+        let pile : PacketPile = packets.into();
         let ext_tpk = TPK::from_packet_pile(pile).unwrap();
         let tokens = db.merge_or_publish(ext_tpk.clone()).unwrap();
 

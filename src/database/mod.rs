@@ -4,7 +4,7 @@ use std::result;
 
 use sequoia_openpgp::{
     constants::SignatureType, packet::Signature, packet::UserID, parse::Parse,
-    Packet, PacketPile, TPK,
+    Packet, TPK,
 };
 use serde::{Deserialize, Deserializer, Serializer};
 use time;
@@ -52,7 +52,7 @@ where
 
 impl Verify {
     pub fn new(
-        uid: &UserID, sig: &[&Signature], fpr: Fingerprint,
+        uid: &UserID, sig: &[Signature], fpr: Fingerprint,
     ) -> Result<Self> {
         use sequoia_openpgp::serialize::Serialize;
 
@@ -132,7 +132,7 @@ pub trait Database: Sync + Send {
             })
             .collect::<Vec<_>>();
 
-        TPK::from_packet_pile(PacketPile::from_packets(pile))
+        TPK::from_packet_pile(pile.into())
             .map_err(|e| format!("openpgp: {}", e).into())
     }
 
@@ -217,7 +217,7 @@ pub trait Database: Sync + Send {
                     } else {
                         let payload = Verify::new(
                             uid.userid(),
-                            &uid.selfsigs().collect::<Vec<_>>(),
+                            uid.selfsigs(),
                             fpr.clone(),
                         )?;
 
