@@ -94,17 +94,23 @@ impl Filesystem {
 
     /// Returns the path to the given KeyID.
     fn path_to_keyid(&self, keyid: &KeyID) -> PathBuf {
-        self.base_by_keyid.join(keyid.to_string())
+        let hex = keyid.to_string();
+        self.base_by_keyid.join(&hex[..2]).join(&hex[2..])
     }
 
     /// Returns the path to the given Fingerprint.
     fn path_to_fingerprint(&self, fingerprint: &Fingerprint) -> PathBuf {
-        self.base_by_fingerprint.join(fingerprint.to_string())
+        let hex = fingerprint.to_string();
+        self.base_by_fingerprint.join(&hex[..2]).join(&hex[2..])
     }
 
     /// Returns the path to the given Email.
     fn path_to_email(&self, email: &str) -> PathBuf {
-        self.base_by_email.join(email.to_string())
+        if email.len() > 2 {
+            self.base_by_email.join(&email[..2]).join(&email[2..])
+        } else {
+            self.base_by_email.join(email)
+        }
     }
 
     fn new_token<'a>(&self, base: &'a str) -> Result<(File, String)> {
