@@ -37,7 +37,7 @@ code {
 
 .manageEmail, .searchTerm, .fileUpload {
   flex-grow: 1;
-  border: 3px solid #4aa3ff;
+  border: 3px solid;
   padding: 5px;
   height: 20px;
   border-radius: 5px;
@@ -46,20 +46,37 @@ code {
   border-top-right-radius: 0;
 }
 
+.manageEmail {
+  border-color: #d93838;
+}
+
+.searchTerm, .fileUpload {
+  border-color: #4aa3ff;
+}
+
 .iconButton {
   width: 40px;
 }
 
 .button {
   height: 36px;
-  border: 1px solid #4aa3ff;
-  background: #4aa3ff;
+  border: 1px solid;
   text-align: center;
   color: #fff;
   border-radius: 5px;
   cursor: pointer;
   font-size: 20px;
   font-family: inherit;
+}
+
+.manageButton {
+  border-color: #d93838;
+  background: #d93838;
+}
+
+.searchButton, .uploadButton {
+  border-color: #4aa3ff;
+  background: #4aa3ff;
 }
 
 .searchButton, .manageButton, .uploadButton {
