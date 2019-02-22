@@ -6,6 +6,8 @@ use sequoia_openpgp::{
     constants::SignatureType, packet::Signature, packet::UserID, parse::Parse,
     Packet, TPK,
 };
+use sequoia_openpgp::PacketPile;
+
 use serde::{Deserialize, Deserializer, Serializer};
 use time;
 use types::{Email, Fingerprint, KeyID};
@@ -293,10 +295,13 @@ pub trait Database: Sync + Send {
 
                 match self.by_fpr(&fpr).map(|x| x.to_vec()) {
                     Some(old) => {
-                        let mut new = old.clone();
-                        new.extend(packets.into_iter());
 
-                        self.update(&fpr, Some(&new))?;
+                        let tpk = TPK::from_bytes(&old).unwrap();
+                        let packet_pile = PacketPile::from_bytes(&packets)
+                            .unwrap().into_children().collect::<Vec<_>>();
+                        let new = tpk.merge_packets(packet_pile).unwrap();
+
+                        self.update(&fpr, Some(&Self::tpk_into_bytes(&new).unwrap()))?;
                         self.link_email(&email, &fpr)?;
                         return Ok(Some((email.clone(), fpr.clone())));
                     }

@@ -9,6 +9,8 @@ use tempfile;
 use url;
 use pathdiff::diff_paths;
 
+use sequoia_openpgp::armor::{Writer, Kind};
+
 use database::{Database, Delete, Verify};
 use types::{Email, Fingerprint, KeyID};
 use Result;
@@ -170,7 +172,13 @@ impl Database for Filesystem {
                     .prefix("key")
                     .rand_bytes(16)
                     .tempfile_in(dir)?;
-                tmp.write_all(new)?;
+
+                {
+                    let mut armor_writer = Writer::new(&mut tmp, Kind::PublicKey,
+                                                       &[][..])?;
+
+                    armor_writer.write_all(new)?;
+                }
 
                 let _ = tmp.persist(ensure_parent(&target)?)?;
 
