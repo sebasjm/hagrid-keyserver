@@ -160,14 +160,14 @@ impl Filesystem {
 
     /// Returns the path to the given KeyID.
     fn path_to_keyid(&self, keyid: &openpgp::KeyID) -> PathBuf {
-        let hex = keyid.to_hex().to_lowercase();
+        let hex = keyid.to_hex();
         self.base_by_keyid.join(&hex[..2]).join(&hex[2..])
     }
 
     /// Returns the path to the given Fingerprint.
     fn path_to_fingerprint(&self, fingerprint: &openpgp::Fingerprint)
                            -> PathBuf {
-        let hex = fingerprint.to_hex().to_lowercase();
+        let hex = fingerprint.to_hex();
         self.base_by_fingerprint.join(&hex[..2]).join(&hex[2..])
     }
 

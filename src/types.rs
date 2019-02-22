@@ -56,7 +56,7 @@ impl TryFrom<sequoia_openpgp::Fingerprint> for Fingerprint {
 
 impl ToString for Fingerprint {
     fn to_string(&self) -> String {
-        hex::encode(&self.0[..])
+        hex::encode_upper(&self.0[..])
     }
 }
 
@@ -133,7 +133,7 @@ impl From<Fingerprint> for KeyID {
 
 impl ToString for KeyID {
     fn to_string(&self) -> String {
-        hex::encode(&self.0[..])
+        hex::encode_upper(&self.0[..])
     }
 }
 
