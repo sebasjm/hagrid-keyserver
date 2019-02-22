@@ -198,7 +198,12 @@ impl Database for Filesystem {
         let link = self.path_to_email(&email);
 
         if link.exists() {
-            remove_file(link.clone())?;
+            match link.symlink_metadata() {
+                Ok(ref meta) if meta.file_type().is_symlink() => {
+                    remove_file(link.clone())?;
+                }
+                _ => {}
+            }
         }
 
         symlink(target, ensure_parent(&link)?)?;
@@ -229,7 +234,12 @@ impl Database for Filesystem {
         let link = self.path_to_keyid(kid);
 
         if link.exists() {
-            remove_file(link.clone())?;
+            match link.symlink_metadata() {
+                Ok(ref meta) if meta.file_type().is_symlink() => {
+                    remove_file(link.clone())?;
+                }
+                _ => {}
+            }
         }
 
         symlink(target, ensure_parent(&link)?)?;
@@ -260,7 +270,7 @@ impl Database for Filesystem {
             return Ok(());
         }
         if link.exists() {
-            match link.metadata() {
+            match link.symlink_metadata() {
                 Ok(ref meta) if meta.file_type().is_symlink() => {
                     remove_file(link.clone())?;
                 }
