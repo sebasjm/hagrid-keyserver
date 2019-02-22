@@ -39,8 +39,8 @@ where
         .from(from)
         .subject(subject)
         .alternative(
-            html.ok_or("Email template failed to render")?,
-            txt.ok_or("Email template failed to render")?,
+            html.ok_or(failure::err_msg("Email template failed to render"))?,
+            txt.ok_or(failure::err_msg("Email template failed to render"))?,
         )
         .build()
         .unwrap();

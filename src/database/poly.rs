@@ -1,5 +1,5 @@
 use database::{Database, Delete, Filesystem, Memory, Verify};
-use errors::Result;
+use Result;
 use types::{Email, Fingerprint, KeyID};
 
 pub enum Polymorphic {

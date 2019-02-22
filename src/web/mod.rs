@@ -10,13 +10,12 @@ use rocket_contrib::templates::Template;
 use serde::Serialize;
 use handlebars::Handlebars;
 
-use std::error;
 use std::path::{Path, PathBuf};
 
 mod upload;
 
 use database::{Database, Polymorphic};
-use errors::Result;
+use Result;
 use types::{Email, Fingerprint, KeyID};
 use Opt;
 
@@ -66,9 +65,9 @@ impl MyResponse {
         MyResponse::Plain(s)
     }
 
-    pub fn ise<E: error::Error>(e: E) -> Self {
+    pub fn ise(e: failure::Error) -> Self {
         let ctx = templates::FiveHundred{
-            error: format!("{:?}", e),
+            error: format!("{}", e),
             version: env!("VERGEN_SEMVER").to_string(),
             commit: env!("VERGEN_SHA_SHORT").to_string(),
         };
@@ -208,7 +207,7 @@ fn key_to_response<'a>(query: String, domain: String, bytes: &'a [u8]) -> MyResp
 
     let key = match TPK::from_bytes(bytes) {
         Ok(key) => key,
-        Err(err) => { return MyResponse::ise(err.compat()); }
+        Err(err) => { return MyResponse::ise(err); }
     };
     let fpr = key.primary().fingerprint();
     let armored_res = || -> Result<String> {
@@ -242,7 +241,7 @@ fn key_to_hkp_index<'a>(bytes: &'a [u8]) -> MyResponse {
 
    let tpk = match TPK::from_bytes(bytes) {
         Ok(tpk) => tpk,
-        Err(err) => { return MyResponse::ise(err.compat()); }
+        Err(err) => { return MyResponse::ise(err); }
     };
     let mut out = String::default();
     let p = tpk.primary();
@@ -550,11 +549,12 @@ pub fn serve(opt: &Opt, db: Polymorphic) -> Result<()> {
             opt.base
                 .join("templates")
                 .to_str()
-                .ok_or("Template path invalid")?,
+                .ok_or(failure::err_msg("Template path invalid"))?,
         )
         .extra(
             "static_dir",
-            opt.base.join("public").to_str().ok_or("Static path invalid")?,
+            opt.base.join("public").to_str()
+                .ok_or(failure::err_msg("Static path invalid"))?,
         )
         .extra("domain", opt.domain.clone())
         .extra("from", opt.from.clone())

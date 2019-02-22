@@ -183,7 +183,8 @@ where
     use sequoia_openpgp::TPK;
 
     let tpk = TPK::from_reader(reader).map_err(|err| err.to_string())?;
-    let tokens = db.merge_or_publish(tpk)?;
+    let tokens = db.merge_or_publish(tpk)
+        .map_err(|e| format!("{}", e))?;
     let mut results: Vec<String> = vec!();
 
     for (email,token) in tokens {
@@ -193,7 +194,7 @@ where
             mail_templates,
             domain,
             from,
-            )?;
+        ).map_err(|e| format!("{}", e))?;
         results.push(email.to_string());
     }
 

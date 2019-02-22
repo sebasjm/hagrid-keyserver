@@ -5,11 +5,11 @@ authors = ["Kai Michaelis <kai@sequoia-pgp.org>"]
 build = "build.rs"
 
 [dependencies]
+failure = "0.1.5"
 rocket = "0"
 rocket_codegen = "0"
 sequoia-openpgp =  { git = "https://gitlab.com/sequoia-pgp/sequoia.git", rev = "e07bb25de0b2291088f88dc5360f3d04f702049c" }
 multipart = "0"
-error-chain = "0"
 log = "0"
 rand = "0.5"
 serde = "1.0"

@@ -2,6 +2,10 @@
 #![recursion_limit = "1024"]
 #![feature(try_from)]
 
+extern crate failure;
+use failure::Error;
+use failure::Fallible as Result;
+
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
@@ -18,8 +22,6 @@ extern crate rocket_contrib;
 
 extern crate sequoia_openpgp;
 #[macro_use]
-extern crate error_chain;
-#[macro_use]
 extern crate log;
 extern crate base64;
 extern crate handlebars;
@@ -35,23 +37,6 @@ mod database;
 mod mail;
 mod types;
 mod web;
-
-mod errors {
-    error_chain! {
-        foreign_links {
-            Fmt(::std::fmt::Error);
-            Io(::std::io::Error);
-            Json(::serde_json::Error);
-            Persist(::tempfile::PersistError);
-            RktConfig(::rocket::config::ConfigError);
-            StringUtf8Error(::std::string::FromUtf8Error);
-            StrUtf8Error(::std::str::Utf8Error);
-            HexError(::hex::FromHexError);
-            SendmailError(::lettre::sendmail::error::Error);
-        }
-    }
-}
-use errors::*;
 
 use std::path::PathBuf;
 use structopt::StructOpt;

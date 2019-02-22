@@ -44,29 +44,22 @@ impl Filesystem {
             match meta {
                 Ok(meta) => {
                     if !meta.file_type().is_dir() {
-                        return Err(format!(
+                        return Err(failure::format_err!(
                             "'{}' exists already and is not a directory",
-                            base.display()
-                        )
-                        .into());
+                            base.display()));
                     }
 
                     if meta.permissions().readonly() {
-                        return Err(format!(
+                        return Err(failure::format_err!(
                             "Cannot write '{}'",
-                            base.display()
-                        )
-                        .into());
+                            base.display()));
                     }
                 }
 
                 Err(e) => {
-                    return Err(format!(
+                    return Err(failure::format_err!(
                         "Cannot read '{}': {}",
-                        base.display(),
-                        e
-                    )
-                    .into());
+                        base.display(), e));
                 }
             }
         }

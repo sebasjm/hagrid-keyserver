@@ -59,16 +59,10 @@ impl Verify {
         use sequoia_openpgp::serialize::Serialize;
 
         let mut cur = Cursor::new(Vec::default());
-        let res: Result<()> = uid
-            .serialize(&mut cur)
-            .map_err(|e| format!("sequoia_openpgp: {}", e).into());
-        res?;
+        uid.serialize(&mut cur)?;
 
         for s in sig {
-            let res: Result<()> = s
-                .serialize(&mut cur)
-                .map_err(|e| format!("sequoia_openpgp: {}", e).into());
-            res?;
+            s.serialize(&mut cur)?;
         }
 
         Ok(Verify {
@@ -144,8 +138,7 @@ pub trait Database: Sync + Send {
             })
             .collect::<Vec<_>>();
 
-        TPK::from_packet_pile(pile.into())
-            .map_err(|e| format!("openpgp: {}", e).into())
+        Ok(TPK::from_packet_pile(pile.into())?)
     }
 
     fn tpk_into_bytes(tpk: &TPK) -> Result<Vec<u8>> {
@@ -155,7 +148,6 @@ pub trait Database: Sync + Send {
         let mut cur = Cursor::new(Vec::default());
         tpk.serialize(&mut cur)
             .map(|_| cur.into_inner())
-            .map_err(|e| format!("{}", e).into())
     }
 
     fn link_subkeys(
@@ -311,7 +303,7 @@ pub trait Database: Sync + Send {
                     }
                 }
             }
-            None => Err("No such token".into()),
+            None => Err(failure::err_msg("No such token")),
         }
     }
 
@@ -326,7 +318,7 @@ pub trait Database: Sync + Send {
                     Ok(tpk) => tpk,
                     Err(e) => {
                         return Err(
-                            format!("Failed to parse TPK: {:?}", e).into()
+                            failure::format_err!("Failed to parse TPK: {:?}", e)
                         );
                     }
                 };
@@ -340,7 +332,7 @@ pub trait Database: Sync + Send {
                 Ok((tok, emails))
             }
 
-            None => Err("Unknown key".into()),
+            None => Err(failure::err_msg("Unknown key")),
         }
     }
 
@@ -365,11 +357,9 @@ pub trait Database: Sync + Send {
                             let tpk = match TPK::from_bytes(&old) {
                                 Ok(tpk) => tpk,
                                 Err(e) => {
-                                    return Err(format!(
+                                    return Err(failure::format_err!(
                                         "Failed to parse old TPK: {:?}",
-                                        e
-                                    )
-                                    .into());
+                                        e));
                                 }
                             };
 

@@ -48,9 +48,8 @@ impl TryFrom<sequoia_openpgp::Fingerprint> for Fingerprint {
     fn try_from(fpr: sequoia_openpgp::Fingerprint) -> Result<Self> {
         match fpr {
             sequoia_openpgp::Fingerprint::V4(a) => Ok(Fingerprint(a)),
-            sequoia_openpgp::Fingerprint::Invalid(_) => {
-                Err("invalid fingerprint".into())
-            }
+            sequoia_openpgp::Fingerprint::Invalid(_) =>
+                Err(failure::err_msg("invalid fingerprint")),
         }
     }
 }
@@ -92,7 +91,7 @@ impl FromStr for Fingerprint {
         }
 
         if s.len() != 40 {
-            return Err(format!("'{}' is not a valid fingerprint", s).into());
+            return Err(failure::format_err!("'{}' is not a valid fingerprint", s));
         }
 
         let vec = hex::decode(s)?;
@@ -102,7 +101,7 @@ impl FromStr for Fingerprint {
             arr.copy_from_slice(&vec[..]);
             Ok(Fingerprint(arr))
         } else {
-            Err(format!("'{}' is not a valid fingerprint", s).into())
+            Err(failure::format_err!("'{}' is not a valid fingerprint", s))
         }
     }
 }
@@ -117,7 +116,7 @@ impl TryFrom<sequoia_openpgp::Fingerprint> for KeyID {
         match fpr {
             sequoia_openpgp::Fingerprint::V4(a) => Ok(Fingerprint(a).into()),
             sequoia_openpgp::Fingerprint::Invalid(_) => {
-                Err("invalid fingerprint".into())
+                Err(failure::err_msg("invalid fingerprint"))
             }
         }
     }
@@ -147,7 +146,7 @@ impl FromStr for KeyID {
         }
 
         if s.len() != 16 {
-            return Err(format!("'{}' is not a valid long key ID", s).into());
+            return Err(failure::format_err!("'{}' is not a valid long key ID", s));
         }
 
         let vec = hex::decode(s)?;
@@ -157,13 +156,13 @@ impl FromStr for KeyID {
             arr.copy_from_slice(&vec[..]);
             Ok(KeyID(arr))
         } else {
-            Err(format!("'{}' is not a valid long key ID", s).into())
+            Err(failure::format_err!("'{}' is not a valid long key ID", s))
         }
     }
 }
 
-impl From<Error> for String {
-    fn from(error: Error) -> Self {
-        format!("{:?}", error)
-    }
-}
+// impl From<Error> for String {
+//     fn from(error: Error) -> Self {
+//         format!("{:?}", error)
+//     }
+// }
