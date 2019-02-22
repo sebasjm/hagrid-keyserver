@@ -43,22 +43,18 @@ impl Database for Memory {
         Ok(token)
     }
 
-    fn compare_and_swap(
-        &self, fpr: &Fingerprint, present: Option<&[u8]>, new: Option<&[u8]>,
-    ) -> Result<bool> {
+    fn update(
+        &self, fpr: &Fingerprint, new: Option<&[u8]>,
+    ) -> Result<()> {
         let mut fprs = self.fpr.lock();
 
-        if fprs.get(fpr).map(|x| &x[..]) == present {
-            if let Some(new) = new {
-                fprs.insert(fpr.clone(), new.into());
-            } else {
-                fprs.remove(fpr);
-            }
-
-            Ok(true)
+        if let Some(new) = new {
+            fprs.insert(fpr.clone(), new.into());
         } else {
-            Ok(false)
+            fprs.remove(fpr);
         }
+
+        Ok(())
     }
 
     fn link_fpr(&self, from: &Fingerprint, fpr: &Fingerprint) -> Result<()> {

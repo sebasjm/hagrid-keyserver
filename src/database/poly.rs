@@ -22,15 +22,15 @@ impl Database for Polymorphic {
         }
     }
 
-    fn compare_and_swap(
-        &self, fpr: &Fingerprint, present: Option<&[u8]>, new: Option<&[u8]>,
-    ) -> Result<bool> {
+    fn update(
+        &self, fpr: &Fingerprint, new: Option<&[u8]>,
+    ) -> Result<()> {
         match self {
             &Polymorphic::Memory(ref db) => {
-                db.compare_and_swap(fpr, present, new)
+                db.update(fpr, new)
             }
             &Polymorphic::Filesystem(ref db) => {
-                db.compare_and_swap(fpr, present, new)
+                db.update(fpr, new)
             }
         }
     }

@@ -157,9 +157,9 @@ impl Database for Filesystem {
         Ok(name)
     }
 
-    fn compare_and_swap(
-        &self, fpr: &Fingerprint, old: Option<&[u8]>, new: Option<&[u8]>,
-    ) -> Result<bool> {
+    fn update(
+        &self, fpr: &Fingerprint, new: Option<&[u8]>,
+    ) -> Result<()> {
         let target = self.path_to_fingerprint(fpr);
         let dir = self.base.join("scratch_pad");
 
@@ -181,14 +181,13 @@ impl Database for Filesystem {
                     let perm = Permissions::from_mode(0o640);
                     set_permissions(target, perm)?;
                 }
-
-                Ok(true)
             }
             None => {
                 remove_file(target)?;
-                Ok(true)
             }
         }
+
+        Ok(())
     }
 
     fn link_email(&self, email: &Email, fpr: &Fingerprint) -> Result<()> {

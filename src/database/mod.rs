@@ -94,9 +94,19 @@ pub trait Database: Sync + Send {
     fn new_verify_token(&self, payload: Verify) -> Result<String>;
     fn new_delete_token(&self, payload: Delete) -> Result<String>;
 
-    fn compare_and_swap(
-        &self, fpr: &Fingerprint, present: Option<&[u8]>, new: Option<&[u8]>,
-    ) -> Result<bool>;
+    // Update the data associated with `fpr` with the data in new.
+    //
+    // If new is None, this removes any associated data.
+    //
+    // This function updates the data atomically.  That is, readers
+    // can continue to read from the associated file and they will
+    // either have the old version or the new version, but never an
+    // inconsistent mix or a partial version.
+    //
+    // Note: it is up to the caller to serialize writes.
+    fn update(
+        &self, fpr: &Fingerprint, new: Option<&[u8]>,
+    ) -> Result<()>;
 
     fn link_email(&self, email: &Email, fpr: &Fingerprint) -> Result<()>;
     fn unlink_email(&self, email: &Email, fpr: &Fingerprint) -> Result<()>;
@@ -241,44 +251,27 @@ pub trait Database: Sync + Send {
             self.unlink_email(&email, &Fingerprint::try_from(fpr).unwrap())?;
         }
 
-        for _ in 0..100
-        /* while cas failed */
-        {
-            // merge or update key db
-            match self.by_fpr(&fpr).map(|x| x.to_vec()) {
-                Some(old) => {
-                    let new = TPK::from_bytes(&old).unwrap();
-                    let tpk = new.merge(tpk.clone()).unwrap();
-                    let new = Self::tpk_into_bytes(&tpk)?;
-
-                    if self.compare_and_swap(&fpr, Some(&old), Some(&new))? {
-                        self.link_subkeys(&fpr, subkeys)?;
-                        for email in verified_uids {
-                            self.link_email(&email, &fpr)?;
-                        }
-
-                        return Ok(active_uids);
-                    }
-                }
-
-                None => {
-                    let fresh = Self::tpk_into_bytes(&tpk)?;
-
-                    if self.compare_and_swap(&fpr, None, Some(&fresh))? {
-                        self.link_subkeys(&fpr, subkeys)?;
-
-                        return Ok(active_uids);
-                    }
-                }
+        // merge or update key db
+        let data = match self.by_fpr(&fpr).map(|x| x.to_vec()) {
+            Some(old) => {
+                let new = TPK::from_bytes(&old).unwrap();
+                let tpk = new.merge(tpk.clone()).unwrap();
+                Self::tpk_into_bytes(&tpk)?
             }
+
+            None => {
+                Self::tpk_into_bytes(&tpk)?
+            }
+        };
+
+        self.update(&fpr, Some(&data))?;
+
+        self.link_subkeys(&fpr, subkeys)?;
+        for email in verified_uids {
+            self.link_email(&email, &fpr)?;
         }
 
-        error!(
-            "Compare-and-swap of {} failed {} times in a row. Aborting.",
-            fpr.to_string(),
-            100
-        );
-        Err("Database update failed".into())
+        Ok(active_uids)
     }
 
     // if (uid, fpr) = pop-token(tok) {
@@ -298,26 +291,18 @@ pub trait Database: Sync + Send {
                     return Ok(None);
                 }
 
-                loop
-                /* while cas falied */
-                {
-                    match self.by_fpr(&fpr).map(|x| x.to_vec()) {
-                        Some(old) => {
-                            let mut new = old.clone();
-                            new.extend(packets.into_iter());
+                match self.by_fpr(&fpr).map(|x| x.to_vec()) {
+                    Some(old) => {
+                        let mut new = old.clone();
+                        new.extend(packets.into_iter());
 
-                            if self.compare_and_swap(
-                                &fpr,
-                                Some(&old),
-                                Some(&new),
-                            )? {
-                                self.link_email(&email, &fpr)?;
-                                return Ok(Some((email.clone(), fpr.clone())));
-                            }
-                        }
-                        None => {
-                            return Ok(None);
-                        }
+                        self.update(&fpr, Some(&new))?;
+                        self.link_email(&email, &fpr)?;
+                        return Ok(Some((email.clone(), fpr.clone())));
+                    }
+
+                    None => {
+                        return Ok(None);
                     }
                 }
             }
@@ -390,11 +375,7 @@ pub trait Database: Sync + Send {
                                 )?;
                             }
 
-                            while !self.compare_and_swap(
-                                &fpr,
-                                Some(&old),
-                                None,
-                            )? {}
+                            self.update(&fpr, None)?;
                             return Ok(true);
                         }
                         None => {
