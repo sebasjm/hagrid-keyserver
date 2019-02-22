@@ -76,16 +76,7 @@ impl MyResponse {
         MyResponse::ServerError(Template::render("500", ctx))
     }
 
-    pub fn not_found(query: &str) -> Self {
-        let context = templates::Search{
-            query: query.to_string(),
-            fpr: None,
-            armored: None,
-            domain: None,
-            version: env!("VERGEN_SEMVER").to_string(),
-            commit: env!("VERGEN_SHA_SHORT").to_string(),
-        };
-
+    pub fn not_found() -> Self {
         MyResponse::NotFound(Flash::error(Redirect::to("/?"), "Key not found".to_owned()))
     }
 }
@@ -208,10 +199,8 @@ impl<'a, 'r> FromRequest<'a, 'r> for queries::Hkp {
 }
 
 fn key_to_response<'a>(query: String, domain: String, armored: String) -> MyResponse {
-    use sequoia_openpgp::armor::{Kind, Writer};
     use sequoia_openpgp::TPK;
     use sequoia_openpgp::parse::Parse;
-    use sequoia_openpgp::serialize::Serialize;
     use std::convert::TryFrom;
 
     let key = match TPK::from_bytes(armored.as_bytes()) {
@@ -325,7 +314,7 @@ fn by_fingerprint(db: rocket::State<Polymorphic>, domain: rocket::State<Domain>,
 
     match maybe_key {
         Some(armored) => key_to_response(fpr, domain.0.clone(), armored),
-        None => MyResponse::not_found(&fpr),
+        None => MyResponse::not_found(),
     }
 }
 
@@ -338,7 +327,7 @@ fn by_email(db: rocket::State<Polymorphic>, domain: rocket::State<Domain>, email
 
     match maybe_key {
         Some(armored) => key_to_response(email, domain.0.clone(), armored),
-        None => MyResponse::not_found(&email),
+        None => MyResponse::not_found(),
 
     }
 }
@@ -352,7 +341,7 @@ fn by_keyid(db: rocket::State<Polymorphic>, domain: rocket::State<Domain>, kid: 
 
     match maybe_key {
         Some(armored) => key_to_response(kid, domain.0.clone(), armored),
-        None => MyResponse::not_found(&kid),
+        None => MyResponse::not_found(),
     }
 }
 
@@ -472,11 +461,11 @@ fn lookup(
         Some(queries::Hkp::Email { ref email, index }) => {
             (db.by_email(email), index)
         }
-        Some(queries::Hkp::Invalid { ref query }) => {
-            return MyResponse::not_found(query);
+        Some(queries::Hkp::Invalid { query: _ }) => {
+            return MyResponse::not_found();
         }
         None => {
-            return MyResponse::not_found("<invalid query string>");
+            return MyResponse::not_found();
         }
     };
     let query = format!("{}", key.unwrap());
@@ -493,18 +482,9 @@ fn lookup(
             if index {
                 MyResponse::plain("info:1:0\r\n".into())
             } else {
-                MyResponse::not_found(&query)
+                MyResponse::not_found()
             }
         }
-
-//        Some(armored) if !index => key_to_response(query, domain.0.clone(), armored),
-//        None if !index => MyResponse::not_found(&query),
-//
-//        Some(armored) if index => key_to_hkp_index(armored),
-//        None if index => MyResponse::plain("info:1:0\r\n".into()),
-//
-//
-//        _ => unreachable!(),
     }
 }
 
