@@ -1,13 +1,11 @@
 {{#> layout}}
-{{#if verified }}
-  <h1>Email verified</h1>
-  <p>You've verified <em>{{ userid }}</em> successfully. Everybody who knows
-  your email address is now able to find your key. You can <a href="/vks/delete/{{
-  fpr }}">delete</a> your key any time you want.</p>
-{{else}}
-  <h1>Email verification failed</h1>
-  <p>We don't recognize the token you provided. It's either wrong or expired.
-  Upload your key again to get another verification token sent to you.</p>
-{{/if}}
+  <div class="row">
+    {{#if verified }}
+      <p><b>Email verified.</b> You've verified <em>{{ userid }}</em> successfully. Everybody who knows your email address is now able to find your key. You can <a href="/vks/delete/{{ fpr }}">delete</a> your key any time you want.</p>
+    {{else}}
+      <p><b>Email verification failed.</b> We don't recognize the token you provided. It's either wrong or expired.
+      <a href="/upload">Upload</a> your key again to get another verification token sent to you.</p>
+    {{/if}}
+  </div>
 {{/layout}}
 

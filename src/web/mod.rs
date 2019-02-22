@@ -94,6 +94,7 @@ mod templates {
         pub verified: bool,
         pub userid: String,
         pub fpr: String,
+        pub domain: String,
         pub commit: String,
         pub version: String,
     }
@@ -360,12 +361,13 @@ fn by_keyid(db: rocket::State<Polymorphic>, domain: rocket::State<Domain>, kid: 
 
 #[get("/vks/verify/<token>")]
 fn verify(
-    db: rocket::State<Polymorphic>, token: String,
+    db: rocket::State<Polymorphic>, domain: rocket::State<Domain>, token: String,
 ) -> result::Result<Template, Custom<String>> {
     match db.verify_token(&token) {
         Ok(Some((userid, fpr))) => {
             let context = templates::Verify {
                 verified: true,
+                domain: domain.0.clone(),
                 userid: userid.to_string(),
                 fpr: fpr.to_string(),
                 version: env!("VERGEN_SEMVER").to_string(),
@@ -377,6 +379,7 @@ fn verify(
         Ok(None) | Err(_) => {
             let context = templates::Verify {
                 verified: false,
+                domain: domain.0.clone(),
                 userid: "".into(),
                 fpr: "".into(),
                 version: env!("VERGEN_SEMVER").to_string(),
