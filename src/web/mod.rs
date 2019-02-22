@@ -80,6 +80,7 @@ impl MyResponse {
             query: query.to_string(),
             fpr: None,
             armored: None,
+            domain: None,
             version: env!("VERGEN_SEMVER").to_string(),
             commit: env!("VERGEN_SHA_SHORT").to_string(),
         };
@@ -111,6 +112,7 @@ mod templates {
         pub query: String,
         pub fpr: Option<String>,
         pub armored: Option<String>,
+        pub domain: Option<String>,
         pub commit: String,
         pub version: String,
     }
@@ -197,11 +199,12 @@ impl<'a, 'r> FromRequest<'a, 'r> for queries::Hkp {
     }
 }
 
-fn key_to_response<'a>(query: String, bytes: &'a [u8]) -> MyResponse {
+fn key_to_response<'a>(query: String, domain: String, bytes: &'a [u8]) -> MyResponse {
     use sequoia_openpgp::armor::{Kind, Writer};
     use sequoia_openpgp::TPK;
     use sequoia_openpgp::parse::Parse;
     use sequoia_openpgp::serialize::Serialize;
+    use std::convert::TryFrom;
 
     let key = match TPK::from_bytes(bytes) {
         Ok(key) => key,
@@ -223,7 +226,8 @@ fn key_to_response<'a>(query: String, bytes: &'a [u8]) -> MyResponse {
     };
     let context = templates::Search{
         query: query,
-        fpr: fpr.to_string().into(),
+        domain: Some(domain),
+        fpr: Fingerprint::try_from(fpr).unwrap().to_string().into(),
         armored: armored.into(),
         version: env!("VERGEN_SEMVER").to_string(),
         commit: env!("VERGEN_SHA_SHORT").to_string(),
@@ -317,40 +321,40 @@ fn key_to_hkp_index<'a>(bytes: &'a [u8]) -> MyResponse {
 }
 
 #[get("/by-fingerprint/<fpr>")]
-fn by_fingerprint(db: rocket::State<Polymorphic>, fpr: String) -> MyResponse {
+fn by_fingerprint(db: rocket::State<Polymorphic>, domain: rocket::State<Domain>, fpr: String) -> MyResponse {
     let maybe_key = match Fingerprint::from_str(&fpr) {
         Ok(ref fpr) => db.by_fpr(fpr),
         Err(_) => None,
     };
 
     match maybe_key {
-        Some(ref bytes) => key_to_response(fpr, bytes),
+        Some(ref bytes) => key_to_response(fpr, domain.0.clone(), bytes),
         None => MyResponse::not_found(&fpr),
     }
 }
 
 #[get("/by-email/<email>")]
-fn by_email(db: rocket::State<Polymorphic>, email: String) -> MyResponse {
+fn by_email(db: rocket::State<Polymorphic>, domain: rocket::State<Domain>, email: String) -> MyResponse {
     let maybe_key = match Email::from_str(&email) {
         Ok(ref email) => db.by_email(email),
         Err(_) => None,
     };
 
     match maybe_key {
-        Some(ref bytes) => key_to_response(email, bytes),
+        Some(ref bytes) => key_to_response(email, domain.0.clone(), bytes),
         None => MyResponse::not_found(&email),
     }
 }
 
 #[get("/by-keyid/<kid>")]
-fn by_keyid(db: rocket::State<Polymorphic>, kid: String) -> MyResponse {
+fn by_keyid(db: rocket::State<Polymorphic>, domain: rocket::State<Domain>, kid: String) -> MyResponse {
     let maybe_key = match KeyID::from_str(&kid) {
         Ok(ref key) => db.by_kid(key),
         Err(_) => None,
     };
 
     match maybe_key {
-        Some(ref bytes) => key_to_response(kid, bytes),
+        Some(ref bytes) => key_to_response(kid, domain.0.clone(), bytes),
         None => MyResponse::not_found(&kid),
     }
 }
@@ -459,7 +463,7 @@ fn files(file: PathBuf, static_dir: State<StaticDir>) -> Option<NamedFile> {
 
 #[get("/pks/lookup")]
 fn lookup(
-    db: rocket::State<Polymorphic>, key: Option<queries::Hkp>,
+    db: rocket::State<Polymorphic>, domain: rocket::State<Domain>, key: Option<queries::Hkp>,
 ) -> MyResponse {
     let (maybe_key, index) = match key {
         Some(queries::Hkp::Fingerprint { ref fpr, index }) => {
@@ -478,7 +482,7 @@ fn lookup(
     let query = format!("{}", key.unwrap());
 
     match maybe_key {
-        Some(ref bytes) if !index => key_to_response(query, bytes),
+        Some(ref bytes) if !index => key_to_response(query, domain.0.clone(), bytes),
         None if !index => MyResponse::not_found(&query),
 
         Some(ref bytes) if index => key_to_hkp_index(bytes),

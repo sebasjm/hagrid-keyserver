@@ -1,12 +1,10 @@
 {{#> layout }}
   <div class="row">
     <p class="found-key">
-      We found an entry for {{ query }}.
+    We found an entry for <em>{{ query }}</em>.
     </p>
 
-    <p>You can get it with GnuPG using the following snippet</p>
-    <pre><code>gpg --export export{{ fpr }} &gt; mykey.pgp</code></pre>
-
-    <p>You can also <a href="/upload">upload</a> or <a href="/vks/manage">delete</a> your key.</p>
+    <p>You can get it with GnuPG using the following snippet:</p>
+    <pre><code>gpg --fetch-keys https://{{ domain }}/by-fingerprint/{{ fpr }} &gt; mykey.pgp</code></pre>
   </div>
 {{/layout}}

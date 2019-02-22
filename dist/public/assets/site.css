@@ -17,6 +17,7 @@ p {
 }
 
 code {
+  font-size: 12px;
   padding: 1em;
   background-color: #ccc;
   border: 1px solid #aaa;
