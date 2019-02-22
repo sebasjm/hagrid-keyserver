@@ -498,16 +498,6 @@ fn manage() -> result::Result<Template, Custom<String>> {
     Ok(Template::render("manage", context))
 }
 
-#[get("/upload")]
-fn upload() -> result::Result<Template, Custom<String>> {
-    let context = templates::General {
-        version: env!("VERGEN_SEMVER").to_string(),
-        commit: env!("VERGEN_SHA_SHORT").to_string(),
-    };
-
-    Ok(Template::render("upload", context))
-}
-
 #[get("/")]
 fn root() -> Template {
     let context = templates::General {
