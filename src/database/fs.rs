@@ -8,6 +8,8 @@ use serde_json;
 use tempfile;
 use url;
 
+use sequoia_openpgp::armor::{Writer, Reader, Kind};
+
 use database::{Database, Delete, Verify};
 use types::{Email, Fingerprint, KeyID};
 use Result;
@@ -165,11 +167,18 @@ impl Database for Filesystem {
 
         match new {
             Some(new) => {
+
                 let mut tmp = tempfile::Builder::new()
                     .prefix("key")
                     .rand_bytes(16)
                     .tempfile_in(dir)?;
-                tmp.write_all(new)?;
+
+                {
+                    let mut armor_writer = Writer::new(&mut tmp, Kind::PublicKey,
+                                                       &[][..])?;
+
+                    armor_writer.write_all(new)?;
+                }
 
                 let _ = tmp.persist(ensure_parent(&target)?)?;
 
@@ -321,7 +330,8 @@ impl Database for Filesystem {
 
         File::open(target).ok().and_then(|mut fd| {
             let mut buf = Vec::default();
-            if fd.read_to_end(&mut buf).is_ok() {
+            let mut armor_reader = Reader::new(&mut fd, Some(Kind::PublicKey));
+            if armor_reader.read_to_end(&mut buf).is_ok() {
                 Some(buf.into_boxed_slice())
             } else {
                 None
@@ -352,7 +362,8 @@ impl Database for Filesystem {
             .and_then(|p| File::open(p).ok())
             .and_then(|mut fd| {
                 let mut buf = Vec::default();
-                if fd.read_to_end(&mut buf).is_ok() {
+                let mut armor_reader = Reader::new(&mut fd, Some(Kind::PublicKey));
+                if armor_reader.read_to_end(&mut buf).is_ok() {
                     Some(buf.into_boxed_slice())
                 } else {
                     None
@@ -380,7 +391,8 @@ impl Database for Filesystem {
             .and_then(|p| File::open(p).ok())
             .and_then(|mut fd| {
                 let mut buf = Vec::default();
-                if fd.read_to_end(&mut buf).is_ok() {
+                let mut armor_reader = Reader::new(&mut fd, Some(Kind::PublicKey));
+                if armor_reader.read_to_end(&mut buf).is_ok() {
                     Some(buf.into_boxed_slice())
                 } else {
                     None
