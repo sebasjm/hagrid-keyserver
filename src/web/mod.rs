@@ -514,7 +514,7 @@ fn root() -> Template {
 
 #[get("/about")]
 fn about() -> Template {
-    let context = templates::Index {
+    let context = templates::General {
         version: env!("VERGEN_SEMVER").to_string(),
         commit: env!("VERGEN_SHA_SHORT").to_string(),
     };
