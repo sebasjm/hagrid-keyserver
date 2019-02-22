@@ -1,4 +1,4 @@
-use std::fs::{create_dir, create_dir_all, read_link, remove_file, File};
+use std::fs::{create_dir_all, read_link, remove_file, File};
 use std::io::{Read, Write};
 use std::os::unix::fs::symlink;
 use std::path::{Path, PathBuf};
@@ -25,9 +25,7 @@ pub struct Filesystem {
 /// object.
 fn ensure_parent(path: &Path) -> Result<&Path> {
     let parent = path.parent().unwrap();
-    if ! parent.exists() {
-        create_dir(parent)?;
-    }
+    create_dir_all(parent)?;
     Ok(path)
 }
 
