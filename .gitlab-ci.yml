@@ -16,17 +16,3 @@ build:binary:
     artifacts:
         paths:
             - target/release/hagrid
-
-build:web:
-    stage: build
-    tags:
-        - docker
-    image: "node:8"
-    script:
-        - apt update -y
-        - apt upgrade -y
-        - npm install
-        - npm run build
-    artifacts:
-        paths:
-            - dist
