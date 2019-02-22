@@ -7,7 +7,7 @@ build = "build.rs"
 [dependencies]
 rocket = "0"
 rocket_codegen = "0"
-sequoia-openpgp = "0.4.1"
+sequoia-openpgp =  { git = "https://gitlab.com/sequoia-pgp/sequoia.git", rev = "e07bb25de0b2291088f88dc5360f3d04f702049c" }
 multipart = "0"
 error-chain = "0"
 log = "0"
