@@ -512,6 +512,16 @@ fn root() -> Template {
     Template::render("index", context)
 }
 
+#[get("/about")]
+fn about() -> Template {
+    let context = templates::Index {
+        version: env!("VERGEN_SEMVER").to_string(),
+        commit: env!("VERGEN_SHA_SHORT").to_string(),
+    };
+
+    Template::render("about", context)
+}
+
 pub fn serve(opt: &Opt, db: Polymorphic) -> Result<()> {
     use rocket::config::{Config, Environment};
     use std::str::FromStr;
@@ -566,6 +576,8 @@ pub fn serve(opt: &Opt, db: Polymorphic) -> Result<()> {
         verify,
         delete,
         confirm,
+        // about
+        about,
     ];
 
     rocket::custom(config)

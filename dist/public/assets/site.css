@@ -25,6 +25,15 @@ code {
   box-shadow: 0 2px 6px hsla(0, 0%, 0%, 0.2);
 }
 
+li {
+  text-align: left;
+}
+
+abbr {
+  text-decoration: none;
+  color: #444;
+}
+
 .brand {
   text-decoration: none;
   color: #050505;

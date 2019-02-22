@@ -1,0 +1,51 @@
+{{#> layout }}
+  <h2>Privacy Policy</h2>
+	<p style="text-align: left;">
+	The public keyserver running on keys.openpgp.org processes, stores and
+	distributes OpenPGP key data. The specific way in which data is processed
+	differs by type as follows:
+	<ul>
+		<li><i class="fa fa-key"></i> <b>Public Key Data</b>
+			<p>The cryptographic content of OpenPGP keys is not considered personally
+				identifiable information. This includes specifically <abbr
+					title="Packet Tags 6 and 14">public key material</abbr>,
+				<abbr title="Packet Tag 2">self-signatures</abbr>, and <abbr
+					title="Packet Tag 2">revocation signatures</abbr>.
+			<p>This OpenPGP keys
+			<p>This data is not usually collectively available, but may be handed
+				upon request to third parties for purposes of development or research.
+		<li><i class="fa fa-envelope"></i> <b>E-Mail Addresses</b>
+			<p>E-Mail addresses contained in <abbr title="Packet Tag 13">User
+					IDs</abbr> are personally identifiable information. Special care is
+				taken to make sure they are used only with consent:
+				<ul>
+					<li>Publishing requires <a target="_blank"
+							href="https://en.wikipedia.org/wiki/Opt-in_email#Confirmed_opt-in_(COI)_/_Double_opt-in_(DOI)">double
+							opt-in</a> validation, to prove ownership of the address.
+					<li>Addresses are searchable by exact E-Mail address, but not by
+						associated name.
+					<li>Enumeration of addresses is not possible.
+					<li>Deletion of addresses is possible via simple proof of ownership in
+						an automated fashion, similar to publication. To unlist an address
+						where this isn't possible, write to support at keys dot openpgp dot
+						org.
+				</ul>
+
+				<p>This data is never handed to third parties.
+		<li><i class="fa fa-user"></i> <b>Other User ID data</b>
+			<p>Personal data types other than E-Mail addresses, such as <abbr
+					title="Packet Tag 2">User IDs</abbr> that do not contain E-Mail
+				addresses, or <abbr title="Packet Tag 17">image attributes</abbr>, are
+				stripped during upload, and never stored or further processed in any
+				way.
+			<p>OpenPGP packet types that were not specifically mentioned above are
+				stripped during upload, and never stored or further processed in any
+				way.
+	</ul>
+	<p style="text-align: left">Data is never relayed to third parties outside of
+		what is available from the public API interfaces, and what is described in
+		this policy.
+
+	<p>
+		<strong><a href="/">&laquo; Back</a></strong>
+{{/layout}}
