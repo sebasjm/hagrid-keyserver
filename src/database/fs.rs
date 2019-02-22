@@ -1,3 +1,4 @@
+use parking_lot::{Mutex, MutexGuard};
 use std::fs::{create_dir_all, read_link, remove_file, rename, File};
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
@@ -15,6 +16,8 @@ use types::{Email, Fingerprint, KeyID};
 use Result;
 
 pub struct Filesystem {
+    update_lock: Mutex<()>,
+
     base: PathBuf,
     base_by_keyid: PathBuf,
     base_by_fingerprint: PathBuf,
@@ -78,6 +81,7 @@ impl Filesystem {
 
         info!("Opened base dir '{}'", base.display());
         Ok(Filesystem {
+            update_lock: Mutex::new(()),
             base: base,
             base_by_keyid: base_by_keyid,
             base_by_fingerprint: base_by_fingerprint,
@@ -155,6 +159,10 @@ fn symlink(symlink_content: &Path, symlink_name: &Path) -> Result<()> {
 }
 
 impl Database for Filesystem {
+    fn lock(&self) -> MutexGuard<()> {
+        self.update_lock.lock()
+    }
+
     fn new_verify_token(&self, payload: Verify) -> Result<String> {
         let (mut fd, name) = self.new_token("verification_tokens")?;
         fd.write_all(serde_json::to_string(&payload)?.as_bytes())?;

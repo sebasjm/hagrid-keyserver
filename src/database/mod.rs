@@ -1,3 +1,4 @@
+use parking_lot::MutexGuard;
 use std::convert::TryFrom;
 use std::io::Cursor;
 use std::result;
@@ -87,6 +88,12 @@ impl Delete {
 }
 
 pub trait Database: Sync + Send {
+    // Lock the DB for a complex update.
+    //
+    // All basic write operations are atomic so we don't need to lock
+    // read operations to ensure that we return something sane.
+    fn lock(&self) -> MutexGuard<()>;
+
     fn new_verify_token(&self, payload: Verify) -> Result<String>;
     fn new_delete_token(&self, payload: Delete) -> Result<String>;
 
@@ -153,6 +160,8 @@ pub trait Database: Sync + Send {
     fn link_subkeys(
         &self, fpr: &Fingerprint, subkeys: Vec<sequoia_openpgp::Fingerprint>,
     ) -> Result<()> {
+        let _ = self.lock();
+
         // link (subkey) kid & and subkey fpr
         self.link_kid(&fpr.clone().into(), &fpr)?;
 
@@ -168,6 +177,8 @@ pub trait Database: Sync + Send {
 
     fn unlink_userids(&self, fpr: &Fingerprint, userids: Vec<Email>)
                       -> Result<()> {
+        let _ = self.lock();
+
         for uid in userids {
             self.unlink_email(&uid, fpr)?;
         }
@@ -181,6 +192,8 @@ pub trait Database: Sync + Send {
         let mut all_uids = Vec::default();
         let mut active_uids = Vec::default();
         let mut verified_uids = Vec::default();
+
+        let _ = self.lock();
 
         // update verify tokens
         for uid in tpk.userids() {
@@ -278,6 +291,8 @@ pub trait Database: Sync + Send {
     fn verify_token(
         &self, token: &str,
     ) -> Result<Option<(Email, Fingerprint)>> {
+        let _ = self.lock();
+
         match self.pop_verify_token(token) {
             Some(Verify { created, packets, fpr, email }) => {
                 let now = time::now().to_timespec().sec;
@@ -310,6 +325,8 @@ pub trait Database: Sync + Send {
     fn request_deletion(
         &self, fpr: Fingerprint,
     ) -> Result<(String, Vec<Email>)> {
+        let _ = self.lock();
+
         match self.by_fpr(&fpr) {
             Some(tpk) => {
                 let payload = Delete::new(fpr);
@@ -344,6 +361,8 @@ pub trait Database: Sync + Send {
     //  del-fpr(fpr)
     // }
     fn confirm_deletion(&self, token: &str) -> Result<bool> {
+        let _ = self.lock();
+
         match self.pop_delete_token(token) {
             Some(Delete { created, fpr }) => {
                 let now = time::now().to_timespec().sec;

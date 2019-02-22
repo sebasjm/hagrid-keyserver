@@ -1,6 +1,7 @@
 use database::{Database, Delete, Filesystem, Memory, Verify};
 use Result;
 use types::{Email, Fingerprint, KeyID};
+use parking_lot::MutexGuard;
 
 pub enum Polymorphic {
     Memory(Memory),
@@ -8,6 +9,13 @@ pub enum Polymorphic {
 }
 
 impl Database for Polymorphic {
+    fn lock(&self) -> MutexGuard<()> {
+        match self {
+            &Polymorphic::Memory(ref db) => db.lock(),
+            &Polymorphic::Filesystem(ref db) => db.lock(),
+        }
+    }
+
     fn new_verify_token(&self, payload: Verify) -> Result<String> {
         match self {
             &Polymorphic::Memory(ref db) => db.new_verify_token(payload),

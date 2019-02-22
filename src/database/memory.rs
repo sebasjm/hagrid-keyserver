@@ -1,4 +1,4 @@
-use parking_lot::Mutex;
+use parking_lot::{Mutex, MutexGuard};
 use std::collections::HashMap;
 
 use database::{Database, Delete, Verify};
@@ -7,6 +7,8 @@ use Result;
 
 #[derive(Debug)]
 pub struct Memory {
+    update_lock: Mutex<()>,
+
     fpr: Mutex<HashMap<Fingerprint, Box<[u8]>>>,
     fpr_links: Mutex<HashMap<Fingerprint, Fingerprint>>,
     email: Mutex<HashMap<Email, Fingerprint>>,
@@ -18,6 +20,7 @@ pub struct Memory {
 impl Default for Memory {
     fn default() -> Self {
         Memory {
+            update_lock: Mutex::new(()),
             fpr: Mutex::new(HashMap::default()),
             fpr_links: Mutex::new(HashMap::default()),
             kid: Mutex::new(HashMap::default()),
@@ -29,6 +32,10 @@ impl Default for Memory {
 }
 
 impl Database for Memory {
+    fn lock(&self) -> MutexGuard<()> {
+        self.update_lock.lock()
+    }
+
     fn new_verify_token(&self, payload: Verify) -> Result<String> {
         let token = Self::new_token();
 
