@@ -39,3 +39,6 @@ features = ["handlebars_templates"]
 
 [build-dependencies]
 vergen = "3"
+
+[dev-dependencies]
+num_cpus = "1.0"
