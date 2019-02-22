@@ -61,28 +61,34 @@ impl Database for Memory {
         }
     }
 
-    fn link_fpr(&self, from: &Fingerprint, fpr: &Fingerprint) {
+    fn link_fpr(&self, from: &Fingerprint, fpr: &Fingerprint) -> Result<()> {
         self.fpr_links.lock().insert(from.clone(), fpr.clone());
+        Ok(())
     }
 
-    fn unlink_fpr(&self, from: &Fingerprint, _: &Fingerprint) {
+    fn unlink_fpr(&self, from: &Fingerprint, _: &Fingerprint) -> Result<()> {
         self.fpr_links.lock().remove(from);
+        Ok(())
     }
 
-    fn link_email(&self, email: &Email, fpr: &Fingerprint) {
+    fn link_email(&self, email: &Email, fpr: &Fingerprint) -> Result<()> {
         self.email.lock().insert(email.clone(), fpr.clone());
+        Ok(())
     }
 
-    fn unlink_email(&self, email: &Email, _: &Fingerprint) {
+    fn unlink_email(&self, email: &Email, _: &Fingerprint) -> Result<()> {
         self.email.lock().remove(email);
+        Ok(())
     }
 
-    fn link_kid(&self, kid: &KeyID, fpr: &Fingerprint) {
+    fn link_kid(&self, kid: &KeyID, fpr: &Fingerprint) -> Result<()> {
         self.kid.lock().insert(kid.clone(), fpr.clone());
+        Ok(())
     }
 
-    fn unlink_kid(&self, kid: &KeyID, _: &Fingerprint) {
+    fn unlink_kid(&self, kid: &KeyID, _: &Fingerprint) -> Result<()> {
         self.kid.lock().remove(kid);
+        Ok(())
     }
 
     // (verified uid, fpr)

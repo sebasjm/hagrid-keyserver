@@ -98,14 +98,14 @@ pub trait Database: Sync + Send {
         &self, fpr: &Fingerprint, present: Option<&[u8]>, new: Option<&[u8]>,
     ) -> Result<bool>;
 
-    fn link_email(&self, email: &Email, fpr: &Fingerprint);
-    fn unlink_email(&self, email: &Email, fpr: &Fingerprint);
+    fn link_email(&self, email: &Email, fpr: &Fingerprint) -> Result<()>;
+    fn unlink_email(&self, email: &Email, fpr: &Fingerprint) -> Result<()>;
 
-    fn link_kid(&self, kid: &KeyID, fpr: &Fingerprint);
-    fn unlink_kid(&self, kid: &KeyID, fpr: &Fingerprint);
+    fn link_kid(&self, kid: &KeyID, fpr: &Fingerprint) -> Result<()>;
+    fn unlink_kid(&self, kid: &KeyID, fpr: &Fingerprint) -> Result<()>;
 
-    fn link_fpr(&self, from: &Fingerprint, to: &Fingerprint);
-    fn unlink_fpr(&self, from: &Fingerprint, to: &Fingerprint);
+    fn link_fpr(&self, from: &Fingerprint, to: &Fingerprint) -> Result<()>;
+    fn unlink_fpr(&self, from: &Fingerprint, to: &Fingerprint) -> Result<()>;
 
     // (verified uid, fpr)
     fn pop_verify_token(&self, token: &str) -> Option<Verify>;
@@ -150,22 +150,24 @@ pub trait Database: Sync + Send {
         &self, fpr: &Fingerprint, subkeys: Vec<sequoia_openpgp::Fingerprint>,
     ) -> Result<()> {
         // link (subkey) kid & and subkey fpr
-        self.link_kid(&fpr.clone().into(), &fpr);
+        self.link_kid(&fpr.clone().into(), &fpr)?;
 
         for sub_fpr in subkeys {
             let sub_fpr = Fingerprint::try_from(sub_fpr)?;
 
-            self.link_kid(&sub_fpr.clone().into(), &fpr);
-            self.link_fpr(&sub_fpr, &fpr);
+            self.link_kid(&sub_fpr.clone().into(), &fpr)?;
+            self.link_fpr(&sub_fpr, &fpr)?;
         }
 
         Ok(())
     }
 
-    fn unlink_userids(&self, fpr: &Fingerprint, userids: Vec<Email>) {
+    fn unlink_userids(&self, fpr: &Fingerprint, userids: Vec<Email>)
+                      -> Result<()> {
         for uid in userids {
-            self.unlink_email(&uid, fpr);
+            self.unlink_email(&uid, fpr)?;
         }
+        Ok(())
     }
 
     fn merge_or_publish(&self, mut tpk: TPK) -> Result<Vec<(Email, String)>> {
@@ -236,7 +238,7 @@ pub trait Database: Sync + Send {
         tpk = Self::strip_userids(tpk)?;
 
         for (email, fpr) in all_uids {
-            self.unlink_email(&email, &Fingerprint::try_from(fpr).unwrap());
+            self.unlink_email(&email, &Fingerprint::try_from(fpr).unwrap())?;
         }
 
         for _ in 0..100
@@ -252,7 +254,7 @@ pub trait Database: Sync + Send {
                     if self.compare_and_swap(&fpr, Some(&old), Some(&new))? {
                         self.link_subkeys(&fpr, subkeys)?;
                         for email in verified_uids {
-                            self.link_email(&email, &fpr);
+                            self.link_email(&email, &fpr)?;
                         }
 
                         return Ok(active_uids);
@@ -309,7 +311,7 @@ pub trait Database: Sync + Send {
                                 Some(&old),
                                 Some(&new),
                             )? {
-                                self.link_email(&email, &fpr);
+                                self.link_email(&email, &fpr)?;
                                 return Ok(Some((email.clone(), fpr.clone())));
                             }
                         }
@@ -385,7 +387,7 @@ pub trait Database: Sync + Send {
                                 self.unlink_email(
                                     &Email::try_from(uid.userid().clone())?,
                                     &fpr,
-                                );
+                                )?;
                             }
 
                             while !self.compare_and_swap(

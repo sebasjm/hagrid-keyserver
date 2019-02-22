@@ -35,42 +35,42 @@ impl Database for Polymorphic {
         }
     }
 
-    fn link_fpr(&self, from: &Fingerprint, fpr: &Fingerprint) {
+    fn link_fpr(&self, from: &Fingerprint, fpr: &Fingerprint) -> Result<()> {
         match self {
             &Polymorphic::Memory(ref db) => db.link_fpr(from, fpr),
             &Polymorphic::Filesystem(ref db) => db.link_fpr(from, fpr),
         }
     }
 
-    fn unlink_fpr(&self, from: &Fingerprint, fpr: &Fingerprint) {
+    fn unlink_fpr(&self, from: &Fingerprint, fpr: &Fingerprint) -> Result<()> {
         match self {
             &Polymorphic::Memory(ref db) => db.unlink_fpr(from, fpr),
             &Polymorphic::Filesystem(ref db) => db.unlink_fpr(from, fpr),
         }
     }
 
-    fn link_kid(&self, kid: &KeyID, fpr: &Fingerprint) {
+    fn link_kid(&self, kid: &KeyID, fpr: &Fingerprint) -> Result<()> {
         match self {
             &Polymorphic::Memory(ref db) => db.link_kid(kid, fpr),
             &Polymorphic::Filesystem(ref db) => db.link_kid(kid, fpr),
         }
     }
 
-    fn unlink_kid(&self, kid: &KeyID, fpr: &Fingerprint) {
+    fn unlink_kid(&self, kid: &KeyID, fpr: &Fingerprint) -> Result<()> {
         match self {
             &Polymorphic::Memory(ref db) => db.unlink_kid(kid, fpr),
             &Polymorphic::Filesystem(ref db) => db.unlink_kid(kid, fpr),
         }
     }
 
-    fn link_email(&self, email: &Email, fpr: &Fingerprint) {
+    fn link_email(&self, email: &Email, fpr: &Fingerprint) -> Result<()> {
         match self {
             &Polymorphic::Memory(ref db) => db.link_email(email, fpr),
             &Polymorphic::Filesystem(ref db) => db.link_email(email, fpr),
         }
     }
 
-    fn unlink_email(&self, email: &Email, fpr: &Fingerprint) {
+    fn unlink_email(&self, email: &Email, fpr: &Fingerprint) -> Result<()> {
         match self {
             &Polymorphic::Memory(ref db) => db.unlink_email(email, fpr),
             &Polymorphic::Filesystem(ref db) => db.unlink_email(email, fpr),

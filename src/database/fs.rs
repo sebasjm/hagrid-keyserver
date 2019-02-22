@@ -202,7 +202,7 @@ impl Database for Filesystem {
         }
     }
 
-    fn link_email(&self, email: &Email, fpr: &Fingerprint) {
+    fn link_email(&self, email: &Email, fpr: &Fingerprint) -> Result<()> {
         let email =
             url::form_urlencoded::byte_serialize(email.to_string().as_bytes())
                 .collect::<String>();
@@ -210,13 +210,14 @@ impl Database for Filesystem {
         let link = self.path_to_email(&email);
 
         if link.exists() {
-            let _ = remove_file(link.clone());
+            remove_file(link.clone())?;
         }
 
-        let _ = symlink(target, ensure_parent(&link).unwrap());
+        symlink(target, ensure_parent(&link)?)?;
+        Ok(())
     }
 
-    fn unlink_email(&self, email: &Email, fpr: &Fingerprint) {
+    fn unlink_email(&self, email: &Email, fpr: &Fingerprint) -> Result<()> {
         let email =
             url::form_urlencoded::byte_serialize(email.to_string().as_bytes())
                 .collect::<String>();
@@ -227,25 +228,27 @@ impl Database for Filesystem {
                 let expected = self.path_to_fingerprint(fpr);
 
                 if target == expected {
-                    let _ = remove_file(link);
+                    remove_file(link)?;
                 }
             }
             Err(_) => {}
         }
+        Ok(())
     }
 
-    fn link_kid(&self, kid: &KeyID, fpr: &Fingerprint) {
+    fn link_kid(&self, kid: &KeyID, fpr: &Fingerprint) -> Result<()> {
         let target = self.path_to_fingerprint(fpr);
         let link = self.path_to_keyid(kid);
 
         if link.exists() {
-            let _ = remove_file(link.clone());
+            remove_file(link.clone())?;
         }
 
-        let _ = symlink(target, ensure_parent(&link).unwrap());
+        symlink(target, ensure_parent(&link)?)?;
+        Ok(())
     }
 
-    fn unlink_kid(&self, kid: &KeyID, fpr: &Fingerprint) {
+    fn unlink_kid(&self, kid: &KeyID, fpr: &Fingerprint) -> Result<()> {
         let link = self.path_to_keyid(kid);
 
         match read_link(link.clone()) {
@@ -253,33 +256,35 @@ impl Database for Filesystem {
                 let expected = self.path_to_fingerprint(fpr);
 
                 if target == expected {
-                    let _ = remove_file(link);
+                    remove_file(link)?;
                 }
             }
             Err(_) => {}
         }
+        Ok(())
     }
 
-    fn link_fpr(&self, from: &Fingerprint, fpr: &Fingerprint) {
+    fn link_fpr(&self, from: &Fingerprint, fpr: &Fingerprint) -> Result<()> {
         let target = self.path_to_fingerprint(fpr);
         let link = self.path_to_fingerprint(from);
 
         if link == target {
-            return;
+            return Ok(());
         }
         if link.exists() {
             match link.metadata() {
                 Ok(ref meta) if meta.file_type().is_symlink() => {
-                    let _ = remove_file(link.clone());
+                    remove_file(link.clone())?;
                 }
                 _ => {}
             }
         }
 
-        let _ = symlink(target, ensure_parent(&link).unwrap());
+        symlink(target, ensure_parent(&link)?)?;
+        Ok(())
     }
 
-    fn unlink_fpr(&self, from: &Fingerprint, fpr: &Fingerprint) {
+    fn unlink_fpr(&self, from: &Fingerprint, fpr: &Fingerprint) -> Result<()> {
         let link = self.path_to_fingerprint(from);
 
         match read_link(link.clone()) {
@@ -287,11 +292,12 @@ impl Database for Filesystem {
                 let expected = self.path_to_fingerprint(fpr);
 
                 if target == expected {
-                    let _ = remove_file(link);
+                    remove_file(link)?;
                 }
             }
             Err(_) => {}
         }
+        Ok(())
     }
 
     fn pop_verify_token(&self, token: &str) -> Option<Verify> {
