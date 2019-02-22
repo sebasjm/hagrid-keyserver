@@ -1,4 +1,8 @@
 {{#> layout }}
+  {{#with error }}
+  <p><strong>Error</strong>: {{ this }}</p>
+  {{/with}}
+
   {{> search-form}}
   <div class="row">
     <p>You can also <a href="/vks/publish">upload</a> or <a href="/vks/manage">delete</a> your key.</p>

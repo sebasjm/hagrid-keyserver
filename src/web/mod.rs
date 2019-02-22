@@ -6,6 +6,9 @@ use rocket::response::status::Custom;
 use rocket::response::NamedFile;
 use rocket::{Outcome, State};
 use rocket_contrib::templates::Template;
+use rocket::response::Flash;
+use rocket::request::FlashMessage;
+use rocket::response::Redirect;
 
 use serde::Serialize;
 use handlebars::Handlebars;
@@ -52,8 +55,7 @@ enum MyResponse {
     Plain(String),
     #[response(status = 500, content_type = "html")]
     ServerError(Template),
-    #[response(status = 404, content_type = "html")]
-    NotFound(Template),
+    NotFound(Flash<Redirect>),
 }
 
 impl MyResponse {
@@ -84,7 +86,7 @@ impl MyResponse {
             commit: env!("VERGEN_SHA_SHORT").to_string(),
         };
 
-        MyResponse::NotFound(Template::render("not-found", context))
+        MyResponse::NotFound(Flash::error(Redirect::to("/?"), "Key not found".to_owned()))
     }
 }
 
@@ -131,6 +133,12 @@ mod templates {
         pub version: String,
     }
 
+    #[derive(Serialize)]
+    pub struct Index {
+        pub error: Option<String>,
+        pub commit: String,
+        pub version: String,
+    }
     #[derive(Serialize)]
     pub struct General {
         pub commit: String,
@@ -504,9 +512,20 @@ fn manage() -> result::Result<Template, Custom<String>> {
     Ok(Template::render("manage", context))
 }
 
+fn error_from_flash(flash: &FlashMessage) -> Option<String> {
+    if flash.name() == "error" {
+        Some(flash.msg().to_owned())
+    } else {
+        None
+    }
+}
+
 #[get("/")]
-fn root() -> Template {
-    let context = templates::General {
+fn root(
+    flash: Option<FlashMessage>
+) -> Template {
+    let context = templates::Index {
+        error: flash.and_then(|flash| error_from_flash(&flash)),
         version: env!("VERGEN_SEMVER").to_string(),
         commit: env!("VERGEN_SHA_SHORT").to_string(),
     };
