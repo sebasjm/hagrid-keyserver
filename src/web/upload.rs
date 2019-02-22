@@ -39,8 +39,8 @@ mod template {
     }
 }
 
-#[get("/upload")]
-pub fn upload_landing(
+#[get("/vks/publish")]
+pub fn vks_publish(
     flash: Option<FlashMessage>
 ) -> Template {
     if let Some(flash) = flash {
@@ -53,7 +53,7 @@ pub fn upload_landing(
                     commit: env!("VERGEN_SHA_SHORT").to_string(),
                 };
 
-                Template::render("upload_ok", context)
+                Template::render("vks_publish_ok", context)
             }
             _ => show_error(flash.msg().to_owned())
         }
@@ -63,7 +63,7 @@ pub fn upload_landing(
             commit: env!("VERGEN_SHA_SHORT").to_string(),
         };
 
-        Template::render("upload", context)
+        Template::render("vks_publish", context)
     }
 }
 
@@ -74,17 +74,17 @@ fn show_error(error: String) -> Template {
         commit: env!("VERGEN_SHA_SHORT").to_string(),
     };
 
-    Template::render("upload_err", context)
+    Template::render("vks_publish_err", context)
 }
 
-#[post("/upload/add", data = "<data>")]
-pub fn upload_hkp(
+#[post("/vks/publish/submit", data = "<data>")]
+pub fn vks_publish_submit(
     db: State<Polymorphic>, cont_type: &ContentType, data: Data,
     tmpl: State<MailTemplates>, domain: State<Domain>, from: State<From>
 ) -> Flash<Redirect> {
     match do_upload_hkp(db, cont_type, data, tmpl, domain, from) {
         Ok(ok) => ok,
-        Err(err) => Flash::error(Redirect::to("/upload"), err.to_string()),
+        Err(err) => Flash::error(Redirect::to("/vks/publish?err"), err.to_string()),
     }
 }
 
@@ -199,5 +199,5 @@ where
     }
 
     let json = serde_json::to_string(&results).unwrap();
-    Ok(Flash::success(Redirect::to("/upload"), json))
+    Ok(Flash::success(Redirect::to("/vks/publish?ok"), json))
 }

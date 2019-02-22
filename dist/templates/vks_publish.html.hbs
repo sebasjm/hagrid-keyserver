@@ -2,7 +2,7 @@
   <p>After uploading you key we will send a verification link to every email address we find inside. Clicking that link will make your key searchable by this email address.</p>
 
   <div class="row">
-    <form action="/upload/add" method=POST enctype=multipart/form-data>
+    <form action="/vks/publish/submit" method=POST enctype=multipart/form-data>
       <div class="upload">
         <input type="hidden" name="csrf" value="{{csrf}}" />
         <input type="file" id="keytext" name="keytext" autofocus class="fileUpload" placeholder="Your public key"/>
@@ -15,11 +15,11 @@
 
   <div class="row">
     <p>If you're using GnuPG you can use the following snipped to export you public key. This will create a file called mykey.pgp that you can upload here.</p>
-    <pre><code>gpg --export your-address@example.org &gt; mykey.pgp</code></pre>
+    <pre><code>gpg --export your_address@example.org &gt; mykey.pgp</code></pre>
   </div>
 
   <div class="row">
-    <p>You can delete an uploaded key <a href="/delete">here</a>.</p>
+    <p>You can delete an uploaded key <a href="/vks/manage">here</a>.</p>
   </div>
 
   <script>
