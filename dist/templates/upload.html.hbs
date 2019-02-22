@@ -1,13 +1,18 @@
 {{#> layout }}
-  <h2>Upload key to directory</h2>
+<p>After uploading you key we will send a verification link to every email address we find inside. Clicking that link will make your key searchable by this email address.</p>
 
   <div class="row">
     <form action="/upload/add" method=POST enctype=multipart/form-data>
       <input type="hidden" name="csrf" value="{{csrf}}" />
-      <input type="file" id="keytext" name="keytext" placeholder="Your public key">
-      <input type="submit" value="Upload">
+      <input type="file" id="keytext" name="keytext" class="fileUpload" />
+      <button type="submit" class="uploadButton button smallButton">
+        <i class="fa fa-upload"></i>
+      </button>
     </form>
   </div>
+
+ <p>If you're using GnuPG you can use the following snipped to export you public key. <b>Replace &lt;email&gt;</b> with you email address (User ID) of the key you want to upload. This will create a file called mykey.pgp that you can upload here.</p>
+    <pre><code>gpg --export &lt;email&gt; &gt; mykey.pgp</code></pre>
 
   <div class="row">
     You can delete an uploaded key <a href="/delete">here</a>.
@@ -29,5 +34,4 @@
         }
     }, false);
   </script>
-
 {{/layout}}
