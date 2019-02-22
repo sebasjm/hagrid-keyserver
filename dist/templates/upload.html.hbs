@@ -5,7 +5,7 @@
     <form action="/upload/add" method=POST enctype=multipart/form-data>
       <div class="upload">
         <input type="hidden" name="csrf" value="{{csrf}}" />
-        <input type="file" id="keytext" name="keytext" class="fileUpload" placeholder="Your public key"/>
+        <input type="file" id="keytext" name="keytext" autofocus class="fileUpload" placeholder="Your public key"/>
         <button type="submit" class="uploadButton button smallButton">
           <i class="fa fa-upload"></i>
         </button>
