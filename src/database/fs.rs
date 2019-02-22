@@ -260,6 +260,17 @@ impl Database for Filesystem {
             return Ok(());
         }
 
+        if link.exists() {
+            match link.symlink_metadata() {
+                Ok(ref meta) if meta.file_type().is_file() => {
+                    // If a key is a subkey and a primary key, prefer
+                    // the primary.
+                    return Ok(());
+                }
+                _ => {}
+            }
+        }
+
         symlink(&target, ensure_parent(&link)?)
     }
 
