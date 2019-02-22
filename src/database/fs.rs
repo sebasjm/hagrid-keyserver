@@ -171,15 +171,6 @@ impl Database for Filesystem {
                     .tempfile_in(dir)?;
                 tmp.write_all(new)?;
 
-                if target.is_file() {
-                    if old.is_some() {
-                        remove_file(target.clone())?;
-                    } else {
-                        return Err(
-                            format!("stray file {}", target.display()).into()
-                        );
-                    }
-                }
                 let _ = tmp.persist(ensure_parent(&target)?)?;
 
                 // fix permissions to 640
