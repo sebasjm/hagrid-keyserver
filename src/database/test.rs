@@ -514,8 +514,8 @@ pub fn test_steal_uid<D: Database>(db: &mut D) {
     );
 }
 
-pub fn get_userids(bytes: &[u8]) -> Vec<UserID> {
-    let tpk = TPK::from_bytes(bytes).unwrap();
+pub fn get_userids(armored: &str) -> Vec<UserID> {
+    let tpk = TPK::from_bytes(armored.as_bytes()).unwrap();
     tpk.userids().map(|binding| binding.userid().clone()).collect()
 }
 
