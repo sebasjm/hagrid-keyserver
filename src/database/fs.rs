@@ -76,7 +76,7 @@ impl Filesystem {
         create_dir_all(base.join("scratch_pad"))?;
 
         let base_by_keyid = base.join("public").join("by-keyid");
-        let base_by_fingerprint = base.join("public").join("by-fingerprint");
+        let base_by_fingerprint = base.join("public").join("by-fpr");
         let base_by_email = base.join("public").join("by-email");
         create_dir_all(&base_by_keyid)?;
         create_dir_all(&base_by_fingerprint)?;
