@@ -1,6 +1,5 @@
-use std::fs::{create_dir_all, read_link, remove_file, File};
+use std::fs::{create_dir_all, read_link, remove_file, rename, File};
 use std::io::{Read, Write};
-use std::os::unix::fs::symlink;
 use std::path::{Path, PathBuf};
 use std::str;
 
@@ -145,6 +144,23 @@ impl Filesystem {
     }
 }
 
+// Like `symlink`, but instead of failing if `symlink_name` already
+// exists, atomically update `symlink_name` to have `symlink_content`.
+fn symlink(symlink_content: &Path, symlink_name: &Path) -> Result<()> {
+    use std::os::unix::fs::{symlink};
+
+    let symlink_dir = ensure_parent(symlink_name)?.parent().unwrap();
+    let tmp_dir = tempfile::Builder::new()
+        .prefix("link")
+        .rand_bytes(16)
+        .tempdir_in(symlink_dir)?;
+    let symlink_name_tmp = tmp_dir.path().join("link");
+
+    symlink(&symlink_content, &symlink_name_tmp)?;
+    rename(&symlink_name_tmp, &symlink_name)?;
+    Ok(())
+}
+
 impl Database for Filesystem {
     fn new_verify_token(&self, payload: Verify) -> Result<String> {
         let (mut fd, name) = self.new_token("verification_tokens")?;
@@ -207,17 +223,11 @@ impl Database for Filesystem {
         let target = diff_paths(&self.path_to_fingerprint(fpr),
                                 link.parent().unwrap()).unwrap();
 
-        if link.exists() {
-            match link.symlink_metadata() {
-                Ok(ref meta) if meta.file_type().is_symlink() => {
-                    remove_file(link.clone())?;
-                }
-                _ => {}
-            }
+        if link == target {
+            return Ok(());
         }
 
-        symlink(target, ensure_parent(&link)?)?;
-        Ok(())
+        symlink(&target, ensure_parent(&link)?)
     }
 
     fn unlink_email(&self, email: &Email, fpr: &Fingerprint) -> Result<()> {
@@ -237,6 +247,7 @@ impl Database for Filesystem {
             }
             Err(_) => {}
         }
+
         Ok(())
     }
 
@@ -245,17 +256,11 @@ impl Database for Filesystem {
         let target = diff_paths(&self.path_to_fingerprint(fpr),
                                 link.parent().unwrap()).unwrap();
 
-        if link.exists() {
-            match link.symlink_metadata() {
-                Ok(ref meta) if meta.file_type().is_symlink() => {
-                    remove_file(link.clone())?;
-                }
-                _ => {}
-            }
+        if link == target {
+            return Ok(());
         }
 
-        symlink(target, ensure_parent(&link)?)?;
-        Ok(())
+        symlink(&target, ensure_parent(&link)?)
     }
 
     fn unlink_kid(&self, kid: &KeyID, fpr: &Fingerprint) -> Result<()> {
@@ -271,6 +276,7 @@ impl Database for Filesystem {
             }
             Err(_) => {}
         }
+
         Ok(())
     }
 
@@ -283,17 +289,7 @@ impl Database for Filesystem {
         let target = diff_paths(&self.path_to_fingerprint(fpr),
                                 link.parent().unwrap()).unwrap();
 
-        if link.exists() {
-            match link.symlink_metadata() {
-                Ok(ref meta) if meta.file_type().is_symlink() => {
-                    remove_file(link.clone())?;
-                }
-                _ => {}
-            }
-        }
-
-        symlink(target, ensure_parent(&link)?)?;
-        Ok(())
+        symlink(&target, ensure_parent(&link)?)
     }
 
     fn unlink_fpr(&self, from: &Fingerprint, fpr: &Fingerprint) -> Result<()> {
