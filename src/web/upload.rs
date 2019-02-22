@@ -185,6 +185,7 @@ where
     let tpk = TPK::from_reader(reader).map_err(|err| err.to_string())?;
     let tokens = db.merge_or_publish(tpk)?;
     let mut results: Vec<String> = vec!();
+
     for (email,token) in tokens {
         send_verification_mail(
             &email,
@@ -195,6 +196,7 @@ where
             )?;
         results.push(email.to_string());
     }
+
     let json = serde_json::to_string(&results).unwrap();
     Ok(Flash::success(Redirect::to("/upload"), json))
 }

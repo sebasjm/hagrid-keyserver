@@ -3,11 +3,14 @@ use rocket::fairing::AdHoc;
 use rocket::http::Status;
 use rocket::request::{self, FromRequest, Request};
 use rocket::response::status::Custom;
-use rocket::response::{NamedFile, Response};
+use rocket::response::NamedFile;
 use rocket::{Outcome, State};
 use rocket_contrib::templates::Template;
 
+use serde::Serialize;
 use handlebars::Handlebars;
+
+use std::error;
 use std::path::{Path, PathBuf};
 
 mod upload;
@@ -21,12 +24,67 @@ use std::result;
 use std::str::FromStr;
 
 mod queries {
+    use std::fmt;
     use types::{Email, Fingerprint};
 
     #[derive(Debug)]
     pub enum Hkp {
         Fingerprint { fpr: Fingerprint, index: bool },
         Email { email: Email, index: bool },
+        Invalid{ query: String, },
+    }
+
+    impl fmt::Display for Hkp {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            match self {
+                Hkp::Fingerprint{ ref fpr,.. } => write!(f, "{}", fpr.to_string()),
+                Hkp::Email{ ref email,.. } => write!(f, "{}", email.to_string()),
+                Hkp::Invalid{ ref query } => write!(f, "{}", query),
+            }
+        }
+    }
+}
+
+#[derive(Responder)]
+enum MyResponse {
+    #[response(status = 200, content_type = "html")]
+    Success(Template),
+     #[response(status = 200, content_type = "plain")]
+    Plain(String),
+    #[response(status = 500, content_type = "html")]
+    ServerError(Template),
+    #[response(status = 404, content_type = "html")]
+    NotFound(Template),
+}
+
+impl MyResponse {
+    pub fn ok<S: Serialize>(tmpl: &'static str, ctx: S) -> Self {
+        MyResponse::Success(Template::render(tmpl, ctx))
+    }
+
+    pub fn plain(s: String) -> Self {
+        MyResponse::Plain(s)
+    }
+
+    pub fn ise<E: error::Error>(e: E) -> Self {
+        let ctx = templates::FiveHundred{
+            error: format!("{:?}", e),
+            version: env!("VERGEN_SEMVER").to_string(),
+            commit: env!("VERGEN_SHA_SHORT").to_string(),
+        };
+        MyResponse::ServerError(Template::render("500", ctx))
+    }
+
+    pub fn not_found(query: &str) -> Self {
+        let context = templates::Search{
+            query: query.to_string(),
+            fpr: None,
+            armored: None,
+            version: env!("VERGEN_SEMVER").to_string(),
+            commit: env!("VERGEN_SHA_SHORT").to_string(),
+        };
+
+        MyResponse::NotFound(Template::render("not-found", context))
     }
 }
 
@@ -49,6 +107,15 @@ mod templates {
     }
 
     #[derive(Serialize)]
+    pub struct Search {
+        pub query: String,
+        pub fpr: Option<String>,
+        pub armored: Option<String>,
+        pub commit: String,
+        pub version: String,
+    }
+
+    #[derive(Serialize)]
     pub struct Confirm {
         pub deleted: bool,
         pub commit: String,
@@ -56,7 +123,14 @@ mod templates {
     }
 
     #[derive(Serialize)]
-    pub struct Index {
+    pub struct FiveHundred {
+        pub error: String,
+        pub commit: String,
+        pub version: String,
+    }
+
+    #[derive(Serialize)]
+    pub struct General {
         pub commit: String,
         pub version: String,
     }
@@ -110,7 +184,11 @@ impl<'a, 'r> FromRequest<'a, 'r> for queries::Hkp {
                             index: index,
                         })
                     }
-                    Err(_) => Outcome::Failure((Status::BadRequest, ())),
+                    Err(_) => {
+                        Outcome::Success(queries::Hkp::Invalid{
+                            query: search
+                        })
+                    }
                 }
             }
         } else {
@@ -119,103 +197,161 @@ impl<'a, 'r> FromRequest<'a, 'r> for queries::Hkp {
     }
 }
 
-fn key_to_response<'a, 'b>(bytes: &'a [u8]) -> Response<'b> {
-    use rocket::http::{ContentType, Status};
+fn key_to_response<'a>(query: String, bytes: &'a [u8]) -> MyResponse {
     use sequoia_openpgp::armor::{Kind, Writer};
-    use std::io::Cursor;
-    use std::io::Write;
+    use sequoia_openpgp::TPK;
+    use sequoia_openpgp::parse::Parse;
+    use sequoia_openpgp::serialize::Serialize;
 
-    let key = || -> Result<String> {
+    let key = match TPK::from_bytes(bytes) {
+        Ok(key) => key,
+        Err(err) => { return MyResponse::ise(err.compat()); }
+    };
+    let fpr = key.primary().fingerprint();
+    let armored_res = || -> Result<String> {
         let mut buffer = Vec::default();
         {
             let mut writer = Writer::new(&mut buffer, Kind::PublicKey, &[])?;
-            writer.write_all(&bytes)?;
+            key.serialize(&mut writer).unwrap();
         }
 
         Ok(String::from_utf8(buffer)?)
     }();
+    let armored = match armored_res {
+        Ok(armored) => armored,
+        Err(err) => { return MyResponse::ise(err); }
+    };
+    let context = templates::Search{
+        query: query,
+        fpr: fpr.to_string().into(),
+        armored: armored.into(),
+        version: env!("VERGEN_SEMVER").to_string(),
+        commit: env!("VERGEN_SHA_SHORT").to_string(),
+    };
 
-    match key {
-        Ok(s) => {
-            Response::build()
-                .status(Status::Ok)
-                .header(ContentType::new("application", "pgp-keys"))
-                .sized_body(Cursor::new(s))
-                .finalize()
-        }
-        Err(_) => {
-            Response::build()
-                .status(Status::InternalServerError)
-                .header(ContentType::Plain)
-                .sized_body(Cursor::new("Failed to ASCII armor key"))
-                .finalize()
-        }
+    MyResponse::ok("found", context)
+}
+
+fn key_to_hkp_index<'a>(bytes: &'a [u8]) -> MyResponse {
+    use sequoia_openpgp::RevocationStatus;
+    use sequoia_openpgp::{parse::Parse, TPK};
+
+   let tpk = match TPK::from_bytes(bytes) {
+        Ok(tpk) => tpk,
+        Err(err) => { return MyResponse::ise(err.compat()); }
+    };
+    let mut out = String::default();
+    let p = tpk.primary();
+
+    let ctime = tpk
+        .primary_key_signature()
+        .and_then(|x| x.signature_creation_time())
+        .map(|x| format!("{}", x.to_timespec().sec))
+        .unwrap_or_default();
+    let extime = tpk
+        .primary_key_signature()
+        .and_then(|x| x.signature_expiration_time())
+        .map(|x| format!("{}", x))
+        .unwrap_or_default();
+    let is_exp = tpk
+        .primary_key_signature()
+        .and_then(|x| {
+            if x.signature_expired() { "e" } else { "" }.into()
+        })
+    .unwrap_or_default();
+    let is_rev =
+        if tpk.revoked(None) != RevocationStatus::NotAsFarAsWeKnow {
+            "r"
+        } else {
+            ""
+        };
+    let algo: u8 = p.pk_algo().into();
+
+    out.push_str("info:1:1\r\n");
+    out.push_str(&format!(
+            "pub:{}:{}:{}:{}:{}:{}{}\r\n",
+            p.fingerprint().to_string().replace(" ", ""),
+            algo,
+            p.mpis().bits(),
+            ctime,
+            extime,
+            is_exp,
+            is_rev
+    ));
+
+    for uid in tpk.userids() {
+        let u =
+            url::form_urlencoded::byte_serialize(uid.userid().userid())
+            .fold(String::default(), |acc, x| acc + x);
+        let ctime = uid
+            .binding_signature()
+            .and_then(|x| x.signature_creation_time())
+            .map(|x| format!("{}", x.to_timespec().sec))
+            .unwrap_or_default();
+        let extime = uid
+            .binding_signature()
+            .and_then(|x| x.signature_expiration_time())
+            .map(|x| format!("{}", x))
+            .unwrap_or_default();
+        let is_exp = uid
+            .binding_signature()
+            .and_then(|x| {
+                if x.signature_expired() { "e" } else { "" }.into()
+            })
+        .unwrap_or_default();
+        let is_rev = if uid.revoked(None)
+            != RevocationStatus::NotAsFarAsWeKnow
+            {
+                "r"
+            } else {
+                ""
+            };
+
+        out.push_str(&format!(
+                "uid:{}:{}:{}:{}{}\r\n",
+                u, ctime, extime, is_exp, is_rev
+        ));
     }
+
+    MyResponse::plain(out)
 }
 
 #[get("/by-fingerprint/<fpr>")]
-fn by_fingerprint(db: rocket::State<Polymorphic>, fpr: String) -> Response {
-    use rocket::http::{ContentType, Status};
-    use std::io::Cursor;
-
+fn by_fingerprint(db: rocket::State<Polymorphic>, fpr: String) -> MyResponse {
     let maybe_key = match Fingerprint::from_str(&fpr) {
         Ok(ref fpr) => db.by_fpr(fpr),
         Err(_) => None,
     };
 
     match maybe_key {
-        Some(ref bytes) => key_to_response(bytes),
-        None => {
-            Response::build()
-                .status(Status::NotFound)
-                .header(ContentType::Plain)
-                .sized_body(Cursor::new("No such key :-("))
-                .finalize()
-        }
+        Some(ref bytes) => key_to_response(fpr, bytes),
+        None => MyResponse::not_found(&fpr),
     }
 }
 
 #[get("/by-email/<email>")]
-fn by_email(db: rocket::State<Polymorphic>, email: String) -> Response {
-    use rocket::http::{ContentType, Status};
-    use std::io::Cursor;
-
+fn by_email(db: rocket::State<Polymorphic>, email: String) -> MyResponse {
     let maybe_key = match Email::from_str(&email) {
         Ok(ref email) => db.by_email(email),
         Err(_) => None,
     };
 
     match maybe_key {
-        Some(ref bytes) => key_to_response(bytes),
-        None => {
-            Response::build()
-                .status(Status::NotFound)
-                .header(ContentType::Plain)
-                .sized_body(Cursor::new("No such key :-("))
-                .finalize()
-        }
+        Some(ref bytes) => key_to_response(email, bytes),
+        None => MyResponse::not_found(&email),
     }
 }
 
 #[get("/by-keyid/<kid>")]
-fn by_keyid(db: rocket::State<Polymorphic>, kid: String) -> Response {
-    use rocket::http::{ContentType, Status};
-    use std::io::Cursor;
-
+fn by_keyid(db: rocket::State<Polymorphic>, kid: String) -> MyResponse {
     let maybe_key = match KeyID::from_str(&kid) {
         Ok(ref key) => db.by_kid(key),
         Err(_) => None,
     };
 
     match maybe_key {
-        Some(ref bytes) => key_to_response(bytes),
-        None => {
-            Response::build()
-                .status(Status::NotFound)
-                .header(ContentType::Plain)
-                .sized_body(Cursor::new("No such key :-("))
-                .finalize()
-        }
+        Some(ref bytes) => key_to_response(kid, bytes),
+        None => MyResponse::not_found(&kid),
     }
 }
 
@@ -324,12 +460,7 @@ fn files(file: PathBuf, static_dir: State<StaticDir>) -> Option<NamedFile> {
 #[get("/pks/lookup")]
 fn lookup(
     db: rocket::State<Polymorphic>, key: Option<queries::Hkp>,
-) -> result::Result<String, Custom<String>> {
-    use sequoia_openpgp::armor::{Kind, Writer};
-    use sequoia_openpgp::RevocationStatus;
-    use sequoia_openpgp::{parse::Parse, TPK};
-    use std::io::Write;
-
+) -> MyResponse {
     let (maybe_key, index) = match key {
         Some(queries::Hkp::Fingerprint { ref fpr, index }) => {
             (db.by_fpr(fpr), index)
@@ -337,115 +468,21 @@ fn lookup(
         Some(queries::Hkp::Email { ref email, index }) => {
             (db.by_email(email), index)
         }
+        Some(queries::Hkp::Invalid { ref query }) => {
+            return MyResponse::not_found(query);
+        }
         None => {
-            return Ok("nothing to do".to_string());
+            return MyResponse::not_found("<invalid query string>");
         }
     };
+    let query = format!("{}", key.unwrap());
 
     match maybe_key {
-        Some(ref bytes) if !index => {
-            let key = || -> Result<String> {
-                let mut buffer = Vec::default();
-                {
-                    let mut writer =
-                        Writer::new(&mut buffer, Kind::PublicKey, &[])?;
-                    writer.write_all(&bytes)?;
-                }
+        Some(ref bytes) if !index => key_to_response(query, bytes),
+        None if !index => MyResponse::not_found(&query),
 
-                Ok(String::from_utf8(buffer)?)
-            }();
-
-            match key {
-                Ok(s) => Ok(s),
-                Err(_) => {
-                    Err(Custom(
-                        Status::InternalServerError,
-                        "Failed to ASCII armor key".to_string(),
-                    ))
-                }
-            }
-        }
-        None if !index => Ok("No such key :-(".to_string()),
-
-        Some(ref bytes) if index => {
-            let tpk = TPK::from_bytes(bytes).map_err(|e| {
-                Custom(Status::InternalServerError, format!("{}", e))
-            })?;
-            let mut out = String::default();
-            let p = tpk.primary();
-
-            let ctime = tpk
-                .primary_key_signature()
-                .and_then(|x| x.signature_creation_time())
-                .map(|x| format!("{}", x.to_timespec().sec))
-                .unwrap_or_default();
-            let extime = tpk
-                .primary_key_signature()
-                .and_then(|x| x.signature_expiration_time())
-                .map(|x| format!("{}", x))
-                .unwrap_or_default();
-            let is_exp = tpk
-                .primary_key_signature()
-                .and_then(|x| {
-                    if x.signature_expired() { "e" } else { "" }.into()
-                })
-                .unwrap_or_default();
-            let is_rev =
-                if tpk.revoked(None) != RevocationStatus::NotAsFarAsWeKnow {
-                    "r"
-                } else {
-                    ""
-                };
-            let algo: u8 = p.pk_algo().into();
-
-            out.push_str("info:1:1\r\n");
-            out.push_str(&format!(
-                "pub:{}:{}:{}:{}:{}:{}{}\r\n",
-                p.fingerprint().to_string().replace(" ", ""),
-                algo,
-                p.mpis().bits(),
-                ctime,
-                extime,
-                is_exp,
-                is_rev
-            ));
-
-            for uid in tpk.userids() {
-                let u =
-                    url::form_urlencoded::byte_serialize(uid.userid().userid())
-                        .fold(String::default(), |acc, x| acc + x);
-                let ctime = uid
-                    .binding_signature()
-                    .and_then(|x| x.signature_creation_time())
-                    .map(|x| format!("{}", x.to_timespec().sec))
-                    .unwrap_or_default();
-                let extime = uid
-                    .binding_signature()
-                    .and_then(|x| x.signature_expiration_time())
-                    .map(|x| format!("{}", x))
-                    .unwrap_or_default();
-                let is_exp = uid
-                    .binding_signature()
-                    .and_then(|x| {
-                        if x.signature_expired() { "e" } else { "" }.into()
-                    })
-                    .unwrap_or_default();
-                let is_rev = if uid.revoked(None)
-                    != RevocationStatus::NotAsFarAsWeKnow
-                {
-                    "r"
-                } else {
-                    ""
-                };
-
-                out.push_str(&format!(
-                    "uid:{}:{}:{}:{}{}\r\n",
-                    u, ctime, extime, is_exp, is_rev
-                ));
-            }
-            Ok(out)
-        }
-        None if index => Ok("info:1:0\r\n".into()),
+        Some(ref bytes) if index => key_to_hkp_index(bytes),
+        None if index => MyResponse::plain("info:1:0\r\n".into()),
 
         _ => unreachable!(),
     }
@@ -453,7 +490,7 @@ fn lookup(
 
 #[get("/")]
 fn root() -> Template {
-    let context = templates::Index {
+    let context = templates::General {
         version: env!("VERGEN_SEMVER").to_string(),
         commit: env!("VERGEN_SHA_SHORT").to_string(),
     };
@@ -501,6 +538,8 @@ pub fn serve(opt: &Opt, db: Polymorphic) -> Result<()> {
     let routes = routes![
         // infra
         root,
+        upload,
+        manage,
         files,
         // nginx-supported lookup
         by_email,
