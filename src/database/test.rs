@@ -513,3 +513,150 @@ pub fn test_steal_uid<D: Database>(db: &mut D) {
         tpk2.fingerprint()
     );
 }
+
+pub fn get_userids(bytes: &[u8]) -> Vec<UserID> {
+    let tpk = TPK::from_bytes(bytes).unwrap();
+    tpk.userids().map(|binding| binding.userid().clone()).collect()
+}
+
+// If multiple keys have the same email address, make sure things work
+// as expected.
+pub fn test_same_email_1<D: Database>(db: &mut D) {
+    let str_uid1 = "A <test@example.com>";
+    let tpk1 = TPKBuilder::default()
+        .add_userid(str_uid1)
+        .generate()
+        .unwrap()
+        .0;
+    let mut uid1 = UserID::new();
+    uid1.set_userid_from_bytes(str_uid1.as_bytes());
+    let email1 = Email::from_str(str_uid1).unwrap();
+
+    let str_uid2 = "B <test@example.com>";
+    let tpk2 = TPKBuilder::default()
+        .add_userid(str_uid2)
+        .generate()
+        .unwrap()
+        .0;
+    let mut uid2 = UserID::new();
+    uid2.set_userid_from_bytes(str_uid2.as_bytes());
+    let email2 = Email::from_str(str_uid2).unwrap();
+
+    // upload keys.
+    let tokens1 = db.merge_or_publish(tpk1.clone()).unwrap();
+    assert_eq!(tokens1.len(), 1);
+    let tokens2 = db.merge_or_publish(tpk2.clone()).unwrap();
+    assert_eq!(tokens2.len(), 1);
+
+    // verify tpk1
+    assert!(db.verify_token(&tokens1[0].1).unwrap().is_some());
+
+    // fetch by both user ids.  Even though we didn't verify uid2, the
+    // email is the same, and both should return tpk1.
+    assert_eq!(get_userids(&db.by_email(&email1).unwrap()[..]),
+               vec![ uid1.clone() ]);
+    assert_eq!(get_userids(&db.by_email(&email2).unwrap()[..]),
+               vec![ uid1.clone() ]);
+
+    // verify tpk2
+    assert!(db.verify_token(&tokens2[0].1).unwrap().is_some());
+
+    // fetch by both user ids.  We should now get tpk2.
+    assert_eq!(get_userids(&db.by_email(&email1).unwrap()[..]),
+               vec![ uid2.clone() ]);
+    assert_eq!(get_userids(&db.by_email(&email2).unwrap()[..]),
+               vec![ uid2.clone() ]);
+
+    // revoke tpk2's uid
+    let sig = {
+        let uid = tpk2.userids().find(|b| *b.userid() == uid2).unwrap();
+        assert_eq!(RevocationStatus::NotAsFarAsWeKnow, uid.revoked(None));
+
+        let mut keypair = tpk2.primary().clone().into_keypair().unwrap();
+        uid.revoke(
+            &mut keypair,
+            ReasonForRevocation::UIDRetired,
+            b"It was the maid :/",
+        )
+        .unwrap()
+    };
+    assert_eq!(sig.sigtype(), SignatureType::CertificateRevocation);
+    let tpk2 = tpk2.merge_packets(vec![sig.into()]).unwrap();
+    let tokens2 = db.merge_or_publish(tpk2.clone()).unwrap();
+    assert_eq!(tokens2.len(), 0);
+
+    // fetch by both user ids.  We should get nothing.
+    assert!(&db.by_email(&email1).is_none());
+    assert!(&db.by_email(&email2).is_none());
+}
+
+// If a key has multiple user ids with the same email address, make
+// sure things still work.
+pub fn test_same_email_2<D: Database>(db: &mut D) {
+    use std::{thread, time};
+
+    let str_uid1 = "A <test@example.com>";
+    let str_uid2 = "B <test@example.com>";
+    let tpk = TPKBuilder::default()
+        .add_userid(str_uid1)
+        .add_userid(str_uid2)
+        .generate()
+        .unwrap()
+        .0;
+    let mut uid1 = UserID::new();
+    let mut uid2 = UserID::new();
+
+    uid1.set_userid_from_bytes(str_uid1.as_bytes());
+    uid2.set_userid_from_bytes(str_uid2.as_bytes());
+
+    let email1 = Email::from_str(str_uid1).unwrap();
+    let email2 = Email::from_str(str_uid2).unwrap();
+
+    // upload key
+    let tokens = db.merge_or_publish(tpk.clone()).unwrap();
+
+    // verify uid1
+    assert_eq!(tokens.len(), 2);
+    assert!(db.verify_token(&tokens[0].1).unwrap().is_some());
+
+    // fetch by both user ids.  Even though we didn't verify uid2, the
+    // email is the same, and both should return exactly uid1.
+    assert_eq!(get_userids(&db.by_email(&email1).unwrap()[..]),
+               vec![ uid1.clone() ]);
+    assert_eq!(get_userids(&db.by_email(&email2).unwrap()[..]),
+               vec![ uid1.clone() ]);
+
+    assert!(db.verify_token(&tokens[1].1).unwrap().is_some());
+
+    // fetch by both user ids.  We've now verified uid2.
+    assert_eq!(get_userids(&db.by_email(&email1).unwrap()[..]),
+               vec![ uid1.clone(), uid2.clone() ]);
+    assert_eq!(get_userids(&db.by_email(&email2).unwrap()[..]),
+               vec![ uid1.clone(), uid2.clone() ]);
+
+    thread::sleep(time::Duration::from_secs(2));
+
+    // revoke one uid
+    let sig = {
+        let uid = tpk.userids().find(|b| *b.userid() == uid2).unwrap();
+        assert_eq!(RevocationStatus::NotAsFarAsWeKnow, uid.revoked(None));
+
+        let mut keypair = tpk.primary().clone().into_keypair().unwrap();
+        uid.revoke(
+            &mut keypair,
+            ReasonForRevocation::UIDRetired,
+            b"It was the maid :/",
+        )
+        .unwrap()
+    };
+    assert_eq!(sig.sigtype(), SignatureType::CertificateRevocation);
+    let tpk = tpk.merge_packets(vec![sig.into()]).unwrap();
+    let tokens = db.merge_or_publish(tpk.clone()).unwrap();
+    assert_eq!(tokens.len(), 0);
+
+    // fetch by both user ids.  We should still get both user ids.
+    assert_eq!(get_userids(&db.by_email(&email1).unwrap()[..]),
+               vec![ uid1.clone(), uid2.clone() ]);
+    assert_eq!(get_userids(&db.by_email(&email2).unwrap()[..]),
+               vec![ uid1.clone(), uid2.clone() ]);
+}

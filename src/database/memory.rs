@@ -181,4 +181,18 @@ mod tests {
 
         test::test_uid_revocation(&mut db);
     }
+
+    #[test]
+    fn test_same_email_1() {
+        let mut db = Memory::default();
+
+        test::test_same_email_1(&mut db);
+    }
+
+    #[test]
+    fn test_same_email_2() {
+        let mut db = Memory::default();
+
+        test::test_same_email_2(&mut db);
+    }
 }

@@ -495,4 +495,20 @@ mod tests {
 
         test::test_steal_uid(&mut db);
     }
+
+    #[test]
+    fn same_email_1() {
+        let tmpdir = TempDir::new().unwrap();
+        let mut db = Filesystem::new(tmpdir.path()).unwrap();
+
+        test::test_same_email_1(&mut db);
+    }
+
+    #[test]
+    fn same_email_2() {
+        let tmpdir = TempDir::new().unwrap();
+        let mut db = Filesystem::new(tmpdir.path()).unwrap();
+
+        test::test_same_email_2(&mut db);
+    }
 }
