@@ -124,7 +124,11 @@ impl Filesystem {
         let fingerprint = tpk.primary().fingerprint();
         let tpk_path = self.path_to_fingerprint(&fingerprint);
 
-        let mut sink = File::create(ensure_parent(&tpk_path)?)?;
+        let mut sink =
+            openpgp::armor::Writer::new(
+                File::create(ensure_parent(&tpk_path)?)?,
+                openpgp::armor::Kind::PublicKey,
+                &[])?;
 
         // The primary key and related signatures.
         tpk.primary().serialize(&mut sink, Tag::PublicKey)?;
