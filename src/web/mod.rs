@@ -558,7 +558,6 @@ pub fn serve(opt: &Opt, db: Polymorphic) -> Result<()> {
     let routes = routes![
         // infra
         root,
-        upload,
         manage,
         files,
         // nginx-supported lookup
