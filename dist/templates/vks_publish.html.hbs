@@ -1,5 +1,5 @@
 {{#> layout }}
-  <p>After uploading you key we will send a verification link to every email address we find inside. Clicking that link will make your key searchable by this email address.</p>
+  <p>After uploading your key we will send a verification link to each email address we find inside. Clicking that link will make your key searchable by that email address.</p>
 
   <div class="row">
     <form action="/vks/publish/submit" method=POST enctype=multipart/form-data>
@@ -14,7 +14,7 @@
   </div>
 
   <div class="row">
-    <p>If you're using GnuPG you can use the following snipped to export you public key. This will create a file called mykey.pgp that you can upload here.</p>
+    <p>If you're using GnuPG you can use the following snippet to export your public key. This will create a file called mykey.pgp that you can upload here.</p>
     <pre><code>gpg --export your_address@example.org &gt; mykey.pgp</code></pre>
   </div>
 
