@@ -1,5 +1,35 @@
-@import url(https://fonts.googleapis.com/css?family=Roboto:300);
-@import url(https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css);
+@import url(fonts/fontawesome.min.css);
+
+.fa, .fas {
+  font-family: 'FontAwesome';
+  font-style: normal;
+  font-weight: 400;
+}
+
+@font-face {
+  font-family: 'Font Awesome 5 Free';
+  font-style: normal;
+  font-weight: 400;
+  font-display: auto;
+  src: url("fonts/fa-regular-400.eot");
+  src: url("fonts/fa-regular-400.eot?#iefix") format("embedded-opentype"),
+        url("fonts/fa-regular-400.woff2") format("woff2"),
+        url("fonts/fa-regular-400.woff") format("woff"),
+        url("fonts/fa-regular-400.ttf") format("truetype"),
+        url("fonts/fa-regular-400.svg#fontawesome") format("svg");
+}
+@font-face {
+  font-family: 'Roboto';
+  font-style: normal;
+  font-weight: 300;
+  src: url('fonts/roboto-v18-latin-300.eot');
+  src: local('Roboto Light'), local('Roboto-Light'),
+       url('fonts/roboto-v18-latin-300.eot?#iefix') format('embedded-opentype'),
+       url('fonts/roboto-v18-latin-300.woff2') format('woff2'),
+       url('fonts/roboto-v18-latin-300.woff') format('woff'),
+       url('fonts/roboto-v18-latin-300.ttf') format('truetype'),
+       url('fonts/roboto-v18-latin-300.svg#Roboto') format('svg');
+}
 
 body {
   text-align: center;
@@ -14,6 +44,10 @@ h1 {
 
 p {
   padding-bottom: 0.5em;
+}
+
+a, a:visited {
+  color: #00e;
 }
 
 code {
@@ -34,7 +68,7 @@ abbr {
   color: #444;
 }
 
-.brand {
+a.brand {
   text-decoration: none;
   color: #050505;
 }
