@@ -3,6 +3,7 @@
 
   <div class="row">
     <form action="/upload/add" method=POST enctype=multipart/form-data>
+      <input type="hidden" name="csrf" value="{{csrf}}" />
       <input type="file" id="keytext" name="keytext" placeholder="Your public key">
       <input type="submit" value="Upload">
     </form>
@@ -11,4 +12,22 @@
   <div class="row">
     You can delete an uploaded key <a href="/delete">here</a>.
   </div>
+
+  <script>
+    var body = document.getElementsByTagName("body")[0];
+
+     body.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+      }, false);
+
+      body.addEventListener('drop', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (e.dataTransfer) {
+          document.getElementById('keytext').files = e.dataTransfer.files;
+        }
+    }, false);
+  </script>
+
 {{/layout}}
