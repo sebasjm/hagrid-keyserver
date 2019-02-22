@@ -1,0 +1,12 @@
+{{#> layout }}
+  <div class="row">
+    <p class="found-key">
+      We found an entry for {{ query }}.
+    </p>
+
+    <p>You can get it with GnuPG using the following snippet</p>
+    <pre><code>gpg --export export{{ fpr }} &gt; mykey.pgp</code></pre>
+
+    <p>You can also <a href="/upload">upload</a> or <a href="/vks/manage">delete</a> your key.</p>
+  </div>
+{{/layout}}

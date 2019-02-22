@@ -1,0 +1,12 @@
+{{#> layout }}
+  <h2>Tokens</h2>
+  {{#if tokens}}
+    <ul>
+      {{#each tokens}}
+        <li>{{userid}}: <a href="/vks/verify/{{token}}"><tt>{{token}}</tt></a></li>
+      {{/each}}
+    </ul>
+  {{else}}
+    <em>No new user IDs</em>
+  {{/if}}
+{{/layout}}
