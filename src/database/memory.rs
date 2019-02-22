@@ -52,12 +52,12 @@ impl Database for Memory {
     }
 
     fn update(
-        &self, fpr: &Fingerprint, new: Option<&[u8]>,
+        &self, fpr: &Fingerprint, new: Option<String>,
     ) -> Result<()> {
         let mut fprs = self.fpr.lock();
 
         if let Some(new) = new {
-            fprs.insert(fpr.clone(), String::from_utf8_lossy(new).to_string());
+            fprs.insert(fpr.clone(), new);
         } else {
             fprs.remove(fpr);
         }

@@ -9,6 +9,9 @@ use sequoia_openpgp::{
 };
 use sequoia_openpgp::PacketPile;
 
+use std::io::Write;
+use sequoia_openpgp::armor::{Writer, Kind};
+
 use serde::{Deserialize, Deserializer, Serializer};
 use time;
 use types::{Email, Fingerprint, KeyID};
@@ -108,7 +111,7 @@ pub trait Database: Sync + Send {
     //
     // Note: it is up to the caller to serialize writes.
     fn update(
-        &self, fpr: &Fingerprint, new: Option<&[u8]>,
+        &self, fpr: &Fingerprint, new: Option<String>,
     ) -> Result<()>;
 
     fn link_email(&self, email: &Email, fpr: &Fingerprint) -> Result<()>;
@@ -271,7 +274,17 @@ pub trait Database: Sync + Send {
             }
         };
 
-        self.update(&fpr, Some(&data))?;
+        let mut buf = std::io::Cursor::new(vec![]);
+        {
+            let mut armor_writer = Writer::new(&mut buf, Kind::PublicKey,
+                                               &[][..])?;
+
+            armor_writer.write_all(&data)?;
+        };
+        let armored = String::from_utf8_lossy(buf.get_ref());
+
+
+        self.update(&fpr, Some(armored.into_owned()))?;
 
         self.link_subkeys(&fpr, subkeys)?;
         for email in verified_uids {
@@ -308,7 +321,17 @@ pub trait Database: Sync + Send {
                             .unwrap().into_children().collect::<Vec<_>>();
                         let new = tpk.merge_packets(packet_pile).unwrap();
 
-                        self.update(&fpr, Some(&Self::tpk_into_bytes(&new).unwrap()))?;
+
+                        let mut buf = std::io::Cursor::new(vec![]);
+                        {
+                            let mut armor_writer = Writer::new(&mut buf, Kind::PublicKey,
+                                                               &[][..])?;
+
+                            armor_writer.write_all(&Self::tpk_into_bytes(&new).unwrap())?;
+                        };
+                        let armored = String::from_utf8_lossy(buf.get_ref());
+
+                        self.update(&fpr, Some(armored.into_owned()))?;
                         self.link_email(&email, &fpr)?;
                         return Ok(Some((email.clone(), fpr.clone())));
                     }

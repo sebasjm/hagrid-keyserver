@@ -9,7 +9,7 @@ use tempfile;
 use url;
 use pathdiff::diff_paths;
 
-use sequoia_openpgp::armor::{Writer, Kind};
+//use sequoia_openpgp::armor::{Writer, Kind};
 
 use database::{Database, Delete, Verify};
 use types::{Email, Fingerprint, KeyID};
@@ -178,7 +178,7 @@ impl Database for Filesystem {
     }
 
     fn update(
-        &self, fpr: &Fingerprint, new: Option<&[u8]>,
+        &self, fpr: &Fingerprint, new: Option<String>,
     ) -> Result<()> {
         let target = self.path_to_fingerprint(fpr);
         let dir = self.base.join("scratch_pad");
@@ -190,13 +190,7 @@ impl Database for Filesystem {
                     .rand_bytes(16)
                     .tempfile_in(dir)?;
 
-                {
-                    let mut armor_writer = Writer::new(&mut tmp, Kind::PublicKey,
-                                                       &[][..])?;
-
-                    armor_writer.write_all(new)?;
-                }
-
+                tmp.write_all(new.as_bytes()).unwrap();
                 let _ = tmp.persist(ensure_parent(&target)?)?;
 
                 // fix permissions to 640

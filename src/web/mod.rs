@@ -313,6 +313,7 @@ fn key_to_hkp_index<'a>(armored: String) -> MyResponse {
     }
 
     MyResponse::plain(out)
+
 }
 
 #[get("/by-fingerprint/<fpr>")]
@@ -463,6 +464,7 @@ fn files(file: PathBuf, static_dir: State<StaticDir>) -> Option<NamedFile> {
 fn lookup(
     db: rocket::State<Polymorphic>, domain: rocket::State<Domain>, key: Option<queries::Hkp>,
 ) -> MyResponse {
+
     let (maybe_key, index) = match key {
         Some(queries::Hkp::Fingerprint { ref fpr, index }) => {
             (db.by_fpr(fpr), index)

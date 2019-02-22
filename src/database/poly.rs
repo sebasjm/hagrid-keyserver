@@ -31,7 +31,7 @@ impl Database for Polymorphic {
     }
 
     fn update(
-        &self, fpr: &Fingerprint, new: Option<&[u8]>,
+        &self, fpr: &Fingerprint, new: Option<String>,
     ) -> Result<()> {
         match self {
             &Polymorphic::Memory(ref db) => {
