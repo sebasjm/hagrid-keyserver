@@ -52,7 +52,7 @@ pub fn test_uid_verification<D: Database>(db: &mut D) {
     {
         // fetch by fpr
         let raw = db.by_fpr(&fpr).unwrap();
-        let key = TPK::from_bytes(&raw[..]).unwrap();
+        let key = TPK::from_bytes(raw.as_bytes()).unwrap();
 
         assert!(key.userids().next().is_none());
         assert!(key.user_attributes().next().is_none());
@@ -69,7 +69,7 @@ pub fn test_uid_verification<D: Database>(db: &mut D) {
     {
         // fetch by fpr
         let raw = db.by_fpr(&fpr).unwrap();
-        let key = TPK::from_bytes(&raw[..]).unwrap();
+        let key = TPK::from_bytes(raw.as_bytes()).unwrap();
 
         assert!(key.userids().skip(1).next().is_none());
         assert!(key.user_attributes().next().is_none());
@@ -98,7 +98,7 @@ pub fn test_uid_verification<D: Database>(db: &mut D) {
     {
         // fetch by fpr
         let raw = db.by_fpr(&fpr).unwrap();
-        let key = TPK::from_bytes(&raw[..]).unwrap();
+        let key = TPK::from_bytes(raw.as_bytes()).unwrap();
 
         assert!(key.userids().skip(1).next().is_none());
         assert!(key.user_attributes().next().is_none());
@@ -127,7 +127,7 @@ pub fn test_uid_verification<D: Database>(db: &mut D) {
     {
         // fetch by fpr
         let raw = db.by_fpr(&fpr).unwrap();
-        let key = TPK::from_bytes(&raw[..]).unwrap();
+        let key = TPK::from_bytes(raw.as_bytes()).unwrap();
 
         assert_eq!(key.userids().len(), 2);
         assert!(key.user_attributes().next().is_none());
@@ -169,7 +169,7 @@ pub fn test_uid_verification<D: Database>(db: &mut D) {
 
         // fetch by fpr
         let raw = db.by_fpr(&fpr).unwrap();
-        let key = TPK::from_bytes(&raw[..]).unwrap();
+        let key = TPK::from_bytes(raw.as_bytes()).unwrap();
 
         assert_eq!(key.userids().len(), 2);
         assert!(key.user_attributes().next().is_none());
@@ -220,7 +220,7 @@ pub fn test_uid_verification<D: Database>(db: &mut D) {
 
         // fetch by fpr
         let raw = db.by_fpr(&fpr).unwrap();
-        let key = TPK::from_bytes(&raw[..]).unwrap();
+        let key = TPK::from_bytes(raw.as_bytes()).unwrap();
 
         assert_eq!(key.userids().len(), 2);
         assert!(key.user_attributes().next().is_none());
@@ -286,7 +286,7 @@ pub fn test_uid_replacement<D: Database>(db: &mut D) {
     // verify 1st uid
     assert!(db.verify_token(&tokens[0].1).unwrap().is_some());
     assert_eq!(
-        TPK::from_bytes(&db.by_email(&email).unwrap()).unwrap().fingerprint(),
+        TPK::from_bytes(db.by_email(&email).unwrap().as_bytes()).unwrap().fingerprint(),
         fpr1
     );
 
@@ -296,7 +296,7 @@ pub fn test_uid_replacement<D: Database>(db: &mut D) {
     assert!(db.by_email(&email).is_none());
     assert!(db.verify_token(&tokens[0].1).unwrap().is_some());
     assert_eq!(
-        TPK::from_bytes(&db.by_email(&email).unwrap()).unwrap().fingerprint(),
+        TPK::from_bytes(&db.by_email(&email).unwrap().as_bytes()).unwrap().fingerprint(),
         fpr2
     );
 }
@@ -335,7 +335,7 @@ pub fn test_uid_deletion<D: Database>(db: &mut D) {
     {
         // fetch by fpr
         let raw = db.by_fpr(&fpr).unwrap();
-        let key = TPK::from_bytes(&raw[..]).unwrap();
+        let key = TPK::from_bytes(raw.as_bytes()).unwrap();
 
         assert_eq!(key.userids().len(), 2);
         assert!(key.user_attributes().next().is_none());
@@ -509,7 +509,7 @@ pub fn test_steal_uid<D: Database>(db: &mut D) {
     assert!(db.verify_token(&tokens[0].1).unwrap().is_some());
 
     assert_eq!(
-        TPK::from_bytes(&db.by_email(&email1).unwrap()).unwrap().fingerprint(),
+        TPK::from_bytes(&db.by_email(&email1).unwrap().as_bytes()).unwrap().fingerprint(),
         tpk2.fingerprint()
     );
 }

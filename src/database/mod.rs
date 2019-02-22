@@ -125,9 +125,9 @@ pub trait Database: Sync + Send {
     // fpr
     fn pop_delete_token(&self, token: &str) -> Option<Delete>;
 
-    fn by_fpr(&self, fpr: &Fingerprint) -> Option<Box<[u8]>>;
-    fn by_kid(&self, kid: &KeyID) -> Option<Box<[u8]>>;
-    fn by_email(&self, email: &Email) -> Option<Box<[u8]>>;
+    fn by_fpr(&self, fpr: &Fingerprint) -> Option<String>;
+    fn by_kid(&self, kid: &KeyID) -> Option<String>;
+    fn by_email(&self, email: &Email) -> Option<String>;
 
     fn strip_userids(tpk: TPK) -> Result<TPK> {
         let pile = tpk
@@ -204,7 +204,7 @@ pub trait Database: Sync + Send {
                     match self.by_email(&email) {
                         None => {}
                         Some(other_tpk) => {
-                            match TPK::from_bytes(&other_tpk) {
+                            match TPK::from_bytes(other_tpk.as_bytes()) {
                                 Ok(other_tpk) => {
                                     all_uids
                                         .push((email, other_tpk.fingerprint()));
@@ -218,7 +218,7 @@ pub trait Database: Sync + Send {
                     let add_to_verified = match self.by_email(&email) {
                         None => false,
                         Some(other_tpk) => {
-                            match TPK::from_bytes(&other_tpk) {
+                            match TPK::from_bytes(other_tpk.as_bytes()) {
                                 Ok(other_tpk) => {
                                     all_uids.push((
                                         email.clone(),
@@ -259,9 +259,9 @@ pub trait Database: Sync + Send {
         }
 
         // merge or update key db
-        let data = match self.by_fpr(&fpr).map(|x| x.to_vec()) {
+        let data = match self.by_fpr(&fpr) {
             Some(old) => {
-                let new = TPK::from_bytes(&old).unwrap();
+                let new = TPK::from_bytes(old.as_bytes()).unwrap();
                 let tpk = new.merge(tpk.clone()).unwrap();
                 Self::tpk_into_bytes(&tpk)?
             }
@@ -300,10 +300,10 @@ pub trait Database: Sync + Send {
                     return Ok(None);
                 }
 
-                match self.by_fpr(&fpr).map(|x| x.to_vec()) {
+                match self.by_fpr(&fpr) {
                     Some(old) => {
 
-                        let tpk = TPK::from_bytes(&old).unwrap();
+                        let tpk = TPK::from_bytes(old.as_bytes()).unwrap();
                         let packet_pile = PacketPile::from_bytes(&packets)
                             .unwrap().into_children().collect::<Vec<_>>();
                         let new = tpk.merge_packets(packet_pile).unwrap();
@@ -331,7 +331,7 @@ pub trait Database: Sync + Send {
             Some(tpk) => {
                 let payload = Delete::new(fpr);
                 let tok = self.new_delete_token(payload)?;
-                let tpk = match TPK::from_bytes(&tpk) {
+                let tpk = match TPK::from_bytes(tpk.as_bytes()) {
                     Ok(tpk) => tpk,
                     Err(e) => {
                         return Err(
@@ -371,9 +371,9 @@ pub trait Database: Sync + Send {
                 }
 
                 loop {
-                    match self.by_fpr(&fpr).map(|x| x.to_vec()) {
+                    match self.by_fpr(&fpr) {
                         Some(old) => {
-                            let tpk = match TPK::from_bytes(&old) {
+                            let tpk = match TPK::from_bytes(old.as_bytes()) {
                                 Ok(tpk) => tpk,
                                 Err(e) => {
                                     return Err(failure::format_err!(

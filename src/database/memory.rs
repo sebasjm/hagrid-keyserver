@@ -9,7 +9,8 @@ use Result;
 pub struct Memory {
     update_lock: Mutex<()>,
 
-    fpr: Mutex<HashMap<Fingerprint, Box<[u8]>>>,
+    fpr: Mutex<HashMap<Fingerprint, String>>,
+
     fpr_links: Mutex<HashMap<Fingerprint, Fingerprint>>,
     email: Mutex<HashMap<Email, Fingerprint>>,
     kid: Mutex<HashMap<KeyID, Fingerprint>>,
@@ -56,7 +57,7 @@ impl Database for Memory {
         let mut fprs = self.fpr.lock();
 
         if let Some(new) = new {
-            fprs.insert(fpr.clone(), new.into());
+            fprs.insert(fpr.clone(), String::from_utf8_lossy(new).to_string());
         } else {
             fprs.remove(fpr);
         }
@@ -104,7 +105,7 @@ impl Database for Memory {
         self.delete_token.lock().remove(token)
     }
 
-    fn by_fpr(&self, fpr: &Fingerprint) -> Option<Box<[u8]>> {
+    fn by_fpr(&self, fpr: &Fingerprint) -> Option<String> {
         let fprs = self.fpr.lock();
         let links = self.fpr_links.lock();
 
@@ -113,14 +114,14 @@ impl Database for Memory {
         })
     }
 
-    fn by_email(&self, email: &Email) -> Option<Box<[u8]>> {
+    fn by_email(&self, email: &Email) -> Option<String> {
         let fprs = self.fpr.lock();
         let by_email = self.email.lock();
 
         by_email.get(email).and_then(|fpr| fprs.get(fpr).map(|x| x.clone()))
     }
 
-    fn by_kid(&self, kid: &KeyID) -> Option<Box<[u8]>> {
+    fn by_kid(&self, kid: &KeyID) -> Option<String> {
         let fprs = self.fpr.lock();
         let by_kid = self.kid.lock();
 

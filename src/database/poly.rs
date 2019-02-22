@@ -99,21 +99,21 @@ impl Database for Polymorphic {
         }
     }
 
-    fn by_fpr(&self, fpr: &Fingerprint) -> Option<Box<[u8]>> {
+    fn by_fpr(&self, fpr: &Fingerprint) -> Option<String> {
         match self {
             &Polymorphic::Memory(ref db) => db.by_fpr(fpr),
             &Polymorphic::Filesystem(ref db) => db.by_fpr(fpr),
         }
     }
 
-    fn by_email(&self, email: &Email) -> Option<Box<[u8]>> {
+    fn by_email(&self, email: &Email) -> Option<String> {
         match self {
             &Polymorphic::Memory(ref db) => db.by_email(email),
             &Polymorphic::Filesystem(ref db) => db.by_email(email),
         }
     }
 
-    fn by_kid(&self, kid: &KeyID) -> Option<Box<[u8]>> {
+    fn by_kid(&self, kid: &KeyID) -> Option<String> {
         match self {
             &Polymorphic::Memory(ref db) => db.by_kid(kid),
             &Polymorphic::Filesystem(ref db) => db.by_kid(kid),

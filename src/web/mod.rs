@@ -207,31 +207,18 @@ impl<'a, 'r> FromRequest<'a, 'r> for queries::Hkp {
     }
 }
 
-fn key_to_response<'a>(query: String, domain: String, bytes: &'a [u8]) -> MyResponse {
+fn key_to_response<'a>(query: String, domain: String, armored: String) -> MyResponse {
     use sequoia_openpgp::armor::{Kind, Writer};
     use sequoia_openpgp::TPK;
     use sequoia_openpgp::parse::Parse;
     use sequoia_openpgp::serialize::Serialize;
     use std::convert::TryFrom;
 
-    let key = match TPK::from_bytes(bytes) {
+    let key = match TPK::from_bytes(armored.as_bytes()) {
         Ok(key) => key,
         Err(err) => { return MyResponse::ise(err); }
     };
     let fpr = key.primary().fingerprint();
-    let armored_res = || -> Result<String> {
-        let mut buffer = Vec::default();
-        {
-            let mut writer = Writer::new(&mut buffer, Kind::PublicKey, &[])?;
-            key.serialize(&mut writer).unwrap();
-        }
-
-        Ok(String::from_utf8(buffer)?)
-    }();
-    let armored = match armored_res {
-        Ok(armored) => armored,
-        Err(err) => { return MyResponse::ise(err); }
-    };
     let context = templates::Search{
         query: query,
         domain: Some(domain),
@@ -244,11 +231,11 @@ fn key_to_response<'a>(query: String, domain: String, bytes: &'a [u8]) -> MyResp
     MyResponse::ok("found", context)
 }
 
-fn key_to_hkp_index<'a>(bytes: &'a [u8]) -> MyResponse {
+fn key_to_hkp_index<'a>(armored: String) -> MyResponse {
     use sequoia_openpgp::RevocationStatus;
     use sequoia_openpgp::{parse::Parse, TPK};
 
-   let tpk = match TPK::from_bytes(bytes) {
+   let tpk = match TPK::from_bytes(armored.as_bytes()) {
         Ok(tpk) => tpk,
         Err(err) => { return MyResponse::ise(err); }
     };
@@ -336,7 +323,7 @@ fn by_fingerprint(db: rocket::State<Polymorphic>, domain: rocket::State<Domain>,
     };
 
     match maybe_key {
-        Some(ref bytes) => key_to_response(fpr, domain.0.clone(), bytes),
+        Some(armored) => key_to_response(fpr, domain.0.clone(), armored),
         None => MyResponse::not_found(&fpr),
     }
 }
@@ -349,8 +336,9 @@ fn by_email(db: rocket::State<Polymorphic>, domain: rocket::State<Domain>, email
     };
 
     match maybe_key {
-        Some(ref bytes) => key_to_response(email, domain.0.clone(), bytes),
+        Some(armored) => key_to_response(email, domain.0.clone(), armored),
         None => MyResponse::not_found(&email),
+
     }
 }
 
@@ -362,7 +350,7 @@ fn by_keyid(db: rocket::State<Polymorphic>, domain: rocket::State<Domain>, kid: 
     };
 
     match maybe_key {
-        Some(ref bytes) => key_to_response(kid, domain.0.clone(), bytes),
+        Some(armored) => key_to_response(kid, domain.0.clone(), armored),
         None => MyResponse::not_found(&kid),
     }
 }
@@ -492,13 +480,29 @@ fn lookup(
     let query = format!("{}", key.unwrap());
 
     match maybe_key {
-        Some(ref bytes) if !index => key_to_response(query, domain.0.clone(), bytes),
-        None if !index => MyResponse::not_found(&query),
+        Some(armored) => {
+            if index {
+                key_to_hkp_index(armored)
+            } else {
+                key_to_response(query, domain.0.clone(), armored)
+            }
+        }
+        None => {
+            if index {
+                MyResponse::plain("info:1:0\r\n".into())
+            } else {
+                MyResponse::not_found(&query)
+            }
+        }
 
-        Some(ref bytes) if index => key_to_hkp_index(bytes),
-        None if index => MyResponse::plain("info:1:0\r\n".into()),
-
-        _ => unreachable!(),
+//        Some(armored) if !index => key_to_response(query, domain.0.clone(), armored),
+//        None if !index => MyResponse::not_found(&query),
+//
+//        Some(armored) if index => key_to_hkp_index(armored),
+//        None if index => MyResponse::plain("info:1:0\r\n".into()),
+//
+//
+//        _ => unreachable!(),
     }
 }
 

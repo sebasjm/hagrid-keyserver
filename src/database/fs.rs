@@ -338,13 +338,13 @@ impl Database for Filesystem {
     }
 
     // XXX: slow
-    fn by_fpr(&self, fpr: &Fingerprint) -> Option<Box<[u8]>> {
+    fn by_fpr(&self, fpr: &Fingerprint) -> Option<String> {
         let target = self.path_to_fingerprint(fpr);
 
         File::open(target).ok().and_then(|mut fd| {
-            let mut buf = Vec::default();
-            if fd.read_to_end(&mut buf).is_ok() {
-                Some(buf.into_boxed_slice())
+            let mut buf = String::new();
+            if fd.read_to_string(&mut buf).is_ok() {
+                Some(buf)
             } else {
                 None
             }
@@ -352,7 +352,7 @@ impl Database for Filesystem {
     }
 
     // XXX: slow
-    fn by_email(&self, email: &Email) -> Option<Box<[u8]>> {
+    fn by_email(&self, email: &Email) -> Option<String> {
         use std::fs;
 
         let email =
@@ -373,9 +373,9 @@ impl Database for Filesystem {
             )
             .and_then(|p| File::open(p).ok())
             .and_then(|mut fd| {
-                let mut buf = Vec::default();
-                if fd.read_to_end(&mut buf).is_ok() {
-                    Some(buf.into_boxed_slice())
+                let mut buf = String::new();
+                if fd.read_to_string(&mut buf).is_ok() {
+                    Some(buf)
                 } else {
                     None
                 }
@@ -383,7 +383,7 @@ impl Database for Filesystem {
     }
 
     // XXX: slow
-    fn by_kid(&self, kid: &KeyID) -> Option<Box<[u8]>> {
+    fn by_kid(&self, kid: &KeyID) -> Option<String> {
         use std::fs;
 
         let path = self.path_to_keyid(kid);
@@ -401,9 +401,9 @@ impl Database for Filesystem {
             )
             .and_then(|p| File::open(p).ok())
             .and_then(|mut fd| {
-                let mut buf = Vec::default();
-                if fd.read_to_end(&mut buf).is_ok() {
-                    Some(buf.into_boxed_slice())
+                let mut buf = String::new();
+                if fd.read_to_string(&mut buf).is_ok() {
+                    Some(buf)
                 } else {
                     None
                 }
