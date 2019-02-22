@@ -1,16 +1,14 @@
 {{#> layout }}
-  <h1>Key uploaded</h1>
-  <p>Your key can be fetched by its fingerprint and long key ID.</p>
-  {{#if tokens}}
-    <p>We also sent verification links to the following email addresses:</p>
-    <ul>
-      {{#each tokens}}
-        <li>{{userid}}</li>
-      {{/each}}
-    </ul>
-    <p>These links can be used to allow your key be fetch by email address.</p>
-  {{else}}
-    <p>There were no new unverified email addresses in this key.</p>
-  {{/if}}
-  <p>You can delete the key <a href="/vks/delete/{{ fpr }}">here</a>.
+  <h2>Upload key to directory</h2>
+
+  <div class="row">
+    <form action="/upload/add" method=POST enctype=multipart/form-data>
+      <input type="file" id="keytext" name="keytext" placeholder="Your public key">
+      <input type="submit" value="Upload">
+    </form>
+  </div>
+
+  <div class="row">
+    You can delete an uploaded key <a href="/delete">here</a>.
+  </div>
 {{/layout}}
