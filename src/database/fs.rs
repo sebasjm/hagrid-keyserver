@@ -7,6 +7,7 @@ use std::str;
 use serde_json;
 use tempfile;
 use url;
+use pathdiff::diff_paths;
 
 use database::{Database, Delete, Verify};
 use types::{Email, Fingerprint, KeyID};
@@ -194,8 +195,9 @@ impl Database for Filesystem {
         let email =
             url::form_urlencoded::byte_serialize(email.to_string().as_bytes())
                 .collect::<String>();
-        let target = self.path_to_fingerprint(fpr);
         let link = self.path_to_email(&email);
+        let target = diff_paths(&self.path_to_fingerprint(fpr),
+                                link.parent().unwrap()).unwrap();
 
         if link.exists() {
             match link.symlink_metadata() {
@@ -218,7 +220,8 @@ impl Database for Filesystem {
 
         match read_link(link.clone()) {
             Ok(target) => {
-                let expected = self.path_to_fingerprint(fpr);
+                let expected = diff_paths(&self.path_to_fingerprint(fpr),
+                                          link.parent().unwrap()).unwrap();
 
                 if target == expected {
                     remove_file(link)?;
@@ -230,8 +233,9 @@ impl Database for Filesystem {
     }
 
     fn link_kid(&self, kid: &KeyID, fpr: &Fingerprint) -> Result<()> {
-        let target = self.path_to_fingerprint(fpr);
         let link = self.path_to_keyid(kid);
+        let target = diff_paths(&self.path_to_fingerprint(fpr),
+                                link.parent().unwrap()).unwrap();
 
         if link.exists() {
             match link.symlink_metadata() {
@@ -263,12 +267,14 @@ impl Database for Filesystem {
     }
 
     fn link_fpr(&self, from: &Fingerprint, fpr: &Fingerprint) -> Result<()> {
-        let target = self.path_to_fingerprint(fpr);
-        let link = self.path_to_fingerprint(from);
-
-        if link == target {
+        if from == fpr {
             return Ok(());
         }
+
+        let link = self.path_to_fingerprint(from);
+        let target = diff_paths(&self.path_to_fingerprint(fpr),
+                                link.parent().unwrap()).unwrap();
+
         if link.exists() {
             match link.symlink_metadata() {
                 Ok(ref meta) if meta.file_type().is_symlink() => {

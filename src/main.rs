@@ -29,6 +29,7 @@ extern crate parking_lot;
 extern crate rand;
 extern crate structopt;
 extern crate tempfile;
+extern crate pathdiff;
 
 mod database;
 mod mail;
