@@ -508,7 +508,8 @@ pub fn serve(opt: &Opt, db: Polymorphic) -> Result<()> {
         by_keyid,
         // HKP
         lookup,
-        upload::multipart_upload,
+        upload::upload_landing,
+        upload::upload_hkp,
         // verification & deletion
         verify,
         delete,
