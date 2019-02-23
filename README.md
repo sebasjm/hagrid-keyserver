@@ -56,8 +56,8 @@ are handled.
 - `GET /vks/confirm/<token>` confirms a keys deletion request using a token
   string send by email.
 
-Keys can also be fetched by their subkeys fingerprint and key ID. A key won't
-show up until at least one user ID is verified.
+Keys can also be fetched by their subkeys fingerprint and key
+ID. Note: keys will show up even if no user IDs are verified.
 
 Building
 --------
