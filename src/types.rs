@@ -90,18 +90,10 @@ impl FromStr for Fingerprint {
             s = &s[2..];
         }
 
-        if s.len() != 40 {
-            return Err(failure::format_err!("'{}' is not a valid fingerprint", s));
-        }
-
-        let vec = hex::decode(s)?;
-        if vec.len() == 20 {
-            let mut arr = [0u8; 20];
-
-            arr.copy_from_slice(&vec[..]);
-            Ok(Fingerprint(arr))
-        } else {
-            Err(failure::format_err!("'{}' is not a valid fingerprint", s))
+        match sequoia_openpgp::Fingerprint::from_hex(s)? {
+            sequoia_openpgp::Fingerprint::V4(a) => Ok(Fingerprint(a)),
+            sequoia_openpgp::Fingerprint::Invalid(_) =>
+                Err(failure::format_err!("'{}' is not a valid fingerprint", s))
         }
     }
 }
