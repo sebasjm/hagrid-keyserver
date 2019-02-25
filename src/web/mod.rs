@@ -643,3 +643,68 @@ fn rocket_factory(rocket: rocket::Rocket, db: Polymorphic) -> rocket::Rocket {
         .mount("/", routes)
         .manage(db)
 }
+
+#[cfg(test)]
+mod tests {
+    use fs_extra;
+    use tempfile::{tempdir, TempDir};
+    use super::rocket;
+    use rocket::local::Client;
+    use rocket::http::Status;
+    use rocket::http::ContentType;
+
+    use database::*;
+    use super::*;
+
+    /// Creates a configuration and empty state dir for testing purposes.
+    ///
+    /// Note that you need to keep the returned TempDir alive for the
+    /// duration of your test.  To debug the test, mem::forget it to
+    /// prevent cleanup.
+    fn configuration() -> Result<(TempDir, rocket::Config)> {
+        use rocket::config::{Config, Environment};
+
+        let root = tempdir()?;
+        fs_extra::copy_items(&vec!["dist/templates"], &root,
+                             &fs_extra::dir::CopyOptions::new())?;
+
+        let config = Config::build(Environment::Staging)
+            .root(root.path().to_path_buf())
+            .extra(
+                "template_dir",
+                root.path().join("templates").to_str()
+                    .ok_or(failure::err_msg("Template path invalid"))?,
+            )
+            .extra(
+                "static_dir",
+                root.path().join("public").to_str()
+                    .ok_or(failure::err_msg("Static path invalid"))?,
+            )
+            .extra("domain", "domain")
+            .extra("from", "from")
+            .finalize()?;
+        Ok((root, config))
+    }
+
+    #[test]
+    fn basics() {
+        let (_tmpdir, config) = configuration().unwrap();
+
+        let db = Polymorphic::Filesystem(
+            Filesystem::new(config.root().unwrap().to_path_buf()).unwrap());
+        let rocket = rocket_factory(rocket::custom(config), db);
+        let client = Client::new(rocket).expect("valid rocket instance");
+
+        // Check that we see the landing page.
+        let mut response = client.get("/").dispatch();
+        assert_eq!(response.status(), Status::Ok);
+        assert_eq!(response.content_type(), Some(ContentType::HTML));
+        assert!(response.body_string().unwrap().contains("Hagrid"));
+
+        // Check that we see the privacy policy.
+        let mut response = client.get("/about").dispatch();
+        assert_eq!(response.status(), Status::Ok);
+        assert_eq!(response.content_type(), Some(ContentType::HTML));
+        assert!(response.body_string().unwrap().contains("Public Key Data"));
+    }
+}

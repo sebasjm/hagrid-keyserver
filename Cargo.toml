@@ -42,3 +42,4 @@ vergen = "3"
 
 [dev-dependencies]
 num_cpus = "1.0"
+fs_extra = "1.0"

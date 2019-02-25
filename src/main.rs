@@ -33,6 +33,9 @@ extern crate structopt;
 extern crate tempfile;
 extern crate pathdiff;
 
+#[cfg(test)]
+extern crate fs_extra;
+
 mod database;
 mod mail;
 mod types;
