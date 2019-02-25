@@ -43,8 +43,8 @@ use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
 #[structopt(
-    name = "garbage",
-    about = "Garbage Pile - The verifying OpenPGP key server."
+    name = "hagrid",
+    about = "Hagrid - The verifying OpenPGP key server."
 )]
 pub struct Opt {
     /// More verbose output. Disabled when running as daemon.
