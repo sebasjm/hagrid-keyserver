@@ -567,6 +567,12 @@ pub fn serve(opt: &Opt, db: Polymorphic) -> Result<()> {
         .extra("domain", opt.domain.clone())
         .extra("from", opt.from.clone())
         .finalize()?;
+
+    rocket_factory(rocket::custom(config), db).launch();
+    Ok(())
+}
+
+fn rocket_factory(rocket: rocket::Rocket, db: Polymorphic) -> rocket::Rocket {
     let routes = routes![
         // infra
         root,
@@ -588,7 +594,7 @@ pub fn serve(opt: &Opt, db: Polymorphic) -> Result<()> {
         about,
     ];
 
-    rocket::custom(config)
+    rocket
         .attach(Template::fairing())
         .attach(AdHoc::on_attach("static_dir", |rocket| {
             let static_dir =
@@ -636,6 +642,4 @@ pub fn serve(opt: &Opt, db: Polymorphic) -> Result<()> {
         }))
         .mount("/", routes)
         .manage(db)
-        .launch();
-    Ok(())
 }
