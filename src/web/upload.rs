@@ -89,7 +89,7 @@ pub fn vks_publish_submit(
 }
 
 // signature requires the request to have a `Content-Type`
-pub fn do_upload_hkp(
+fn do_upload_hkp(
     db: State<Polymorphic>, cont_type: &ContentType, data: Data,
     tmpl: State<MailTemplates>, domain: State<Domain>, from: State<From>,
 ) -> Result<Flash<Redirect>, String> {
