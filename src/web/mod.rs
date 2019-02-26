@@ -15,6 +15,8 @@ use handlebars::Handlebars;
 
 use std::path::{Path, PathBuf};
 
+use sequoia_openpgp as openpgp;
+
 mod upload;
 
 use database::{Database, Polymorphic};
@@ -49,12 +51,16 @@ mod queries {
     }
 }
 
+use rocket::http::hyper::header::ContentDisposition;
+
 #[derive(Responder)]
 enum MyResponse {
     #[response(status = 200, content_type = "html")]
     Success(Template),
      #[response(status = 200, content_type = "plain")]
     Plain(String),
+     #[response(status = 200, content_type = "application/pgp-keys")]
+    Key(String, ContentDisposition),
     #[response(status = 500, content_type = "html")]
     ServerError(Template),
     NotFound(Flash<Redirect>),
@@ -67,6 +73,21 @@ impl MyResponse {
 
     pub fn plain(s: String) -> Self {
         MyResponse::Plain(s)
+    }
+
+    pub fn key(armored_key: String, fp: &openpgp::Fingerprint) -> Self {
+        use rocket::http::hyper::header::{ContentDisposition, DispositionType,
+                                          DispositionParam, Charset};
+        MyResponse::Key(
+            armored_key,
+            ContentDisposition {
+                disposition: DispositionType::Attachment,
+                parameters: vec![
+                    DispositionParam::Filename(
+                        Charset::Us_Ascii, None,
+                        (fp.to_hex() + ".asc").into_bytes()),
+                ],
+            })
     }
 
     pub fn ise(e: failure::Error) -> Self {
@@ -217,15 +238,16 @@ fn key_to_response<'a>(query: String, domain: String, armored: String,
     use sequoia_openpgp::parse::Parse;
     use std::convert::TryFrom;
 
-    if machine_readable {
-        return MyResponse::plain(armored);
-    }
-
     let key = match TPK::from_bytes(armored.as_bytes()) {
         Ok(key) => key,
         Err(err) => { return MyResponse::ise(err); }
     };
     let fpr = key.primary().fingerprint();
+
+    if machine_readable {
+        return MyResponse::key(armored, &fpr);
+    }
+
     let context = templates::Search{
         query: query,
         domain: Some(domain),
@@ -766,7 +788,8 @@ mod tests {
         fn check_mr_response(client: &Client, uri: &str, tpk: &TPK) {
             let mut response = client.get(uri).dispatch();
             assert_eq!(response.status(), Status::Ok);
-            assert_eq!(response.content_type(), Some(ContentType::Plain));
+            assert_eq!(response.content_type(),
+                       Some(ContentType::new("application", "pgp-keys")));
             let body = response.body_string().unwrap();
             assert!(body.contains("END PGP PUBLIC KEY BLOCK"));
             let tpk_ = TPK::from_bytes(body.as_bytes()).unwrap();
