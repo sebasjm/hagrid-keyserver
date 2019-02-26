@@ -128,23 +128,11 @@ impl ToString for KeyID {
 impl FromStr for KeyID {
     type Err = Error;
 
-    fn from_str(mut s: &str) -> Result<KeyID> {
-        if s.starts_with("0x") {
-            s = &s[2..];
-        }
-
-        if s.len() != 16 {
-            return Err(failure::format_err!("'{}' is not a valid long key ID", s));
-        }
-
-        let vec = hex::decode(s)?;
-        if vec.len() == 8 {
-            let mut arr = [0u8; 8];
-
-            arr.copy_from_slice(&vec[..]);
-            Ok(KeyID(arr))
-        } else {
-            Err(failure::format_err!("'{}' is not a valid long key ID", s))
+    fn from_str(s: &str) -> Result<KeyID> {
+        match sequoia_openpgp::KeyID::from_hex(s)? {
+            sequoia_openpgp::KeyID::V4(a) => Ok(KeyID(a)),
+            sequoia_openpgp::KeyID::Invalid(_) =>
+                Err(failure::format_err!("'{}' is not a valid long key ID", s))
         }
     }
 }
