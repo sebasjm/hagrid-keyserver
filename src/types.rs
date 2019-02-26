@@ -85,11 +85,7 @@ impl<'de> Deserialize<'de> for Fingerprint {
 impl FromStr for Fingerprint {
     type Err = Error;
 
-    fn from_str(mut s: &str) -> Result<Fingerprint> {
-        if s.starts_with("0x") {
-            s = &s[2..];
-        }
-
+    fn from_str(s: &str) -> Result<Fingerprint> {
         match sequoia_openpgp::Fingerprint::from_hex(s)? {
             sequoia_openpgp::Fingerprint::V4(a) => Ok(Fingerprint(a)),
             sequoia_openpgp::Fingerprint::Invalid(_) =>
