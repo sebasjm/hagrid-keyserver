@@ -99,8 +99,14 @@ impl MyResponse {
         MyResponse::ServerError(Template::render("500", ctx))
     }
 
-    pub fn not_found() -> Self {
-        MyResponse::NotFound(Flash::error(Redirect::to("/?"), "Key not found".to_owned()))
+    pub fn not_found<T, M>(redirect_to: T, message: M)
+                           -> Self
+        where T: Into<Option<&'static str>>,
+              M: Into<Option<String>>,
+    {
+        MyResponse::NotFound(Flash::error(
+            Redirect::to(redirect_to.into().unwrap_or("/?")),
+            message.into().unwrap_or_else(|| "Key not found".to_owned())))
     }
 }
 
@@ -355,7 +361,7 @@ fn by_fingerprint(db: rocket::State<Polymorphic>, domain: rocket::State<Domain>,
     match maybe_key {
         Some(armored) => key_to_response(fpr, domain.0.clone(), armored,
                                          true),
-        None => MyResponse::not_found(),
+        None => MyResponse::not_found(None, None),
     }
 }
 
@@ -369,7 +375,7 @@ fn by_email(db: rocket::State<Polymorphic>, domain: rocket::State<Domain>, email
     match maybe_key {
         Some(armored) => key_to_response(email, domain.0.clone(), armored,
                                          true),
-        None => MyResponse::not_found(),
+        None => MyResponse::not_found(None, None),
 
     }
 }
@@ -384,7 +390,7 @@ fn by_keyid(db: rocket::State<Polymorphic>, domain: rocket::State<Domain>, kid: 
     match maybe_key {
         Some(armored) => key_to_response(kid, domain.0.clone(), armored,
                                          true),
-        None => MyResponse::not_found(),
+        None => MyResponse::not_found(None, None),
     }
 }
 
