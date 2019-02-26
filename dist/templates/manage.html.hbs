@@ -1,8 +1,9 @@
 {{#> layout }}
   <div class="row">
-    <form action="/vks/manage" method=POST>
+    <form action="/vks/manage" method="POST">
       <div class="manage">
-        <input type="text" class="manageEmail" autofocus placeholder="Your email address">
+        <input type="text" name="search_term" class="manageEmail" autofocus
+	       placeholder="Your Email / Key ID / Fingerprint">
         <button type="submit" class="manageButton button">
           Manage
         </button>

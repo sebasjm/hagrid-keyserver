@@ -7,7 +7,7 @@ use rocket::response::NamedFile;
 use rocket::{Outcome, State};
 use rocket_contrib::templates::Template;
 use rocket::response::Flash;
-use rocket::request::FlashMessage;
+use rocket::request::{Form, FlashMessage};
 use rocket::response::Redirect;
 
 use serde::Serialize;
@@ -426,44 +426,58 @@ fn verify(
     }
 }
 
-#[get("/vks/delete/<fpr>")]
-fn delete(
-    db: rocket::State<Polymorphic>, fpr: String, tmpl: State<MailTemplates>,
-    domain: State<Domain>, from: State<From>,
-) -> result::Result<Template, Custom<String>> {
-    use mail::send_confirmation_mail;
-
-    let fpr = match Fingerprint::from_str(&fpr) {
-        Ok(fpr) => fpr,
-        Err(_) => {
-            return Err(Custom(
-                Status::BadRequest,
-                "Invalid fingerprint".to_string(),
-            ));
-        }
+#[get("/vks/manage")]
+fn manage(flash: Option<FlashMessage>)
+          -> result::Result<Template, Custom<String>> {
+    let context = templates::Index {
+        error: flash.and_then(|flash| error_from_flash(&flash)),
+        version: env!("VERGEN_SEMVER").to_string(),
+        commit: env!("VERGEN_SHA_SHORT").to_string(),
     };
 
-    match db.request_deletion(fpr.clone()) {
+    Ok(Template::render("manage", context))
+}
+
+#[derive(FromForm)]
+struct ManageRequest {
+    search_term: String,
+}
+
+#[post("/vks/manage", data="<request>")]
+fn manage_post(
+    db: State<Polymorphic>, tmpl: State<MailTemplates>, domain: State<Domain>,
+    from: State<From>, request: Form<ManageRequest>,
+) -> MyResponse {
+    use std::convert::TryInto;
+    use mail::send_confirmation_mail;
+
+    let tpk = match db.lookup(&request.search_term) {
+        Ok(Some(tpk)) => tpk,
+        Ok(None) => return MyResponse::not_found(
+            Some("/vks/manage"),
+            Some(format!("No such key found for {:?}", request.search_term))),
+        Err(e) => return MyResponse::ise(e),
+    };
+
+    match db.request_deletion(tpk.fingerprint().try_into().unwrap()) {
         Ok((token, uids)) => {
             let context = templates::Delete {
-                fpr: fpr.to_string(),
+                fpr: tpk.fingerprint().to_string(),
                 token: token.clone(),
                 version: env!("VERGEN_SEMVER").to_string(),
                 commit: env!("VERGEN_SHA_SHORT").to_string(),
             };
 
             for uid in uids {
-                send_confirmation_mail(
-                    &uid, &token, &tmpl.0, &domain.0, &from.0,
-                )
-                .map_err(|err| {
-                    Custom(Status::InternalServerError, format!("{:?}", err))
-                })?;
+                if let Err(e) = send_confirmation_mail(
+                    &uid, &token, &tmpl.0, &domain.0, &from.0) {
+                    return MyResponse::ise(e);
+                }
             }
 
-            Ok(Template::render("delete", context))
+            MyResponse::ok("delete", context)
         }
-        Err(e) => Err(Custom(Status::InternalServerError, format!("{}", e))),
+        Err(e) => MyResponse::ise(e),
     }
 }
 
@@ -512,10 +526,10 @@ fn lookup(
             (db.by_email(email), index, false)
         }
         Some(queries::Hkp::Invalid { query: _ }) => {
-            return MyResponse::not_found();
+            return MyResponse::not_found(None, None);
         }
         None => {
-            return MyResponse::not_found();
+            return MyResponse::not_found(None, None);
         }
     };
     let query = format!("{}", key.unwrap());
@@ -533,20 +547,10 @@ fn lookup(
             if index {
                 MyResponse::plain("info:1:0\r\n".into())
             } else {
-                MyResponse::not_found()
+                MyResponse::not_found(None, None)
             }
         }
     }
-}
-
-#[get("/vks/manage")]
-fn manage() -> result::Result<Template, Custom<String>> {
-    let context = templates::General {
-        version: env!("VERGEN_SEMVER").to_string(),
-        commit: env!("VERGEN_SHA_SHORT").to_string(),
-    };
-
-    Ok(Template::render("manage", context))
 }
 
 fn error_from_flash(flash: &FlashMessage) -> Option<String> {
@@ -628,6 +632,7 @@ fn rocket_factory(rocket: rocket::Rocket, db: Polymorphic) -> rocket::Rocket {
         // infra
         root,
         manage,
+        manage_post,
         files,
         // nginx-supported lookup
         by_email,
@@ -639,7 +644,6 @@ fn rocket_factory(rocket: rocket::Rocket, db: Polymorphic) -> rocket::Rocket {
         upload::vks_publish_submit,
         // verification & deletion
         verify,
-        delete,
         confirm,
         // about
         about,
