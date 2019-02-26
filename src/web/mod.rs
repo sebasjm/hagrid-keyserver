@@ -27,11 +27,12 @@ use std::str::FromStr;
 
 mod queries {
     use std::fmt;
-    use types::{Email, Fingerprint};
+    use types::{Email, Fingerprint, KeyID};
 
     #[derive(Debug)]
     pub enum Hkp {
         Fingerprint { fpr: Fingerprint, index: bool },
+        KeyID { keyid: KeyID, index: bool },
         Email { email: Email, index: bool },
         Invalid{ query: String, },
     }
@@ -40,6 +41,7 @@ mod queries {
         fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
             match self {
                 Hkp::Fingerprint{ ref fpr,.. } => write!(f, "{}", fpr.to_string()),
+                Hkp::KeyID{ ref keyid,.. } => write!(f, "{}", keyid.to_string()),
                 Hkp::Email{ ref email,.. } => write!(f, "{}", email.to_string()),
                 Hkp::Invalid{ ref query } => write!(f, "{}", query),
             }
@@ -171,10 +173,16 @@ impl<'a, 'r> FromRequest<'a, 'r> for queries::Hkp {
             let index = fields.get("op").map(|x| x == "index").unwrap_or(false);
             let search = fields.get("search").cloned().unwrap_or_default();
             let maybe_fpr = Fingerprint::from_str(&search);
+            let maybe_keyid = KeyID::from_str(&search);
 
             if let Ok(fpr) = maybe_fpr {
                 Outcome::Success(queries::Hkp::Fingerprint {
                     fpr: fpr,
+                    index: index,
+                })
+            } else if let Ok(keyid) = maybe_keyid {
+                Outcome::Success(queries::Hkp::KeyID {
+                    keyid: keyid,
                     index: index,
                 })
             } else {
@@ -457,6 +465,9 @@ fn lookup(
     let (maybe_key, index) = match key {
         Some(queries::Hkp::Fingerprint { ref fpr, index }) => {
             (db.by_fpr(fpr), index)
+        }
+        Some(queries::Hkp::KeyID { ref keyid, index }) => {
+            (db.by_kid(keyid), index)
         }
         Some(queries::Hkp::Email { ref email, index }) => {
             (db.by_email(email), index)
