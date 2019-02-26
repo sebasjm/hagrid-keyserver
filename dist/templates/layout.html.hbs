@@ -9,7 +9,9 @@
   <body lang="en">
     <div class="card">
       <h1><a class="brand" href="/">keys.openpgp.org</a></h1>
-
+      {{#with error }}
+      <p><strong>Error</strong>: {{ this }}</p>
+      {{/with}}
       {{> @partial-block }}
     </div>
     <div class="attribution">
