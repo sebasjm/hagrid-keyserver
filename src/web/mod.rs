@@ -31,8 +31,8 @@ mod queries {
 
     #[derive(Debug)]
     pub enum Hkp {
-        Fingerprint { fpr: Fingerprint, index: bool },
-        KeyID { keyid: KeyID, index: bool },
+        Fingerprint { fpr: Fingerprint, index: bool, machine_readable: bool },
+        KeyID { keyid: KeyID, index: bool, machine_readable: bool },
         Email { email: Email, index: bool },
         Invalid{ query: String, },
     }
@@ -171,6 +171,9 @@ impl<'a, 'r> FromRequest<'a, 'r> for queries::Hkp {
                 .unwrap_or(false)
         {
             let index = fields.get("op").map(|x| x == "index").unwrap_or(false);
+            let machine_readable =
+                fields.get("options").map(|x| x.contains("mr"))
+                .unwrap_or(false);
             let search = fields.get("search").cloned().unwrap_or_default();
             let maybe_fpr = Fingerprint::from_str(&search);
             let maybe_keyid = KeyID::from_str(&search);
@@ -179,11 +182,13 @@ impl<'a, 'r> FromRequest<'a, 'r> for queries::Hkp {
                 Outcome::Success(queries::Hkp::Fingerprint {
                     fpr: fpr,
                     index: index,
+                    machine_readable: machine_readable,
                 })
             } else if let Ok(keyid) = maybe_keyid {
                 Outcome::Success(queries::Hkp::KeyID {
                     keyid: keyid,
                     index: index,
+                    machine_readable: machine_readable,
                 })
             } else {
                 match Email::from_str(&search) {
@@ -206,10 +211,15 @@ impl<'a, 'r> FromRequest<'a, 'r> for queries::Hkp {
     }
 }
 
-fn key_to_response<'a>(query: String, domain: String, armored: String) -> MyResponse {
+fn key_to_response<'a>(query: String, domain: String, armored: String,
+                       machine_readable: bool) -> MyResponse {
     use sequoia_openpgp::TPK;
     use sequoia_openpgp::parse::Parse;
     use std::convert::TryFrom;
+
+    if machine_readable {
+        return MyResponse::plain(armored);
+    }
 
     let key = match TPK::from_bytes(armored.as_bytes()) {
         Ok(key) => key,
@@ -321,7 +331,8 @@ fn by_fingerprint(db: rocket::State<Polymorphic>, domain: rocket::State<Domain>,
     };
 
     match maybe_key {
-        Some(armored) => key_to_response(fpr, domain.0.clone(), armored),
+        Some(armored) => key_to_response(fpr, domain.0.clone(), armored,
+                                         true),
         None => MyResponse::not_found(),
     }
 }
@@ -334,7 +345,8 @@ fn by_email(db: rocket::State<Polymorphic>, domain: rocket::State<Domain>, email
     };
 
     match maybe_key {
-        Some(armored) => key_to_response(email, domain.0.clone(), armored),
+        Some(armored) => key_to_response(email, domain.0.clone(), armored,
+                                         true),
         None => MyResponse::not_found(),
 
     }
@@ -348,7 +360,8 @@ fn by_keyid(db: rocket::State<Polymorphic>, domain: rocket::State<Domain>, kid: 
     };
 
     match maybe_key {
-        Some(armored) => key_to_response(kid, domain.0.clone(), armored),
+        Some(armored) => key_to_response(kid, domain.0.clone(), armored,
+                                         true),
         None => MyResponse::not_found(),
     }
 }
@@ -461,16 +474,14 @@ fn files(file: PathBuf, static_dir: State<StaticDir>) -> Option<NamedFile> {
 fn lookup(
     db: rocket::State<Polymorphic>, domain: rocket::State<Domain>, key: Option<queries::Hkp>,
 ) -> MyResponse {
-
-    let (maybe_key, index) = match key {
-        Some(queries::Hkp::Fingerprint { ref fpr, index }) => {
-            (db.by_fpr(fpr), index)
-        }
-        Some(queries::Hkp::KeyID { ref keyid, index }) => {
-            (db.by_kid(keyid), index)
-        }
+    let (maybe_key, index, machine_readable) = match key {
+        Some(queries::Hkp::Fingerprint { ref fpr, index, machine_readable }) =>
+            (db.by_fpr(fpr), index, machine_readable),
+        Some(queries::Hkp::KeyID { ref keyid, index, machine_readable }) =>
+            (db.by_kid(keyid), index, machine_readable),
         Some(queries::Hkp::Email { ref email, index }) => {
-            (db.by_email(email), index)
+            // XXX: Maybe return 501 Not Implemented if machine_readable
+            (db.by_email(email), index, false)
         }
         Some(queries::Hkp::Invalid { query: _ }) => {
             return MyResponse::not_found();
@@ -486,7 +497,8 @@ fn lookup(
             if index {
                 key_to_hkp_index(armored)
             } else {
-                key_to_response(query, domain.0.clone(), armored)
+                key_to_response(query, domain.0.clone(), armored,
+                                machine_readable)
             }
         }
         None => {
