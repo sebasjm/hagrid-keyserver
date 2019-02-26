@@ -114,6 +114,28 @@ pub trait Database: Sync + Send {
         &self, fpr: &Fingerprint, new: Option<String>,
     ) -> Result<()>;
 
+    /// Queries the database using Fingerprint, KeyID, or
+    /// email-address.
+    fn lookup(&self, term: &str) -> Result<Option<TPK>> {
+        use std::str::FromStr;
+
+        let r = if let Ok(fp) = Fingerprint::from_str(term) {
+            Ok(self.by_fpr(&fp))
+        } else if let Ok(keyid) = KeyID::from_str(term) {
+            Ok(self.by_kid(&keyid))
+        } else if let Ok(email) = Email::from_str(term) {
+            Ok(self.by_email(&email))
+        } else {
+            Err(failure::err_msg("Malformed query"))
+        };
+
+        match r {
+            Ok(Some(armored)) => Ok(Some(TPK::from_bytes(armored.as_bytes())?)),
+            Ok(None) => Ok(None),
+            Err(e) => Err(e),
+        }
+    }
+
     fn link_email(&self, email: &Email, fpr: &Fingerprint) -> Result<()>;
     fn unlink_email(&self, email: &Email, fpr: &Fingerprint) -> Result<()>;
 
