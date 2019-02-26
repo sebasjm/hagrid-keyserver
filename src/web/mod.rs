@@ -676,6 +676,11 @@ mod tests {
     use rocket::http::Status;
     use rocket::http::ContentType;
 
+    use sequoia_openpgp::TPK;
+    use sequoia_openpgp::tpk::TPKBuilder;
+    use sequoia_openpgp::parse::Parse;
+    use sequoia_openpgp::serialize::Serialize;
+
     use database::*;
     use super::*;
 
@@ -729,5 +734,121 @@ mod tests {
         assert_eq!(response.status(), Status::Ok);
         assert_eq!(response.content_type(), Some(ContentType::HTML));
         assert!(response.body_string().unwrap().contains("Public Key Data"));
+    }
+
+    #[test]
+    fn upload() {
+        let (_tmpdir, config) = configuration().unwrap();
+
+        // eprintln!("LEAKING: {:?}", _tmpdir);
+        // ::std::mem::forget(_tmpdir);
+
+        let db = Polymorphic::Filesystem(
+            Filesystem::new(config.root().unwrap().to_path_buf()).unwrap());
+        let rocket = rocket_factory(rocket::custom(config), db);
+        let client = Client::new(rocket).expect("valid rocket instance");
+
+        // Generate a key and upload it.
+        let (tpk, _) = TPKBuilder::autocrypt(
+            None, Some("foo@invalid.example.com".into()))
+            .generate().unwrap();
+        let fp = tpk.fingerprint().to_hex();
+        let keyid = tpk.fingerprint().to_keyid().to_hex();
+
+        let mut tpk_serialized = Vec::new();
+        tpk.serialize(&mut tpk_serialized).unwrap();
+        let response = vks_publish_submit(&client, &tpk_serialized);
+        assert_eq!(response.status(), Status::SeeOther);
+        assert_eq!(response.headers().get_one("Location"),
+                   Some("/vks/publish?ok"));
+
+        // And check that we can get it back, modulo user ids.
+        fn check_mr_response(client: &Client, uri: &str, tpk: &TPK) {
+            let mut response = client.get(uri).dispatch();
+            assert_eq!(response.status(), Status::Ok);
+            assert_eq!(response.content_type(), Some(ContentType::Plain));
+            let body = response.body_string().unwrap();
+            assert!(body.contains("END PGP PUBLIC KEY BLOCK"));
+            let tpk_ = TPK::from_bytes(body.as_bytes()).unwrap();
+            assert_eq!(tpk.fingerprint(), tpk_.fingerprint());
+            assert_eq!(tpk.subkeys().map(|skb| skb.subkey().fingerprint())
+                       .collect::<Vec<_>>(),
+                       tpk_.subkeys().map(|skb| skb.subkey().fingerprint())
+                       .collect::<Vec<_>>());
+            assert_eq!(tpk_.userids().count(), 0);
+        }
+
+        check_mr_response(&client, &format!("/by-keyid/{}", keyid), &tpk);
+        check_mr_response(&client, &format!("/by-fingerprint/{}", fp), &tpk);
+        check_mr_response(
+            &client,
+            &format!("/pks/lookup?op=get&options=mr&search={}", fp),
+            &tpk);
+        check_mr_response(
+            &client,
+            &format!("/pks/lookup?op=get&options=mr&search=0x{}", fp),
+            &tpk);
+        check_mr_response(
+            &client,
+            &format!("/pks/lookup?op=get&options=mr&search={}", keyid),
+            &tpk);
+        check_mr_response(
+            &client,
+            &format!("/pks/lookup?op=get&options=mr&search=0x{}", keyid),
+            &tpk);
+
+        // And check that we can see the human-readable result page.
+        fn check_hr_response(client: &Client, uri: &str, tpk: &TPK) {
+            let mut response = client.get(uri).dispatch();
+            assert_eq!(response.status(), Status::Ok);
+            assert_eq!(response.content_type(), Some(ContentType::HTML));
+            let body = response.body_string().unwrap();
+            assert!(body.contains("found"));
+            assert!(body.contains(&tpk.fingerprint().to_hex()));
+        }
+
+        check_hr_response(
+            &client,
+            &format!("/pks/lookup?op=get&search={}", fp),
+            &tpk);
+        check_hr_response(
+            &client,
+            &format!("/pks/lookup?op=get&search=0x{}", fp),
+            &tpk);
+        check_hr_response(
+            &client,
+            &format!("/pks/lookup?op=get&search={}", keyid),
+            &tpk);
+        check_hr_response(
+            &client,
+            &format!("/pks/lookup?op=get&search=0x{}", keyid),
+            &tpk);
+    }
+
+    fn vks_publish_submit<'a>(client: &'a Client, data: &[u8])
+                              -> rocket::local::LocalResponse<'a> {
+        let ct = ContentType::with_params(
+            "multipart", "form-data",
+            ("boundary", "---------------------------14733842173518794281682249499"));
+
+        let header =
+            b"-----------------------------14733842173518794281682249499\r\n\
+              Content-Disposition: form-data; name=\"csrf\"\r\n\
+              \r\n\
+              \r\n\
+              -----------------------------14733842173518794281682249499\r\n\
+              Content-Disposition: form-data; name=\"keytext\"; filename=\".k\"\r\n\
+              Content-Type: application/octet-stream\r\n\
+              \r\n";
+        let footer = b"\r\n-----------------------------14733842173518794281682249499--";
+
+        let mut body = Vec::new();
+        body.extend_from_slice(header);
+        body.extend_from_slice(data);
+        body.extend_from_slice(footer);
+        client.post("/vks/publish/submit")
+            .header(ct)
+            .body(&body[..])
+            .dispatch()
     }
 }
