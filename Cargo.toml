@@ -25,6 +25,8 @@ lettre_email = "0.8"
 handlebars = "1.1.0"
 base64 = "0.10"
 pathdiff = "0.1"
+num_cpus = "1.0"
+fs_extra = "1.0"
 
 [dependencies.lettre]
 version = "0.8"
@@ -40,6 +42,10 @@ features = ["handlebars_templates"]
 [build-dependencies]
 vergen = "3"
 
-[dev-dependencies]
-num_cpus = "1.0"
-fs_extra = "1.0"
+[[bin]]
+name = "hagrid"
+path = "src/main.rs"
+
+[[bin]]
+name = "hagrid-import"
+path = "src/import.rs"

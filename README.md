@@ -16,7 +16,7 @@ keys, user IDs and tokens. To run it, supply the absolute path to where you
 want the database to live and the absolute path to the template directory.
 
 ```bash
-cargo run -- `pwd`/dist
+cargo run --bin hagrid -- `pwd`/dist
 ```
 
 This will spawn a web server listening on port 8080.
