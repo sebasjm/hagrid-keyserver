@@ -6,6 +6,8 @@ use std::result;
 use sequoia_openpgp::{
     constants::SignatureType, packet::Signature, packet::UserID, parse::Parse,
     Packet, TPK,
+    packet::Tag,
+    serialize::Serialize,
 };
 use sequoia_openpgp::PacketPile;
 
@@ -207,6 +209,87 @@ pub trait Database: Sync + Send {
         for uid in userids {
             self.unlink_email(&uid, fpr)?;
         }
+        Ok(())
+    }
+
+    /// Merges the given TPK into the database.
+    ///
+    /// If the TPK is in the database, it is merged with the given
+    /// one.  Fingerprint and KeyID links are created.  No new UserID
+    /// links are created.
+    ///
+    /// UserIDs that are already present in the database will receive
+    /// new certificates.
+    fn merge(&self, new_tpk: TPK) -> Result<()> {
+        let fpr = Fingerprint::try_from(new_tpk.primary().fingerprint())?;
+        let mut acc = Vec::new();
+        let _ = self.lock();
+
+        // See if the TPK is in the database.
+        let old_tpk = if let Some(bytes) = self.by_fpr(&fpr) {
+            Some(TPK::from_bytes(bytes.as_ref())?)
+        } else {
+            None
+        };
+
+        // Iterate over the new TPK, pushing packets we want to merge
+        // into the accumulator.
+
+        // The primary key and related signatures.
+        acc.push(new_tpk.primary().clone().into_packet(Tag::PublicKey)?);
+        for s in new_tpk.selfsigs()          { acc.push(s.clone().into()) }
+        for s in new_tpk.certifications()    { acc.push(s.clone().into()) }
+        for s in new_tpk.self_revocations()  { acc.push(s.clone().into()) }
+        for s in new_tpk.other_revocations() { acc.push(s.clone().into()) }
+
+        // The subkeys and related signatures.
+        for skb in new_tpk.subkeys() {
+            acc.push(skb.subkey().clone().into_packet(Tag::PublicSubkey)?);
+            for s in skb.selfsigs()          { acc.push(s.clone().into()) }
+            for s in skb.certifications()    { acc.push(s.clone().into()) }
+            for s in skb.self_revocations()  { acc.push(s.clone().into()) }
+            for s in skb.other_revocations() { acc.push(s.clone().into()) }
+        }
+
+        // Updates for known UserIDs.
+        if let Some(old_tpk) = old_tpk.as_ref() {
+            use std::collections::HashSet;
+            let mut known_uids = HashSet::new();
+            for uidb in old_tpk.userids() {
+                known_uids.insert(uidb.userid().clone());
+            }
+
+            for uidb in new_tpk.userids() {
+                // Skip unknown ones.
+                if ! known_uids.contains(uidb.userid()) {
+                    continue;
+                }
+
+                for s in uidb.selfsigs()          { acc.push(s.clone().into()) }
+                for s in uidb.certifications()    { acc.push(s.clone().into()) }
+                for s in uidb.self_revocations()  { acc.push(s.clone().into()) }
+                for s in uidb.other_revocations() { acc.push(s.clone().into()) }
+            }
+        }
+
+        // Merge or assemble.
+        let tpk = if let Some(old_tpk) = old_tpk {
+            old_tpk.merge_packets(acc)?
+        } else {
+            TPK::from_packet_pile(acc.into())?
+        };
+
+        let mut buf = Vec::new();
+        {
+            let mut armor_writer = Writer::new(&mut buf, Kind::PublicKey,
+                                               &[][..])?;
+            tpk.serialize(&mut armor_writer)?;
+        };
+        let armored = String::from_utf8_lossy(&buf);
+        self.update(&fpr, Some(armored.into_owned()))?;
+        self.link_subkeys(&fpr,
+                          tpk.subkeys().map(|s| s.subkey().fingerprint())
+                          .collect())?;
         Ok(())
     }
 
