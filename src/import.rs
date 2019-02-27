@@ -13,6 +13,7 @@
 use std::env;
 use std::path::PathBuf;
 use std::thread;
+use std::cmp;
 
 extern crate failure;
 use failure::Error;
@@ -61,7 +62,7 @@ fn main() {
 
     let keyrings = &args[2..];
     let mut threads = Vec::new();
-    keyrings.chunks(keyrings.len() / num_cpus::get())
+    keyrings.chunks(keyrings.len() / cmp::min(num_cpus::get(), keyrings.len()))
         .for_each(|keyrings| {
             let keyrings: Vec<PathBuf> =
                 keyrings.iter().map(|k| (*k).clone().into()).collect();
