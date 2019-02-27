@@ -5,21 +5,46 @@
 //!   cargo run --release --example import -- \
 //!       <state-dir> <keyring> [<keyring>...]
 
+#![feature(proc_macro_hygiene, plugin, decl_macro)]
+#![recursion_limit = "1024"]
+#![feature(try_from)]
+
+
 use std::env;
-use std::fs::{create_dir_all, remove_file, File};
-use std::os::unix::fs::symlink;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::thread;
 
+extern crate failure;
+use failure::Error;
+use failure::Fallible as Result;
+
 extern crate num_cpus;
+
+extern crate serde;
+#[macro_use]
+extern crate serde_derive;
+extern crate serde_json;
+
+extern crate hex;
+extern crate time;
+extern crate url;
+
+extern crate sequoia_openpgp;
+#[macro_use]
+extern crate log;
+extern crate parking_lot;
+extern crate rand;
+extern crate tempfile;
 extern crate pathdiff;
-use pathdiff::diff_paths;
 
 extern crate sequoia_openpgp as openpgp;
-use openpgp::{Packet, Result};
-use openpgp::packet::Tag;
+use openpgp::Packet;
 use openpgp::parse::{PacketParser, PacketParserResult, Parse};
-use openpgp::serialize::{Serialize, SerializeKey};
+
+mod database;
+mod types;
+
+use database::{Database, Filesystem};
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -38,8 +63,8 @@ fn main() {
     let mut threads = Vec::new();
     keyrings.chunks(keyrings.len() / num_cpus::get())
         .for_each(|keyrings| {
-            let keyrings: Vec<_> =
-                keyrings.iter().map(|k| (*k).clone()).collect();
+            let keyrings: Vec<PathBuf> =
+                keyrings.iter().map(|k| (*k).clone().into()).collect();
             let base = base.clone();
             threads.push(thread::spawn(move || {
                 do_import(base, keyrings).unwrap();
@@ -49,12 +74,12 @@ fn main() {
     threads.into_iter().for_each(|t| t.join().unwrap());
 }
 
-fn do_import(base: PathBuf, keyrings: Vec<String>) -> Result<()> {
+fn do_import(base: PathBuf, keyrings: Vec<PathBuf>) -> Result<()> {
     let db = Filesystem::new(base)?;
 
     // For each input file, create a parser.
     for input in keyrings.iter() {
-        eprintln!("Parsing {}...", input);
+        eprintln!("Parsing {:?}...", input);
 
         let mut acc = Vec::new();
         let mut ppr = PacketParser::from_file(input)?;
@@ -72,7 +97,7 @@ fn do_import(base: PathBuf, keyrings: Vec<String>) -> Result<()> {
                         openpgp::PacketPile::from(
                             ::std::mem::replace(&mut acc, Vec::new())))
                     {
-                        db.import(tpk)?;
+                        db.merge(tpk)?;
                     }
                 }
 
@@ -86,118 +111,50 @@ fn do_import(base: PathBuf, keyrings: Vec<String>) -> Result<()> {
             openpgp::PacketPile::from(
                 ::std::mem::replace(&mut acc, Vec::new())))
         {
-            db.import(tpk)?;
+            db.merge(tpk)?;
         }
     }
 
     Ok(())
 }
 
-/// Returns the given path, ensuring that the parent directory exists.
-///
-/// Use this on paths returned by .path_to_* before creating the
-/// object.
-fn ensure_parent(path: &Path) -> Result<&Path> {
-    let parent = path.parent().unwrap();
-    create_dir_all(parent)?;
-    Ok(path)
-}
+#[cfg(test)]
+mod import_tests {
+    use std::fs::File;
+    use tempfile::tempdir;
+    use openpgp::serialize::Serialize;
+    use super::*;
 
-pub struct Filesystem {
-    base_by_keyid: PathBuf,
-    base_by_fingerprint: PathBuf,
-}
+    #[test]
+    fn import() {
+        let root = tempdir().unwrap();
 
+        let db = Filesystem::new(root.path().to_path_buf()).unwrap();
 
-impl Filesystem {
-    pub fn new<P: Into<PathBuf>>(base: P) -> Result<Self> {
-        let base = base.into();
-        let base_by_keyid = base.join("by-keyid");
-        let base_by_fingerprint = base.join("by-fpr");
-        Ok(Filesystem {
-            base_by_keyid: base_by_keyid,
-            base_by_fingerprint: base_by_fingerprint,
-        })
-    }
+        // Generate a key and import it.
+        let (tpk, _) = openpgp::tpk::TPKBuilder::autocrypt(
+            None, Some("foo@invalid.example.com".into()))
+            .generate().unwrap();
+        let import_me = root.path().join("import-me");
+        tpk.serialize(&mut File::create(&import_me).unwrap()).unwrap();
 
-    fn import(&self, tpk: openpgp::TPK) -> Result<()> {
-        let fingerprint = tpk.primary().fingerprint();
-        let tpk_path = self.path_to_fingerprint(&fingerprint);
+        do_import(root.path().to_path_buf(), vec![import_me]).unwrap();
 
-        let mut sink =
-            openpgp::armor::Writer::new(
-                File::create(ensure_parent(&tpk_path)?)?,
-                openpgp::armor::Kind::PublicKey,
-                &[])?;
+        let check = |query: &str| {
+            let tpk_ = db.lookup(query).unwrap().unwrap();
+            assert_eq!(tpk.fingerprint(), tpk_.fingerprint());
+            assert_eq!(tpk.subkeys().map(|skb| skb.subkey().fingerprint())
+                       .collect::<Vec<_>>(),
+                       tpk_.subkeys().map(|skb| skb.subkey().fingerprint())
+                       .collect::<Vec<_>>());
+            assert_eq!(tpk_.userids().count(), 0);
+        };
 
-        // The primary key and related signatures.
-        tpk.primary().serialize(&mut sink, Tag::PublicKey)?;
-        for s in tpk.selfsigs()          { s.serialize(&mut sink)? }
-        for s in tpk.certifications()    { s.serialize(&mut sink)? }
-        for s in tpk.self_revocations()  { s.serialize(&mut sink)? }
-        for s in tpk.other_revocations() { s.serialize(&mut sink)? }
-
-        // The subkeys and related signatures.
-        for skb in tpk.subkeys() {
-            skb.subkey().serialize(&mut sink, Tag::PublicSubkey)?;
-            for s in skb.selfsigs()          { s.serialize(&mut sink)? }
-            for s in skb.certifications()    { s.serialize(&mut sink)? }
-            for s in skb.self_revocations()  { s.serialize(&mut sink)? }
-            for s in skb.other_revocations() { s.serialize(&mut sink)? }
-        }
-        drop(sink);
-
-        // Create links.
-        self.link_kid(&fingerprint.to_keyid(), &fingerprint)?;
-        for skb in tpk.subkeys() {
-            let fp = skb.subkey().fingerprint();
-            self.link_fpr(&fp, &fingerprint)?;
-            self.link_kid(&fp.to_keyid(), &fingerprint)?;
-        }
-
-        Ok(())
-    }
-
-    /// Returns the path to the given KeyID.
-    fn path_to_keyid(&self, keyid: &openpgp::KeyID) -> PathBuf {
-        let hex = keyid.to_hex();
-        self.base_by_keyid.join(&hex[..2]).join(&hex[2..])
-    }
-
-    /// Returns the path to the given Fingerprint.
-    fn path_to_fingerprint(&self, fingerprint: &openpgp::Fingerprint)
-                           -> PathBuf {
-        let hex = fingerprint.to_hex();
-        self.base_by_fingerprint.join(&hex[..2]).join(&hex[2..])
-    }
-
-    fn link_kid(&self, kid: &openpgp::KeyID,
-                fpr: &openpgp::Fingerprint) -> Result<()> {
-        let link = self.path_to_keyid(kid);
-        let target = diff_paths(&self.path_to_fingerprint(fpr),
-                                link.parent().unwrap()).unwrap();
-
-        let _ = remove_file(&link);
-        symlink(target, ensure_parent(&link)?)?;
-        Ok(())
-    }
-
-    fn link_fpr(&self, from: &openpgp::Fingerprint,
-                fpr: &openpgp::Fingerprint) -> Result<()> {
-        if from == fpr {
-            return Ok(());
-        }
-        let link = self.path_to_fingerprint(from);
-        let target = diff_paths(&self.path_to_fingerprint(fpr),
-                                link.parent().unwrap()).unwrap();
-
-        let _ = remove_file(&link);
-        //eprintln!("{:?} -> {:?}", link, target);
-        //symlink(&target, ensure_parent(&link)?)?;
-        let r = symlink(&target, ensure_parent(&link)?);
-        if let Err(e) = r {
-            eprintln!("{:?} -> {:?}: {:?}", link, target, e);
-        }
-        Ok(())
+        check(&format!("{}", tpk.primary().fingerprint()));
+        check(&format!("{}", tpk.primary().fingerprint().to_keyid()));
+        check(&format!("{}", tpk.subkeys().nth(0).unwrap().subkey()
+                       .fingerprint()));
+        check(&format!("{}", tpk.subkeys().nth(0).unwrap().subkey()
+                       .fingerprint().to_keyid()));
     }
 }
