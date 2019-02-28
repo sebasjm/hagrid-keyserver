@@ -27,6 +27,8 @@ setup. The FROM field of the mails can be configured with the `-F` switch.
 Usage
 -----
 
+### HKP
+
 Hagrid implements basic HKP (`op=get` and `op=index`) so tools like GnuPG and
 OpenKeychain can use it directly. The differences to SKS are
 
@@ -39,15 +41,17 @@ OpenKeychain can use it directly. The differences to SKS are
 Uploading a key via the HKP interface will trigger verification emails to be
 send.
 
+### VKS
+
 Hagrid has it's own URL scheme to fetch keys, verify user IDs and delete keys.
 It's meant to be machine readable, but it's not a REST API. The following URLs
 are handled.
 
-- `GET /by-fingerprint/<FINGERPRINT>` retrieves the key with the given
+- `GET /vks/by-fingerprint/<FINGERPRINT>` retrieves the key with the given
   fingerprint.  Hexadecimal digits must be uppercase.
-- `GET /by-keyid/<KEY-ID>` retrieves the key with the given long key
+- `GET /vks/by-keyid/<KEY-ID>` retrieves the key with the given long key
   ID.  Hexadecimal digits must be uppercase.
-- `GET /by-email/<URL-encoded user ID>` retrieves the key with the given user
+- `GET /vks/by-email/<URL-encoded user ID>` retrieves the key with the given user
   ID. Only exact matches are accepted.
 - `GET /vks/verify/<token>` verifies a user ID using a token string send by
   email.
@@ -102,12 +106,13 @@ in the above example).
 Reverse Proxy
 -------------
 
-Hagrid is designed to defer lookups to reverse proxy server like Nginx and
-Apache. The key database is a set of 3 directories with static files in them.
-The directory structure reflects Hagrids URL scheme. This way, lookups via
-`by-fpr`, `by-email` and `by-kid` can be handled by (multiple) simple HTTP
-server(s). A sample configuration for Nginx is part of the repository
-(`nginx.conf`).
+Hagrid is designed to defer lookups to reverse proxy server like Nginx
+and Apache. The key database is a set of 3 directories with static
+files in them.  The directory structure reflects Hagrids URL
+scheme. This way, lookups via `/vks/by-finingerprint`,
+`/vks/by-keyid`, and `/vks/by-email` can be handled by (multiple)
+simple HTTP server(s). A sample configuration for Nginx is part of the
+repository (`nginx.conf`).
 
 Community
 ---------

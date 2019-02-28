@@ -351,7 +351,7 @@ fn key_to_hkp_index<'a>(armored: String) -> MyResponse {
 
 }
 
-#[get("/by-fingerprint/<fpr>")]
+#[get("/vks/by-fingerprint/<fpr>")]
 fn by_fingerprint(db: rocket::State<Polymorphic>, domain: rocket::State<Domain>, fpr: String) -> MyResponse {
     let maybe_key = match Fingerprint::from_str(&fpr) {
         Ok(ref fpr) => db.by_fpr(fpr),
@@ -365,7 +365,7 @@ fn by_fingerprint(db: rocket::State<Polymorphic>, domain: rocket::State<Domain>,
     }
 }
 
-#[get("/by-email/<email>")]
+#[get("/vks/by-email/<email>")]
 fn by_email(db: rocket::State<Polymorphic>, domain: rocket::State<Domain>, email: String) -> MyResponse {
     let maybe_key = match Email::from_str(&email) {
         Ok(ref email) => db.by_email(email),
@@ -380,7 +380,7 @@ fn by_email(db: rocket::State<Polymorphic>, domain: rocket::State<Domain>, email
     }
 }
 
-#[get("/by-keyid/<kid>")]
+#[get("/vks/by-keyid/<kid>")]
 fn by_keyid(db: rocket::State<Polymorphic>, domain: rocket::State<Domain>, kid: String) -> MyResponse {
     let maybe_key = match KeyID::from_str(&kid) {
         Ok(ref key) => db.by_kid(key),
@@ -811,8 +811,8 @@ mod tests {
             assert_eq!(tpk_.userids().count(), 0);
         }
 
-        check_mr_response(&client, &format!("/by-keyid/{}", keyid), &tpk);
-        check_mr_response(&client, &format!("/by-fingerprint/{}", fp), &tpk);
+        check_mr_response(&client, &format!("/vks/by-keyid/{}", keyid), &tpk);
+        check_mr_response(&client, &format!("/vks/by-fingerprint/{}", fp), &tpk);
         check_mr_response(
             &client,
             &format!("/pks/lookup?op=get&options=mr&search={}", fp),
