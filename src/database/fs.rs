@@ -90,19 +90,19 @@ impl Filesystem {
     }
 
     /// Returns the path to the given KeyID.
-    fn path_to_keyid(&self, keyid: &KeyID) -> PathBuf {
+    fn keyid_to_path(&self, keyid: &KeyID) -> PathBuf {
         let hex = keyid.to_string();
         self.base_by_keyid.join(&hex[..2]).join(&hex[2..])
     }
 
     /// Returns the path to the given Fingerprint.
-    fn path_to_fingerprint(&self, fingerprint: &Fingerprint) -> PathBuf {
+    fn fingerprint_to_path(&self, fingerprint: &Fingerprint) -> PathBuf {
         let hex = fingerprint.to_string();
         self.base_by_fingerprint.join(&hex[..2]).join(&hex[2..])
     }
 
     /// Returns the path to the given Email.
-    fn path_to_email(&self, email: &str) -> PathBuf {
+    fn email_to_path(&self, email: &str) -> PathBuf {
         if email.len() > 2 {
             self.base_by_email.join(&email[..2]).join(&email[2..])
         } else {
@@ -180,7 +180,7 @@ impl Database for Filesystem {
     fn update(
         &self, fpr: &Fingerprint, new: Option<String>,
     ) -> Result<()> {
-        let target = self.path_to_fingerprint(fpr);
+        let target = self.fingerprint_to_path(fpr);
         let dir = self.base.join("scratch_pad");
 
         match new {
@@ -214,8 +214,8 @@ impl Database for Filesystem {
         let email =
             url::form_urlencoded::byte_serialize(email.to_string().as_bytes())
                 .collect::<String>();
-        let link = self.path_to_email(&email);
-        let target = diff_paths(&self.path_to_fingerprint(fpr),
+        let link = self.email_to_path(&email);
+        let target = diff_paths(&self.fingerprint_to_path(fpr),
                                 link.parent().unwrap()).unwrap();
 
         if link == target {
@@ -229,11 +229,11 @@ impl Database for Filesystem {
         let email =
             url::form_urlencoded::byte_serialize(email.to_string().as_bytes())
                 .collect::<String>();
-        let link = self.path_to_email(&email);
+        let link = self.email_to_path(&email);
 
         match read_link(link.clone()) {
             Ok(target) => {
-                let expected = diff_paths(&self.path_to_fingerprint(fpr),
+                let expected = diff_paths(&self.fingerprint_to_path(fpr),
                                           link.parent().unwrap()).unwrap();
 
                 if target == expected {
@@ -247,8 +247,8 @@ impl Database for Filesystem {
     }
 
     fn link_kid(&self, kid: &KeyID, fpr: &Fingerprint) -> Result<()> {
-        let link = self.path_to_keyid(kid);
-        let target = diff_paths(&self.path_to_fingerprint(fpr),
+        let link = self.keyid_to_path(kid);
+        let target = diff_paths(&self.fingerprint_to_path(fpr),
                                 link.parent().unwrap()).unwrap();
 
         if link == target {
@@ -270,11 +270,11 @@ impl Database for Filesystem {
     }
 
     fn unlink_kid(&self, kid: &KeyID, fpr: &Fingerprint) -> Result<()> {
-        let link = self.path_to_keyid(kid);
+        let link = self.keyid_to_path(kid);
 
         match read_link(link.clone()) {
             Ok(target) => {
-                let expected = self.path_to_fingerprint(fpr);
+                let expected = self.fingerprint_to_path(fpr);
 
                 if target == expected {
                     remove_file(link)?;
@@ -291,19 +291,19 @@ impl Database for Filesystem {
             return Ok(());
         }
 
-        let link = self.path_to_fingerprint(from);
-        let target = diff_paths(&self.path_to_fingerprint(fpr),
+        let link = self.fingerprint_to_path(from);
+        let target = diff_paths(&self.fingerprint_to_path(fpr),
                                 link.parent().unwrap()).unwrap();
 
         symlink(&target, ensure_parent(&link)?)
     }
 
     fn unlink_fpr(&self, from: &Fingerprint, fpr: &Fingerprint) -> Result<()> {
-        let link = self.path_to_fingerprint(from);
+        let link = self.fingerprint_to_path(from);
 
         match read_link(link.clone()) {
             Ok(target) => {
-                let expected = self.path_to_fingerprint(fpr);
+                let expected = self.fingerprint_to_path(fpr);
 
                 if target == expected {
                     remove_file(link)?;
@@ -333,7 +333,7 @@ impl Database for Filesystem {
 
     // XXX: slow
     fn by_fpr(&self, fpr: &Fingerprint) -> Option<String> {
-        let target = self.path_to_fingerprint(fpr);
+        let target = self.fingerprint_to_path(fpr);
 
         File::open(target).ok().and_then(|mut fd| {
             let mut buf = String::new();
@@ -352,7 +352,7 @@ impl Database for Filesystem {
         let email =
             url::form_urlencoded::byte_serialize(email.to_string().as_bytes())
                 .collect::<String>();
-        let path = self.path_to_email(&email);
+        let path = self.email_to_path(&email);
 
         fs::canonicalize(path)
             .ok()
@@ -380,7 +380,7 @@ impl Database for Filesystem {
     fn by_kid(&self, kid: &KeyID) -> Option<String> {
         use std::fs;
 
-        let path = self.path_to_keyid(kid);
+        let path = self.keyid_to_path(kid);
 
         fs::canonicalize(path)
             .ok()
