@@ -9,6 +9,12 @@ use {Error, Result};
 #[derive(Serialize, Deserialize, Clone, Debug, Hash, PartialEq, Eq)]
 pub struct Email(String);
 
+impl Email {
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
 impl TryFrom<UserID> for Email {
     type Error = Error;
 
