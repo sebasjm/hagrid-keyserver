@@ -451,7 +451,11 @@ fn manage_post(
     use std::convert::TryInto;
     use mail::send_confirmation_mail;
 
-    let tpk = match db.lookup(&request.search_term) {
+    let query = match request.search_term.parse() {
+        Ok(query) => query,
+        Err(e) => return MyResponse::ise(e),
+    };
+    let tpk = match db.lookup(&query) {
         Ok(Some(tpk)) => tpk,
         Ok(None) => return MyResponse::not_found(
             Some("/vks/manage"),

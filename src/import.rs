@@ -142,7 +142,7 @@ mod import_tests {
         do_import(root.path().to_path_buf(), vec![import_me]).unwrap();
 
         let check = |query: &str| {
-            let tpk_ = db.lookup(query).unwrap().unwrap();
+            let tpk_ = db.lookup(&query.parse().unwrap()).unwrap().unwrap();
             assert_eq!(tpk.fingerprint(), tpk_.fingerprint());
             assert_eq!(tpk.subkeys().map(|skb| skb.subkey().fingerprint())
                        .collect::<Vec<_>>(),

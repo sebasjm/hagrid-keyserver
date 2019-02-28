@@ -2,6 +2,7 @@ use parking_lot::MutexGuard;
 use std::convert::TryFrom;
 use std::io::Cursor;
 use std::result;
+use std::str::FromStr;
 
 use sequoia_openpgp::{
     constants::SignatureType, packet::Signature, packet::UserID, parse::Parse,
@@ -92,6 +93,32 @@ impl Delete {
     }
 }
 
+/// Represents a search query.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Query {
+    ByFingerprint(Fingerprint),
+    ByKeyID(KeyID),
+    ByEmail(Email),
+}
+
+impl FromStr for Query {
+    type Err = failure::Error;
+
+    fn from_str(term: &str) -> Result<Self> {
+        use self::Query::*;
+
+        if let Ok(fp) = Fingerprint::from_str(term) {
+            Ok(ByFingerprint(fp))
+        } else if let Ok(keyid) = KeyID::from_str(term) {
+            Ok(ByKeyID(keyid))
+        } else if let Ok(email) = Email::from_str(term) {
+            Ok(ByEmail(email))
+        } else {
+            Err(failure::err_msg("Malformed query"))
+        }
+    }
+}
+
 pub trait Database: Sync + Send {
     // Lock the DB for a complex update.
     //
@@ -118,23 +145,17 @@ pub trait Database: Sync + Send {
 
     /// Queries the database using Fingerprint, KeyID, or
     /// email-address.
-    fn lookup(&self, term: &str) -> Result<Option<TPK>> {
-        use std::str::FromStr;
-
-        let r = if let Ok(fp) = Fingerprint::from_str(term) {
-            Ok(self.by_fpr(&fp))
-        } else if let Ok(keyid) = KeyID::from_str(term) {
-            Ok(self.by_kid(&keyid))
-        } else if let Ok(email) = Email::from_str(term) {
-            Ok(self.by_email(&email))
-        } else {
-            Err(failure::err_msg("Malformed query"))
+    fn lookup(&self, term: &Query) -> Result<Option<TPK>> {
+        use self::Query::*;
+        let armored = match term {
+            ByFingerprint(ref fp) => self.by_fpr(fp),
+            ByKeyID(ref keyid) => self.by_kid(keyid),
+            ByEmail(ref email) => self.by_email(&email),
         };
 
-        match r {
-            Ok(Some(armored)) => Ok(Some(TPK::from_bytes(armored.as_bytes())?)),
-            Ok(None) => Ok(None),
-            Err(e) => Err(e),
+        match armored {
+            Some(armored) => Ok(Some(TPK::from_bytes(armored.as_bytes())?)),
+            None => Ok(None),
         }
     }
 
