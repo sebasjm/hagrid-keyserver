@@ -355,7 +355,7 @@ fn key_to_hkp_index<'a>(armored: String) -> MyResponse {
 fn by_fingerprint(db: rocket::State<Polymorphic>, domain: rocket::State<Domain>, fpr: String) -> MyResponse {
     let maybe_key = match Fingerprint::from_str(&fpr) {
         Ok(ref fpr) => db.by_fpr(fpr),
-        Err(_) => None,
+        Err(e) => return MyResponse::ise(e),
     };
 
     match maybe_key {
@@ -369,7 +369,7 @@ fn by_fingerprint(db: rocket::State<Polymorphic>, domain: rocket::State<Domain>,
 fn by_email(db: rocket::State<Polymorphic>, domain: rocket::State<Domain>, email: String) -> MyResponse {
     let maybe_key = match Email::from_str(&email) {
         Ok(ref email) => db.by_email(email),
-        Err(_) => None,
+        Err(e) => return MyResponse::ise(e),
     };
 
     match maybe_key {
@@ -384,7 +384,7 @@ fn by_email(db: rocket::State<Polymorphic>, domain: rocket::State<Domain>, email
 fn by_keyid(db: rocket::State<Polymorphic>, domain: rocket::State<Domain>, kid: String) -> MyResponse {
     let maybe_key = match KeyID::from_str(&kid) {
         Ok(ref key) => db.by_kid(key),
-        Err(_) => None,
+        Err(e) => return MyResponse::ise(e),
     };
 
     match maybe_key {
