@@ -1,7 +1,7 @@
 use parking_lot::{Mutex, MutexGuard};
 use std::collections::HashMap;
 
-use database::{Database, Delete, Verify};
+use database::{Database, Delete, Verify, Query};
 use types::{Email, Fingerprint, KeyID};
 use Result;
 
@@ -63,6 +63,22 @@ impl Database for Memory {
         }
 
         Ok(())
+    }
+
+    fn lookup_primary_fingerprint(&self, term: &Query) -> Option<Fingerprint> {
+        use self::Query::*;
+        match term {
+            ByFingerprint(ref fp) =>
+                if self.fpr.lock().contains_key(fp) {
+                    Some(fp.clone())
+                } else {
+                    self.fpr_links.lock().get(fp).map(|fp| fp.clone())
+                },
+            ByKeyID(ref keyid) =>
+                self.kid.lock().get(keyid).map(|fp| fp.clone()),
+            ByEmail(ref email) =>
+                self.email.lock().get(email).map(|fp| fp.clone()),
+        }
     }
 
     fn link_fpr(&self, from: &Fingerprint, fpr: &Fingerprint) -> Result<()> {

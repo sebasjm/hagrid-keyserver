@@ -11,7 +11,7 @@ use pathdiff::diff_paths;
 
 //use sequoia_openpgp::armor::{Writer, Kind};
 
-use database::{Database, Delete, Verify};
+use database::{Database, Delete, Verify, Query};
 use types::{Email, Fingerprint, KeyID};
 use Result;
 
@@ -108,6 +108,15 @@ impl Filesystem {
         } else {
             self.base_by_email.join(email)
         }
+    }
+
+    /// Returns the Fingerprint the given path is pointing to.
+    fn path_to_fingerprint(&self, path: &Path) -> Option<Fingerprint> {
+        use std::str::FromStr;
+        let rest = path.file_name()?;
+        let prefix = path.parent()?.file_name()?;
+        Fingerprint::from_str(&format!("{}{}", prefix.to_str()?, rest.to_str()?))
+            .ok()
     }
 
     fn new_token<'a>(&self, base: &'a str) -> Result<(File, String)> {
@@ -208,6 +217,39 @@ impl Database for Filesystem {
         }
 
         Ok(())
+    }
+
+    fn lookup_primary_fingerprint(&self, term: &Query) -> Option<Fingerprint> {
+        use super::Query::*;
+        match term {
+            ByFingerprint(ref fp) => {
+                let path = self.fingerprint_to_path(fp);
+                let typ = match path.symlink_metadata() {
+                    Ok(meta) => meta.file_type(),
+                    Err(_) => return None,
+                };
+
+                if typ.is_file() {
+                    Some(fp.clone())
+                } else if typ.is_symlink() {
+                    path.read_link().ok()
+                        .and_then(|path| self.path_to_fingerprint(&path))
+                } else {
+                    // Neither file nor symlink.  Freak value.
+                    None
+                }
+            },
+            ByKeyID(ref keyid) => {
+                let path = self.keyid_to_path(keyid);
+                path.read_link().ok()
+                    .and_then(|path| self.path_to_fingerprint(&path))
+            },
+            ByEmail(ref email) => {
+                let path = self.email_to_path(email.as_str());
+                path.read_link().ok()
+                    .and_then(|path| self.path_to_fingerprint(&path))
+            },
+        }
     }
 
     fn link_email(&self, email: &Email, fpr: &Fingerprint) -> Result<()> {
@@ -512,5 +554,17 @@ mod tests {
         let mut db = Filesystem::new(tmpdir.path()).unwrap();
 
         test::test_same_email_2(&mut db);
+    }
+
+    #[test]
+    fn reverse_fingerprint_to_path() {
+        let tmpdir = TempDir::new().unwrap();
+        let db = Filesystem::new(tmpdir.path()).unwrap();
+
+        let fp: Fingerprint =
+            "CBCD8F030588653EEDD7E2659B7DD433F254904A".parse().unwrap();
+
+        assert_eq!(db.path_to_fingerprint(&db.fingerprint_to_path(&fp)),
+                   Some(fp));
     }
 }

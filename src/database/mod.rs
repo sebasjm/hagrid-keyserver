@@ -159,6 +159,10 @@ pub trait Database: Sync + Send {
         }
     }
 
+    /// Queries the database using Fingerprint, KeyID, or
+    /// email-address, returning the primary fingerprint.
+    fn lookup_primary_fingerprint(&self, term: &Query) -> Option<Fingerprint>;
+
     fn link_email(&self, email: &Email, fpr: &Fingerprint) -> Result<()>;
     fn unlink_email(&self, email: &Email, fpr: &Fingerprint) -> Result<()>;
 

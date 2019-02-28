@@ -1,4 +1,4 @@
-use database::{Database, Delete, Filesystem, Memory, Verify};
+use database::{Database, Delete, Filesystem, Memory, Verify, Query};
 use Result;
 use types::{Email, Fingerprint, KeyID};
 use parking_lot::MutexGuard;
@@ -40,6 +40,15 @@ impl Database for Polymorphic {
             &Polymorphic::Filesystem(ref db) => {
                 db.update(fpr, new)
             }
+        }
+    }
+
+    fn lookup_primary_fingerprint(&self, term: &Query) -> Option<Fingerprint> {
+        match self {
+            &Polymorphic::Memory(ref db) =>
+                db.lookup_primary_fingerprint(term),
+            &Polymorphic::Filesystem(ref db) =>
+                db.lookup_primary_fingerprint(term),
         }
     }
 
