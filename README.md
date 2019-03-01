@@ -33,13 +33,11 @@ Hagrid implements basic HKP (`op=get` and `op=index`) so tools like GnuPG and
 OpenKeychain can use it directly. The differences to SKS are
 
  - no support for `op=vindex`,
- - `mp=1` is always assumed,
- - only exact matches for user IDs are returned,
- - `op=index` returns either one or no keys and
- - all packets that aren't public keys, user IDs or signatures are filtered out.
-
-Uploading a key via the HKP interface will trigger verification emails to be
-send.
+ - only exact matches for user IDs are returned (i.e. `exact=on` is
+   always assumed),
+ - `op=index` returns either one or no keys,
+ - all packets that aren't public keys, user IDs or signatures are filtered out,
+ - Uploading a key via the HKP interface is not supported.
 
 ### VKS
 
