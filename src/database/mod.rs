@@ -1,6 +1,7 @@
 use parking_lot::MutexGuard;
 use std::convert::TryFrom;
 use std::io::Cursor;
+use std::path::PathBuf;
 use std::result;
 use std::str::FromStr;
 
@@ -162,6 +163,12 @@ pub trait Database: Sync + Send {
     /// Queries the database using Fingerprint, KeyID, or
     /// email-address, returning the primary fingerprint.
     fn lookup_primary_fingerprint(&self, term: &Query) -> Option<Fingerprint>;
+
+    /// Gets the path to the underlying file, if any.
+    fn lookup_path(&self, term: &Query) -> Option<PathBuf> {
+        let _ = term;
+        None
+    }
 
     fn link_email(&self, email: &Email, fpr: &Fingerprint) -> Result<()>;
     fn unlink_email(&self, email: &Email, fpr: &Fingerprint) -> Result<()>;

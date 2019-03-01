@@ -252,6 +252,22 @@ impl Database for Filesystem {
         }
     }
 
+    /// Gets the path to the underlying file, if any.
+    fn lookup_path(&self, term: &Query) -> Option<PathBuf> {
+        use super::Query::*;
+        let path = match term {
+            ByFingerprint(ref fp) => self.fingerprint_to_path(fp),
+            ByKeyID(ref keyid) => self.keyid_to_path(keyid),
+            ByEmail(ref email) => self.email_to_path(email.as_str()),
+        };
+
+        if path.exists() {
+            Some(diff_paths(&path, &self.base).expect("related paths"))
+        } else {
+            None
+        }
+    }
+
     fn link_email(&self, email: &Email, fpr: &Fingerprint) -> Result<()> {
         let email =
             url::form_urlencoded::byte_serialize(email.to_string().as_bytes())

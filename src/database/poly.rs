@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use database::{Database, Delete, Filesystem, Memory, Verify, Query};
 use Result;
 use types::{Email, Fingerprint, KeyID};
@@ -49,6 +51,16 @@ impl Database for Polymorphic {
                 db.lookup_primary_fingerprint(term),
             &Polymorphic::Filesystem(ref db) =>
                 db.lookup_primary_fingerprint(term),
+        }
+    }
+
+    /// Gets the path to the underlying file, if any.
+    fn lookup_path(&self, term: &Query) -> Option<PathBuf> {
+        match self {
+            &Polymorphic::Memory(ref db) =>
+                db.lookup_path(term),
+            &Polymorphic::Filesystem(ref db) =>
+                db.lookup_path(term),
         }
     }
 
