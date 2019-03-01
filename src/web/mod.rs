@@ -1,6 +1,6 @@
 use rocket;
 use rocket::fairing::AdHoc;
-use rocket::http::Status;
+use rocket::http::{Header, Status};
 use rocket::request::{self, FromRequest, Request};
 use rocket::response::status::Custom;
 use rocket::response::NamedFile;
@@ -59,6 +59,8 @@ enum MyResponse {
     Plain(String),
      #[response(status = 200, content_type = "application/pgp-keys")]
     Key(String, ContentDisposition),
+    #[response(status = 200, content_type = "application/pgp-keys")]
+    XAccelRedirect(&'static str, Header<'static>, ContentDisposition),
     #[response(status = 500, content_type = "html")]
     ServerError(Template),
     NotFound(Flash<Redirect>),
@@ -78,6 +80,29 @@ impl MyResponse {
                                           DispositionParam, Charset};
         MyResponse::Key(
             armored_key,
+            ContentDisposition {
+                disposition: DispositionType::Attachment,
+                parameters: vec![
+                    DispositionParam::Filename(
+                        Charset::Us_Ascii, None,
+                        (fp.to_string() + ".asc").into_bytes()),
+                ],
+            })
+    }
+
+    pub fn x_accel_redirect(path: PathBuf, fp: &Fingerprint) -> Self {
+        use rocket::http::hyper::header::{ContentDisposition, DispositionType,
+                                          DispositionParam, Charset};
+        // The path is relative to our base directory, but we need to
+        // get it relative to base/public.
+        let mut path = path.into_os_string().into_string().expect("valid UTF8");
+        // Drop the first component.
+        assert!(path.starts_with("public/"));
+        path.drain(..6);
+
+        MyResponse::XAccelRedirect(
+            "",
+            Header::new("X-Accel-Redirect", path),
             ContentDisposition {
                 disposition: DispositionType::Attachment,
                 parameters: vec![
@@ -167,6 +192,7 @@ struct StaticDir(String);
 pub struct Domain(String);
 pub struct From(String);
 pub struct MailTemplates(Handlebars);
+pub struct XAccelRedirect(bool);
 
 impl<'a, 'r> FromRequest<'a, 'r> for queries::Hkp {
     type Error = ();
@@ -238,7 +264,9 @@ impl<'a, 'r> FromRequest<'a, 'r> for queries::Hkp {
 fn key_to_response<'a>(db: rocket::State<Polymorphic>,
                        query_string: String, domain: String,
                        query: Query,
-                       machine_readable: bool) -> MyResponse {
+                       machine_readable: bool,
+                       x_accel_redirect: rocket::State<XAccelRedirect>)
+                       -> MyResponse {
     let fp = if let Some(fp) = db.lookup_primary_fingerprint(&query) {
         fp
     } else {
@@ -246,6 +274,12 @@ fn key_to_response<'a>(db: rocket::State<Polymorphic>,
     };
 
     if machine_readable {
+        if x_accel_redirect.0 {
+            if let Some(path) = db.lookup_path(&query) {
+                return MyResponse::x_accel_redirect(path, &fp);
+            }
+        }
+
         return match db.by_fpr(&fp) {
             Some(armored) => MyResponse::key(armored, &fp.into()),
             None => MyResponse::not_found(None, None),
@@ -350,33 +384,39 @@ fn key_to_hkp_index<'a>(db: rocket::State<Polymorphic>, query: Query)
 }
 
 #[get("/vks/by-fingerprint/<fpr>")]
-fn by_fingerprint(db: rocket::State<Polymorphic>, domain: rocket::State<Domain>, fpr: String) -> MyResponse {
+fn by_fingerprint(db: rocket::State<Polymorphic>, domain: rocket::State<Domain>,
+                  x_accel_redirect: rocket::State<XAccelRedirect>,
+                  fpr: String) -> MyResponse {
     let query = match Fingerprint::from_str(&fpr) {
         Ok(fpr) => Query::ByFingerprint(fpr),
         Err(e) => return MyResponse::ise(e),
     };
 
-    key_to_response(db, fpr, domain.0.clone(), query, true)
+    key_to_response(db, fpr, domain.0.clone(), query, true, x_accel_redirect)
 }
 
 #[get("/vks/by-email/<email>")]
-fn by_email(db: rocket::State<Polymorphic>, domain: rocket::State<Domain>, email: String) -> MyResponse {
+fn by_email(db: rocket::State<Polymorphic>, domain: rocket::State<Domain>,
+            x_accel_redirect: rocket::State<XAccelRedirect>,
+            email: String) -> MyResponse {
     let query = match Email::from_str(&email) {
         Ok(email) => Query::ByEmail(email),
         Err(e) => return MyResponse::ise(e),
     };
 
-    key_to_response(db, email, domain.0.clone(), query, true)
+    key_to_response(db, email, domain.0.clone(), query, true, x_accel_redirect)
 }
 
 #[get("/vks/by-keyid/<kid>")]
-fn by_keyid(db: rocket::State<Polymorphic>, domain: rocket::State<Domain>, kid: String) -> MyResponse {
+fn by_keyid(db: rocket::State<Polymorphic>, domain: rocket::State<Domain>,
+            x_accel_redirect: rocket::State<XAccelRedirect>,
+            kid: String) -> MyResponse {
     let query = match KeyID::from_str(&kid) {
         Ok(keyid) => Query::ByKeyID(keyid),
         Err(e) => return MyResponse::ise(e),
     };
 
-    key_to_response(db, kid, domain.0.clone(), query, true)
+    key_to_response(db, kid, domain.0.clone(), query, true, x_accel_redirect)
 }
 
 #[get("/vks/verify/<token>")]
@@ -502,9 +542,9 @@ fn files(file: PathBuf, static_dir: State<StaticDir>) -> Option<NamedFile> {
 }
 
 #[get("/pks/lookup")]
-fn lookup(
-    db: rocket::State<Polymorphic>, domain: rocket::State<Domain>, key: Option<queries::Hkp>,
-) -> MyResponse {
+fn lookup(db: rocket::State<Polymorphic>, domain: rocket::State<Domain>,
+          x_accel_redirect: rocket::State<XAccelRedirect>,
+          key: Option<queries::Hkp>) -> MyResponse {
     let query_string = key.as_ref().map(|k| format!("{}", k));
     let (query, index, machine_readable) = match key {
         Some(queries::Hkp::Fingerprint { fpr, index, machine_readable }) =>
@@ -528,7 +568,8 @@ fn lookup(
     } else {
         key_to_response(db,
                         query_string.expect("key was Some if we made it here"),
-                        domain.0.clone(), query, machine_readable)
+                        domain.0.clone(), query, machine_readable,
+                        x_accel_redirect)
     }
 }
 
@@ -600,6 +641,7 @@ pub fn serve(opt: &Opt, db: Polymorphic) -> Result<()> {
         )
         .extra("domain", opt.domain.clone())
         .extra("from", opt.from.clone())
+        .extra("x-accel-redirect", opt.x_accel_redirect)
         .finalize()?;
 
     rocket_factory(rocket::custom(config), db).launch();
@@ -645,6 +687,12 @@ fn rocket_factory(rocket: rocket::Rocket, db: Polymorphic) -> rocket::Rocket {
             let from = rocket.config().get_str("from").unwrap().to_string();
 
             Ok(rocket.manage(From(from)))
+        }))
+        .attach(AdHoc::on_attach("x-accel-redirect", |rocket| {
+            let x_accel_redirect =
+                rocket.config().get_bool("x-accel-redirect").unwrap();
+
+            Ok(rocket.manage(XAccelRedirect(x_accel_redirect)))
         }))
         .attach(AdHoc::on_attach("mail_templates", |rocket| {
             let dir: PathBuf = rocket
@@ -721,6 +769,7 @@ mod tests {
             )
             .extra("domain", "domain")
             .extra("from", "from")
+            .extra("x-accel-redirect", false)
             .finalize()?;
         Ok((root, config))
     }

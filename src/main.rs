@@ -71,6 +71,9 @@ pub struct Opt {
         default_value = "noreply@localhost"
     )]
     from: String,
+    /// Use NGINX'es X-Accel-Redirect feature.
+    #[structopt(long = "use-x-accel-redirect")]
+    x_accel_redirect: bool,
 }
 
 fn main() {
