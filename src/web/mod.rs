@@ -383,7 +383,7 @@ fn key_to_hkp_index<'a>(db: rocket::State<Polymorphic>, query: Query)
 
 }
 
-#[get("/vks/by-fingerprint/<fpr>")]
+#[get("/vks/v1/by-fingerprint/<fpr>")]
 fn by_fingerprint(db: rocket::State<Polymorphic>, domain: rocket::State<Domain>,
                   x_accel_redirect: rocket::State<XAccelRedirect>,
                   fpr: String) -> MyResponse {
@@ -395,7 +395,7 @@ fn by_fingerprint(db: rocket::State<Polymorphic>, domain: rocket::State<Domain>,
     key_to_response(db, fpr, domain.0.clone(), query, true, x_accel_redirect)
 }
 
-#[get("/vks/by-email/<email>")]
+#[get("/vks/v1/by-email/<email>")]
 fn by_email(db: rocket::State<Polymorphic>, domain: rocket::State<Domain>,
             x_accel_redirect: rocket::State<XAccelRedirect>,
             email: String) -> MyResponse {
@@ -407,7 +407,7 @@ fn by_email(db: rocket::State<Polymorphic>, domain: rocket::State<Domain>,
     key_to_response(db, email, domain.0.clone(), query, true, x_accel_redirect)
 }
 
-#[get("/vks/by-keyid/<kid>")]
+#[get("/vks/v1/by-keyid/<kid>")]
 fn by_keyid(db: rocket::State<Polymorphic>, domain: rocket::State<Domain>,
             x_accel_redirect: rocket::State<XAccelRedirect>,
             kid: String) -> MyResponse {
@@ -419,7 +419,7 @@ fn by_keyid(db: rocket::State<Polymorphic>, domain: rocket::State<Domain>,
     key_to_response(db, kid, domain.0.clone(), query, true, x_accel_redirect)
 }
 
-#[get("/vks/verify/<token>")]
+#[get("/vks/v1/verify/<token>")]
 fn verify(
     db: rocket::State<Polymorphic>, domain: rocket::State<Domain>, token: String,
 ) -> result::Result<Template, Custom<String>> {
@@ -451,7 +451,7 @@ fn verify(
     }
 }
 
-#[get("/vks/manage")]
+#[get("/vks/v1/manage")]
 fn manage(flash: Option<FlashMessage>)
           -> result::Result<Template, Custom<String>> {
     let context = templates::Index {
@@ -468,7 +468,7 @@ struct ManageRequest {
     search_term: String,
 }
 
-#[post("/vks/manage", data="<request>")]
+#[post("/vks/v1/manage", data="<request>")]
 fn manage_post(
     db: State<Polymorphic>, tmpl: State<MailTemplates>, domain: State<Domain>,
     from: State<From>, request: Form<ManageRequest>,
@@ -483,7 +483,7 @@ fn manage_post(
     let tpk = match db.lookup(&query) {
         Ok(Some(tpk)) => tpk,
         Ok(None) => return MyResponse::not_found(
-            Some("/vks/manage"),
+            Some("/vks/v1/manage"),
             Some(format!("No such key found for {:?}", request.search_term))),
         Err(e) => return MyResponse::ise(e),
     };
@@ -510,7 +510,7 @@ fn manage_post(
     }
 }
 
-#[get("/vks/confirm/<token>")]
+#[get("/vks/v1/confirm/<token>")]
 fn confirm(
     db: rocket::State<Polymorphic>, token: String,
 ) -> result::Result<Template, Custom<String>> {
@@ -820,7 +820,7 @@ mod tests {
         let response = vks_publish_submit(&client, &tpk_serialized);
         assert_eq!(response.status(), Status::SeeOther);
         assert_eq!(response.headers().get_one("Location"),
-                   Some("/vks/publish?ok"));
+                   Some("/vks/v1/publish?ok"));
 
         // And check that we can get it back, modulo user ids.
         fn check_mr_response(client: &Client, uri: &str, tpk: &TPK) {
@@ -839,8 +839,8 @@ mod tests {
             assert_eq!(tpk_.userids().count(), 0);
         }
 
-        check_mr_response(&client, &format!("/vks/by-keyid/{}", keyid), &tpk);
-        check_mr_response(&client, &format!("/vks/by-fingerprint/{}", fp), &tpk);
+        check_mr_response(&client, &format!("/vks/v1/by-keyid/{}", keyid), &tpk);
+        check_mr_response(&client, &format!("/vks/v1/by-fingerprint/{}", fp), &tpk);
         check_mr_response(
             &client,
             &format!("/pks/lookup?op=get&options=mr&search={}", fp),
@@ -907,7 +907,7 @@ mod tests {
         body.extend_from_slice(header);
         body.extend_from_slice(data);
         body.extend_from_slice(footer);
-        client.post("/vks/publish/submit")
+        client.post("/vks/v1/publish/submit")
             .header(ct)
             .body(&body[..])
             .dispatch()

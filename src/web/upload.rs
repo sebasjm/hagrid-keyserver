@@ -39,7 +39,7 @@ mod template {
     }
 }
 
-#[get("/vks/publish")]
+#[get("/vks/v1/publish")]
 pub fn vks_publish(
     flash: Option<FlashMessage>
 ) -> Template {
@@ -77,14 +77,14 @@ fn show_error(error: String) -> Template {
     Template::render("vks_publish_err", context)
 }
 
-#[post("/vks/publish/submit", data = "<data>")]
+#[post("/vks/v1/publish/submit", data = "<data>")]
 pub fn vks_publish_submit(
     db: State<Polymorphic>, cont_type: &ContentType, data: Data,
     tmpl: State<MailTemplates>, domain: State<Domain>, from: State<From>
 ) -> Flash<Redirect> {
     match do_upload_hkp(db, cont_type, data, tmpl, domain, from) {
         Ok(ok) => ok,
-        Err(err) => Flash::error(Redirect::to("/vks/publish?err"), err.to_string()),
+        Err(err) => Flash::error(Redirect::to("/vks/v1/publish?err"), err.to_string()),
     }
 }
 
@@ -199,5 +199,5 @@ where
     }
 
     let json = serde_json::to_string(&results).unwrap();
-    Ok(Flash::success(Redirect::to("/vks/publish?ok"), json))
+    Ok(Flash::success(Redirect::to("/vks/v1/publish?ok"), json))
 }
