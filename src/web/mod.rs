@@ -810,6 +810,20 @@ mod tests {
         assert_eq!(response.headers().get_one("Location"),
                    Some("/vks/v1/publish?ok"));
 
+        // Prior to email confirmation, we should not be able to look
+        // it up by email address.
+        fn check_null_response(client: &Client, uri: &str) {
+            let response = client.get(uri).dispatch();
+            assert_eq!(response.status(), Status::NotFound);
+        }
+
+        check_null_response(
+            &client, "/vks/v1/by-email/foo@invalid.example.com");
+        check_null_response(
+            &client, "/pks/lookup?op=get&search=foo@invalid.example.com");
+        check_null_response(
+            &client, "/pks/lookup?op=get&options=mr&search=foo@invalid.example.com");
+
         // And check that we can get it back, modulo user ids.
         fn check_mr_response(client: &Client, uri: &str, tpk: &TPK) {
             let mut response = client.get(uri).dispatch();
