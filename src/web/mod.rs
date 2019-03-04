@@ -698,7 +698,13 @@ fn rocket_factory(rocket: rocket::Rocket, db: Polymorphic) -> rocket::Rocket {
                 .register_template_file("verify-txt", verify_txt)
                 .unwrap();
 
-            Ok(rocket.manage(mail::Service::sendmail(from, handlebars)))
+            let filemail_into = rocket.config().get_str("filemail_into")
+                .ok().map(|p| PathBuf::from(p));
+            Ok(rocket.manage(if let Some(path) = filemail_into {
+                mail::Service::filemail(from, handlebars, path)
+            } else {
+                mail::Service::sendmail(from, handlebars)
+            }))
         }))
         .mount("/", routes)
         .manage(db)
@@ -707,11 +713,14 @@ fn rocket_factory(rocket: rocket::Rocket, db: Polymorphic) -> rocket::Rocket {
 #[cfg(test)]
 mod tests {
     use fs_extra;
+    use regex;
+    use std::fs;
     use tempfile::{tempdir, TempDir};
     use super::rocket;
     use rocket::local::Client;
     use rocket::http::Status;
     use rocket::http::ContentType;
+    use lettre::{SendableEmail, SimpleSendableEmail};
 
     use sequoia_openpgp::TPK;
     use sequoia_openpgp::tpk::TPKBuilder;
@@ -732,6 +741,8 @@ mod tests {
         let root = tempdir()?;
         fs_extra::copy_items(&vec!["dist/templates"], &root,
                              &fs_extra::dir::CopyOptions::new())?;
+        let filemail = root.path().join("filemail");
+        ::std::fs::create_dir_all(&filemail)?;
 
         let config = Config::build(Environment::Staging)
             .root(root.path().to_path_buf())
@@ -747,6 +758,8 @@ mod tests {
             )
             .extra("domain", "domain")
             .extra("from", "from")
+            .extra("filemail_into", filemail.into_os_string().into_string()
+                   .expect("path is valid UTF8"))
             .extra("x-accel-redirect", false)
             .finalize()?;
         Ok((root, config))
@@ -776,9 +789,10 @@ mod tests {
 
     #[test]
     fn upload() {
-        let (_tmpdir, config) = configuration().unwrap();
+        let (tmpdir, config) = configuration().unwrap();
+        let filemail_into = tmpdir.path().join("filemail");
 
-        // eprintln!("LEAKING: {:?}", _tmpdir);
+        // eprintln!("LEAKING: {:?}", tmpdir);
         // ::std::mem::forget(_tmpdir);
 
         let db = Polymorphic::Filesystem(
@@ -879,6 +893,55 @@ mod tests {
             &client,
             &format!("/pks/lookup?op=get&search=0x{}", keyid),
             &tpk);
+
+        // Now check for the confirmation mail.
+        let confirm_re =
+            regex::bytes::Regex::new("https://domain(/vks/v1/verify[^ \t]*)")
+            .unwrap();
+        let confirm_mail =
+            pop_mail(filemail_into.as_path()).unwrap().unwrap();
+        let confirm_bytes = confirm_mail.message();
+        // eprintln!("{}", String::from_utf8_lossy(&confirm_bytes));
+        let confirm_link =
+            confirm_re.captures(&confirm_bytes).unwrap()
+            .get(1).unwrap().as_bytes();
+        let confirm_uri = String::from_utf8_lossy(confirm_link).to_string();
+        let response = client.get(&confirm_uri).dispatch();
+        assert_eq!(response.status(), Status::Ok);
+
+        // Now lookups using the mail address should work.
+        check_mr_response(
+            &client,
+            "/vks/v1/by-email/foo@invalid.example.com",
+            &tpk, 1);
+        check_mr_response(
+            &client,
+            "/vks/v1/by-email/foo%40invalid.example.com",
+            &tpk, 1);
+        check_mr_response(
+            &client,
+            "/pks/lookup?op=get&options=mr&search=foo@invalid.example.com",
+            &tpk, 1);
+        check_hr_response(
+            &client,
+            "/pks/lookup?op=get&search=foo@invalid.example.com",
+            &tpk);
+    }
+
+    /// Returns and removes the first mail it finds from the given
+    /// directory.
+    fn pop_mail(dir: &Path) -> Result<Option<SimpleSendableEmail>> {
+        for entry in fs::read_dir(dir)? {
+            let entry = entry?;
+            if entry.file_type()?.is_file() {
+                let fh = fs::File::open(entry.path())?;
+                fs::remove_file(entry.path())?;
+                let mail: SimpleSendableEmail =
+                    ::serde_json::from_reader(fh)?;
+                return Ok(Some(mail));
+            }
+        }
+        Ok(None)
     }
 
     fn vks_publish_submit<'a>(client: &'a Client, data: &[u8])

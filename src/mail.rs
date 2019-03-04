@@ -1,5 +1,7 @@
+use std::path::PathBuf;
+
 use handlebars::Handlebars;
-use lettre::{EmailTransport, SendmailTransport};
+use lettre::{EmailTransport, SendmailTransport, FileEmailTransport};
 use lettre_email::EmailBuilder;
 
 use serde::Serialize;
@@ -22,6 +24,7 @@ pub struct Service {
 
 enum Transport {
     Sendmail,
+    Filemail(PathBuf),
 }
 
 impl Service {
@@ -31,6 +34,17 @@ impl Service {
             from: from,
             templates: templates,
             transport: Transport::Sendmail,
+        }
+    }
+
+    /// Sends mail by storing it in the given directory.
+    pub fn filemail(from: String, templates: Handlebars, path: PathBuf)
+                       -> Self
+    {
+        Self {
+            from: from,
+            templates: templates,
+            transport: Transport::Filemail(path),
         }
     }
 
@@ -97,6 +111,10 @@ impl Service {
         match self.transport {
             Transport::Sendmail => {
                 let mut transport = SendmailTransport::new();
+                transport.send(&email)?;
+            },
+            Transport::Filemail(ref path) => {
+                let mut transport = FileEmailTransport::new(path);
                 transport.send(&email)?;
             },
         }

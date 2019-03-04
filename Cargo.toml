@@ -42,6 +42,9 @@ features = ["handlebars_templates"]
 [build-dependencies]
 vergen = "3"
 
+[dev-dependencies]
+regex = "1"
+
 [[bin]]
 name = "hagrid"
 path = "src/main.rs"

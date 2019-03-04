@@ -35,6 +35,8 @@ extern crate pathdiff;
 
 #[cfg(test)]
 extern crate fs_extra;
+#[cfg(test)]
+extern crate regex;
 
 mod database;
 mod mail;
