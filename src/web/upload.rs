@@ -9,11 +9,9 @@ use rocket::{Data, State};
 use rocket_contrib::templates::Template;
 use rocket::response::Flash;
 
-use handlebars::Handlebars;
-
 use database::{Database, Polymorphic};
-use mail::send_verification_mail;
-use web::{Domain, From, MailTemplates};
+use mail;
+use web::Domain;
 
 use std::io::Read;
 
@@ -80,9 +78,9 @@ fn show_error(error: String) -> Template {
 #[post("/vks/v1/publish/submit", data = "<data>")]
 pub fn vks_publish_submit(
     db: State<Polymorphic>, cont_type: &ContentType, data: Data,
-    tmpl: State<MailTemplates>, domain: State<Domain>, from: State<From>
+    mail_service: State<mail::Service>, domain: State<Domain>,
 ) -> Flash<Redirect> {
-    match do_upload_hkp(db, cont_type, data, tmpl, domain, from) {
+    match do_upload_hkp(db, cont_type, data, mail_service, domain) {
         Ok(ok) => ok,
         Err(err) => Flash::error(Redirect::to("/vks/v1/publish?err"), err.to_string()),
     }
@@ -91,14 +89,14 @@ pub fn vks_publish_submit(
 // signature requires the request to have a `Content-Type`
 fn do_upload_hkp(
     db: State<Polymorphic>, cont_type: &ContentType, data: Data,
-    tmpl: State<MailTemplates>, domain: State<Domain>, from: State<From>,
+    mail_service: State<mail::Service>, domain: State<Domain>,
 ) -> Result<Flash<Redirect>, String> {
     if cont_type.is_form_data() {
         // multipart/form-data
         let (_, boundary) = cont_type.params().find(|&(k, _)| k == "boundary").ok_or_else(
             || "`Content-Type: multipart/form-data` boundary param not provided".to_owned())?;
 
-        process_upload(boundary, data, db.inner(), &tmpl.0, &domain.0, &from.0)
+        process_upload(boundary, data, db.inner(), mail_service, &domain.0)
     } else if cont_type.is_form() {
         use rocket::request::FormItems;
         use std::io::Cursor;
@@ -121,9 +119,8 @@ fn do_upload_hkp(
                     return process_key(
                         Cursor::new(decoded_value.as_bytes()),
                         &db,
-                        &tmpl.0,
+                        mail_service,
                         &domain.0,
-                        &from.0,
                     );
                 }
                 _ => { /* skip */ }
@@ -137,26 +134,27 @@ fn do_upload_hkp(
 }
 
 fn process_upload(
-    boundary: &str, data: Data, db: &Polymorphic, mail_templates: &Handlebars,
-    domain: &str, from: &str,
+    boundary: &str, data: Data, db: &Polymorphic,
+    mail_service: State<mail::Service>,
+    domain: &str,
 ) -> Result<Flash<Redirect>, String> {
     // saves all fields, any field longer than 10kB goes to a temporary directory
     // Entries could implement FromData though that would give zero control over
     // how the files are saved; Multipart would be a good impl candidate though
     match Multipart::with_body(data.open(), boundary).save().temp() {
         Full(entries) => {
-            process_multipart(entries, db, mail_templates, domain, from)
+            process_multipart(entries, db, mail_service, domain)
         }
         Partial(partial, _) => {
-            process_multipart(partial.entries, db, mail_templates, domain, from)
+            process_multipart(partial.entries, db, mail_service, domain)
         }
         Error(err) => Err(err.to_string())
     }
 }
 
 fn process_multipart(
-    entries: Entries, db: &Polymorphic, mail_templates: &Handlebars,
-    domain: &str, from: &str,
+    entries: Entries, db: &Polymorphic, mail_service: State<mail::Service>,
+    domain: &str,
 ) -> Result<Flash<Redirect>, String> {
     match entries.fields.get("keytext") {
         Some(ent) if ent.len() == 1 => {
@@ -164,7 +162,7 @@ fn process_multipart(
                 err.to_string()
             })?;
 
-            process_key(reader, db, mail_templates, domain, from)
+            process_key(reader, db, mail_service, domain)
         }
         Some(_) | None => {
             Err("Not a PGP public key".into())
@@ -173,8 +171,8 @@ fn process_multipart(
 }
 
 fn process_key<R>(
-    reader: R, db: &Polymorphic, mail_templates: &Handlebars, domain: &str,
-    from: &str
+    reader: R, db: &Polymorphic, mail_service: State<mail::Service>,
+    domain: &str,
 ) -> Result<Flash<Redirect>, String>
 where
     R: Read,
@@ -188,12 +186,10 @@ where
     let mut results: Vec<String> = vec!();
 
     for (email,token) in tokens {
-        send_verification_mail(
+        mail_service.send_verification(
             &email,
             &token,
-            mail_templates,
             domain,
-            from,
         ).map_err(|e| format!("{}", e))?;
         results.push(email.to_string());
     }

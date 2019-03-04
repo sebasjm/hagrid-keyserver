@@ -16,6 +16,7 @@ use handlebars::Handlebars;
 use std::path::{Path, PathBuf};
 
 mod upload;
+use mail;
 
 use database::{Database, Polymorphic, Query};
 use Result;
@@ -190,8 +191,6 @@ mod templates {
 
 struct StaticDir(String);
 pub struct Domain(String);
-pub struct From(String);
-pub struct MailTemplates(Handlebars);
 pub struct XAccelRedirect(bool);
 
 impl<'a, 'r> FromRequest<'a, 'r> for queries::Hkp {
@@ -470,11 +469,10 @@ struct ManageRequest {
 
 #[post("/vks/v1/manage", data="<request>")]
 fn manage_post(
-    db: State<Polymorphic>, tmpl: State<MailTemplates>, domain: State<Domain>,
-    from: State<From>, request: Form<ManageRequest>,
+    db: State<Polymorphic>, mail_service: State<mail::Service>,
+    domain: State<Domain>, request: Form<ManageRequest>,
 ) -> MyResponse {
     use std::convert::TryInto;
-    use mail::send_confirmation_mail;
 
     let query = match request.search_term.parse() {
         Ok(query) => query,
@@ -498,8 +496,8 @@ fn manage_post(
             };
 
             for uid in uids {
-                if let Err(e) = send_confirmation_mail(
-                    &uid, &token, &tmpl.0, &domain.0, &from.0) {
+                if let Err(e) = mail_service.send_confirmation(
+                    &uid, &token, &domain.0) {
                     return MyResponse::ise(e);
                 }
             }
@@ -683,24 +681,21 @@ fn rocket_factory(rocket: rocket::Rocket, db: Polymorphic) -> rocket::Rocket {
 
             Ok(rocket.manage(Domain(domain)))
         }))
-        .attach(AdHoc::on_attach("from", |rocket| {
-            let from = rocket.config().get_str("from").unwrap().to_string();
-
-            Ok(rocket.manage(From(from)))
-        }))
         .attach(AdHoc::on_attach("x-accel-redirect", |rocket| {
             let x_accel_redirect =
                 rocket.config().get_bool("x-accel-redirect").unwrap();
 
             Ok(rocket.manage(XAccelRedirect(x_accel_redirect)))
         }))
-        .attach(AdHoc::on_attach("mail_templates", |rocket| {
+        .attach(AdHoc::on_attach("mail-service", |rocket| {
             let dir: PathBuf = rocket
                 .config()
                 .get_str("template_dir")
                 .unwrap()
                 .to_string()
                 .into();
+            let from = rocket.config().get_str("from").unwrap().to_string();
+
             let confirm_html = dir.join("confirm-email-html.hbs");
             let confirm_txt = dir.join("confirm-email-txt.hbs");
             let verify_html = dir.join("verify-email-html.hbs");
@@ -720,7 +715,7 @@ fn rocket_factory(rocket: rocket::Rocket, db: Polymorphic) -> rocket::Rocket {
                 .register_template_file("verify-txt", verify_txt)
                 .unwrap();
 
-            Ok(rocket.manage(MailTemplates(handlebars)))
+            Ok(rocket.manage(mail::Service::sendmail(from, handlebars)))
         }))
         .mount("/", routes)
         .manage(db)

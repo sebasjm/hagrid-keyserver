@@ -14,78 +14,93 @@ pub struct Context {
     pub domain: String,
 }
 
-fn send_mail<T>(
-    to: &Email, subject: &str, mail_templates: &Handlebars, template: &str,
-    from: &str, ctx: T,
-) -> Result<()>
-where
-    T: Serialize + Clone,
-{
-    let tmpl_html = format!("{}-html", template);
-    let tmpl_txt = format!("{}-txt", template);
-    let (html, txt) = {
-        if let (Ok(inner_html), Ok(inner_txt)) = (
-            mail_templates.render(&tmpl_html, &ctx),
-            mail_templates.render(&tmpl_txt, &ctx),
-        ) {
-            (Some(inner_html), Some(inner_txt))
-        } else {
-            (None, None)
+pub struct Service {
+    from: String,
+    templates: Handlebars,
+    transport: Transport,
+}
+
+enum Transport {
+    Sendmail,
+}
+
+impl Service {
+    /// Sends mail via sendmail.
+    pub fn sendmail(from: String, templates: Handlebars) -> Self {
+        Self {
+            from: from,
+            templates: templates,
+            transport: Transport::Sendmail,
         }
-    };
+    }
 
-    let email = EmailBuilder::new()
-        .to(to.to_string())
-        .from(from)
-        .subject(subject)
-        .alternative(
-            html.ok_or(failure::err_msg("Email template failed to render"))?,
-            txt.ok_or(failure::err_msg("Email template failed to render"))?,
+    pub fn send_verification(&self, userid: &Email, token: &str, domain: &str)
+                             -> Result<()> {
+        let ctx = Context {
+            token: token.to_string(),
+            userid: userid.to_string(),
+            domain: domain.to_string(),
+        };
+
+        self.send(
+            userid,
+            "Please verify your email address",
+            "verify",
+            ctx,
         )
-        .build()
-        .unwrap();
+    }
 
-    let mut sender = SendmailTransport::new();
-    sender.send(&email)?;
-    Ok(())
-}
+    pub fn send_confirmation(&self, userid: &Email, token: &str, domain: &str)
+                             -> Result<()> {
+        let ctx = Context {
+            token: token.to_string(),
+            userid: userid.to_string(),
+            domain: domain.to_string(),
+        };
 
-pub fn send_verification_mail(
-    userid: &Email, token: &str, mail_templates: &Handlebars, domain: &str,
-    from: &str,
-) -> Result<()> {
-    let ctx = Context {
-        token: token.to_string(),
-        userid: userid.to_string(),
-        domain: domain.to_string(),
-    };
+        self.send(
+            userid,
+            "Please confirm deletion of your key",
+            "confirm",
+            ctx,
+        )
+    }
 
-    send_mail(
-        userid,
-        "Please verify your email address",
-        mail_templates,
-        "verify",
-        from,
-        ctx,
-    )
-}
+    fn send<T>(&self, to: &Email, subject: &str, template: &str, ctx: T)
+               -> Result<()>
+        where T: Serialize + Clone,
+    {
+        let tmpl_html = format!("{}-html", template);
+        let tmpl_txt = format!("{}-txt", template);
+        let (html, txt) = {
+            if let (Ok(inner_html), Ok(inner_txt)) = (
+                self.templates.render(&tmpl_html, &ctx),
+                self.templates.render(&tmpl_txt, &ctx),
+            ) {
+                (Some(inner_html), Some(inner_txt))
+            } else {
+                (None, None)
+            }
+        };
 
-pub fn send_confirmation_mail(
-    userid: &Email, token: &str, mail_templates: &Handlebars, domain: &str,
-    from: &str,
-) -> Result<()> {
-    let ctx = Context {
-        token: token.to_string(),
-        userid: userid.to_string(),
-        domain: domain.to_string(),
-    };
+        let email = EmailBuilder::new()
+            .to(to.to_string())
+            .from(self.from.clone())
+            .subject(subject)
+            .alternative(
+                html.ok_or(failure::err_msg("Email template failed to render"))?,
+                txt.ok_or(failure::err_msg("Email template failed to render"))?,
+            )
+            .build()
+            .unwrap();
 
-    send_mail(
-        userid,
-        "Please confirm deletion of your key",
-        mail_templates,
-        "confirm",
-        from,
-        ctx,
-    )
+        match self.transport {
+            Transport::Sendmail => {
+                let mut transport = SendmailTransport::new();
+                transport.send(&email)?;
+            },
+        }
+
+        Ok(())
+    }
 }
