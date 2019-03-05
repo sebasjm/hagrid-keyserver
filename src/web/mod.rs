@@ -199,6 +199,15 @@ mod templates {
         pub commit: String,
         pub version: String,
     }
+
+    impl Default for General {
+        fn default() -> Self {
+            General {
+                version: env!("VERGEN_SEMVER").to_string(),
+                commit: env!("VERGEN_SHA_SHORT").to_string(),
+            }
+        }
+    }
 }
 
 struct StaticDir(String);
@@ -583,12 +592,7 @@ fn root() -> Template {
 
 #[get("/about")]
 fn about() -> Template {
-    let context = templates::General {
-        version: env!("VERGEN_SEMVER").to_string(),
-        commit: env!("VERGEN_SHA_SHORT").to_string(),
-    };
-
-    Template::render("about", context)
+    Template::render("about", templates::General::default())
 }
 
 pub fn serve(opt: &Opt, db: Polymorphic) -> Result<()> {
