@@ -1,0 +1,25 @@
+[package]
+name = "hagrid-database"
+version = "0.1.0"
+authors = ["Kai Michaelis <kai@sequoia-pgp.org>"]
+
+[dependencies]
+failure = "0.1.5"
+sequoia-openpgp =  { git = "https://gitlab.com/sequoia-pgp/sequoia.git", rev = "e07bb25de0b2291088f88dc5360f3d04f702049c" }
+multipart = "0"
+log = "0"
+rand = "0.5"
+serde = { version = "1.0", features = ["derive"] }
+serde_derive = "1.0"
+serde_json = "1.0"
+time = "0.1"
+tempfile = "3.0"
+parking_lot = "0.6"
+url = "1.6"
+hex = "0.3"
+base64 = "0.10"
+pathdiff = "0.1"
+
+[lib]
+name = "hagrid_database"
+path = "src/lib.rs"

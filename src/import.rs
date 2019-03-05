@@ -9,42 +9,22 @@
 #![recursion_limit = "1024"]
 #![feature(try_from)]
 
-
 use std::env;
 use std::path::PathBuf;
 use std::thread;
 use std::cmp;
 
 extern crate failure;
-use failure::Error;
 use failure::Fallible as Result;
 
 extern crate num_cpus;
-
-extern crate serde;
-#[macro_use]
-extern crate serde_derive;
-extern crate serde_json;
-
-extern crate hex;
-extern crate time;
-extern crate url;
-
-extern crate sequoia_openpgp;
-#[macro_use]
-extern crate log;
-extern crate parking_lot;
-extern crate rand;
 extern crate tempfile;
-extern crate pathdiff;
 
 extern crate sequoia_openpgp as openpgp;
 use openpgp::Packet;
 use openpgp::parse::{PacketParser, PacketParserResult, Parse};
 
-mod database;
-mod types;
-
+extern crate hagrid_database as database;
 use database::{Database, Filesystem};
 
 fn main() {

@@ -6,7 +6,7 @@ use lettre_email::EmailBuilder;
 
 use serde::Serialize;
 
-use types::Email;
+use database::types::Email;
 use Result;
 
 #[derive(Serialize, Clone)]

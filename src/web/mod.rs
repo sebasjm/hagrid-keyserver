@@ -17,8 +17,8 @@ mod upload;
 use mail;
 
 use database::{Database, Polymorphic, Query};
+use database::types::{Email, Fingerprint, KeyID};
 use Result;
-use types::{Email, Fingerprint, KeyID};
 use Opt;
 
 use std::result;
@@ -26,7 +26,7 @@ use std::str::FromStr;
 
 mod queries {
     use std::fmt;
-    use types::{Email, Fingerprint, KeyID};
+    use database::types::{Email, Fingerprint, KeyID};
 
     #[derive(Debug)]
     pub enum Hkp {

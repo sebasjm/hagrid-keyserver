@@ -11,7 +11,7 @@ use pathdiff::diff_paths;
 
 //use sequoia_openpgp::armor::{Writer, Kind};
 
-use database::{Database, Delete, Verify, Query};
+use {Database, Delete, Verify, Query};
 use types::{Email, Fingerprint, KeyID};
 use Result;
 
@@ -460,8 +460,8 @@ impl Database for Filesystem {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use database::test;
-    use sequoia_openpgp::tpk::TPKBuilder;
+    use test;
+    use openpgp::tpk::TPKBuilder;
     use tempfile::TempDir;
 
     #[test]

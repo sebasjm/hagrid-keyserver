@@ -3,7 +3,6 @@
 #![feature(try_from)]
 
 extern crate failure;
-use failure::Error;
 use failure::Fallible as Result;
 
 extern crate serde;
@@ -11,7 +10,6 @@ extern crate serde;
 extern crate serde_derive;
 extern crate serde_json;
 
-extern crate hex;
 extern crate time;
 extern crate url;
 
@@ -21,26 +19,19 @@ extern crate multipart;
 extern crate rocket_contrib;
 
 extern crate sequoia_openpgp;
-#[macro_use]
-extern crate log;
-extern crate base64;
 extern crate handlebars;
 extern crate lettre;
 extern crate lettre_email;
-extern crate parking_lot;
-extern crate rand;
 extern crate structopt;
 extern crate tempfile;
-extern crate pathdiff;
 
 #[cfg(test)]
 extern crate fs_extra;
 #[cfg(test)]
 extern crate regex;
 
-mod database;
+extern crate hagrid_database as database;
 mod mail;
-mod types;
 mod web;
 
 use std::path::PathBuf;

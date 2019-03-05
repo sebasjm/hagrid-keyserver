@@ -1,25 +1,42 @@
-use parking_lot::MutexGuard;
+#![feature(proc_macro_hygiene, plugin, decl_macro)]
+#![recursion_limit = "1024"]
+#![feature(try_from)]
+
 use std::convert::TryFrom;
 use std::io::Cursor;
+use std::io::Write;
 use std::path::PathBuf;
 use std::result;
 use std::str::FromStr;
 
-use sequoia_openpgp::{
-    constants::SignatureType, packet::Signature, packet::UserID, parse::Parse,
+extern crate failure;
+use failure::Error;
+use failure::Fallible as Result;
+#[macro_use] extern crate log;
+extern crate parking_lot;
+use parking_lot::MutexGuard;
+extern crate pathdiff;
+extern crate rand;
+extern crate serde;
+extern crate serde_json;
+extern crate tempfile;
+extern crate time;
+extern crate url;
+
+extern crate sequoia_openpgp as openpgp;
+use openpgp::{
     Packet, TPK,
+    PacketPile,
+    armor::{Writer, Kind},
+    constants::SignatureType, packet::Signature, packet::UserID, parse::Parse,
     packet::Tag,
-    serialize::Serialize,
+    serialize::Serialize as OpenPgpSerialize,
 };
-use sequoia_openpgp::PacketPile;
 
-use std::io::Write;
-use sequoia_openpgp::armor::{Writer, Kind};
+use serde::{Serialize, Deserialize, Deserializer, Serializer};
 
-use serde::{Deserialize, Deserializer, Serializer};
-use time;
+pub mod types;
 use types::{Email, Fingerprint, KeyID};
-use Result;
 
 mod fs;
 pub use self::fs::Filesystem;
@@ -64,7 +81,7 @@ impl Verify {
     pub fn new(
         uid: &UserID, sig: &[Signature], fpr: Fingerprint,
     ) -> Result<Self> {
-        use sequoia_openpgp::serialize::Serialize;
+        use openpgp::serialize::Serialize;
 
         let mut cur = Cursor::new(Vec::default());
         uid.serialize(&mut cur)?;
@@ -208,7 +225,7 @@ pub trait Database: Sync + Send {
     }
 
     fn tpk_into_bytes(tpk: &TPK) -> Result<Vec<u8>> {
-        use sequoia_openpgp::serialize::Serialize;
+        use openpgp::serialize::Serialize;
         use std::io::Cursor;
 
         let mut cur = Cursor::new(Vec::default());
@@ -326,7 +343,7 @@ pub trait Database: Sync + Send {
     }
 
     fn merge_or_publish(&self, mut tpk: TPK) -> Result<Vec<(Email, String)>> {
-        use sequoia_openpgp::RevocationStatus;
+        use openpgp::RevocationStatus;
 
         let fpr = Fingerprint::try_from(tpk.primary().fingerprint())?;
         let mut all_uids = Vec::default();

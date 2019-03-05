@@ -17,9 +17,9 @@
 use std::convert::TryFrom;
 use std::str::FromStr;
 
-use database::Database;
-use sequoia_openpgp::tpk::{TPKBuilder, UserIDBinding};
-use sequoia_openpgp::{
+use Database;
+use openpgp::tpk::{TPKBuilder, UserIDBinding};
+use openpgp::{
     constants::ReasonForRevocation, constants::SignatureType, packet::UserID,
     parse::Parse, Packet, PacketPile, RevocationStatus, TPK,
 };

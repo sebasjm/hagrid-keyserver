@@ -2,7 +2,7 @@ use std::convert::TryFrom;
 use std::result;
 use std::str::FromStr;
 
-use sequoia_openpgp::{self, packet::UserID};
+use openpgp::packet::UserID;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use {Error, Result};
 

@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use database::{Database, Delete, Filesystem, Memory, Verify, Query};
+use {Database, Delete, Filesystem, Memory, Verify, Query};
 use Result;
 use types::{Email, Fingerprint, KeyID};
 use parking_lot::MutexGuard;

@@ -1,7 +1,7 @@
 use parking_lot::{Mutex, MutexGuard};
 use std::collections::HashMap;
 
-use database::{Database, Delete, Verify, Query};
+use {Database, Delete, Verify, Query};
 use types::{Email, Fingerprint, KeyID};
 use Result;
 
@@ -160,8 +160,8 @@ impl Memory {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use database::test;
-    use sequoia_openpgp::tpk::TPKBuilder;
+    use test;
+    use openpgp::tpk::TPKBuilder;
 
     #[test]
     fn new() {
