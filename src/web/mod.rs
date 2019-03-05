@@ -6,9 +6,7 @@ use rocket::response::status::Custom;
 use rocket::response::NamedFile;
 use rocket::{Outcome, State};
 use rocket_contrib::templates::Template;
-use rocket::response::Flash;
-use rocket::request::{Form, FlashMessage};
-use rocket::response::Redirect;
+use rocket::request::Form;
 
 use serde::Serialize;
 use handlebars::Handlebars;
@@ -64,7 +62,8 @@ enum MyResponse {
     XAccelRedirect(&'static str, Header<'static>, ContentDisposition),
     #[response(status = 500, content_type = "html")]
     ServerError(Template),
-    NotFound(Flash<Redirect>),
+    #[response(status = 404, content_type = "html")]
+    NotFound(Template),
 }
 
 impl MyResponse {
@@ -123,14 +122,16 @@ impl MyResponse {
         MyResponse::ServerError(Template::render("500", ctx))
     }
 
-    pub fn not_found<T, M>(redirect_to: T, message: M)
-                           -> Self
-        where T: Into<Option<&'static str>>,
-              M: Into<Option<String>>,
+    pub fn not_found<M>(tmpl: Option<&'static str>, message: M)
+                        -> Self
+        where M: Into<Option<String>>,
     {
-        MyResponse::NotFound(Flash::error(
-            Redirect::to(redirect_to.into().unwrap_or("/?")),
-            message.into().unwrap_or_else(|| "Key not found".to_owned())))
+        MyResponse::NotFound(
+            Template::render(
+                tmpl.unwrap_or("index"),
+                templates::Index::new(
+                    Some(message.into()
+                         .unwrap_or_else(|| "Key not found".to_owned())))))
     }
 }
 
@@ -182,6 +183,17 @@ mod templates {
         pub commit: String,
         pub version: String,
     }
+
+    impl Index {
+        pub fn new(error: Option<String>) -> Self {
+            Self {
+                error: error,
+                version: env!("VERGEN_SEMVER").to_string(),
+                commit: env!("VERGEN_SHA_SHORT").to_string(),
+            }
+        }
+    }
+
     #[derive(Serialize)]
     pub struct General {
         pub commit: String,
@@ -302,7 +314,7 @@ fn key_to_hkp_index<'a>(db: rocket::State<Polymorphic>, query: Query)
 
     let tpk = match db.lookup(&query) {
         Ok(Some(tpk)) => tpk,
-        Ok(None) => return MyResponse::not_found(None, None), // XXX: This should return 404.
+        Ok(None) => return MyResponse::not_found(None, None),
         Err(err) => { return MyResponse::ise(err); }
     };
     let mut out = String::default();
@@ -451,15 +463,8 @@ fn verify(
 }
 
 #[get("/vks/v1/manage")]
-fn manage(flash: Option<FlashMessage>)
-          -> result::Result<Template, Custom<String>> {
-    let context = templates::Index {
-        error: flash.and_then(|flash| error_from_flash(&flash)),
-        version: env!("VERGEN_SEMVER").to_string(),
-        commit: env!("VERGEN_SHA_SHORT").to_string(),
-    };
-
-    Ok(Template::render("manage", context))
+fn manage() -> result::Result<Template, Custom<String>> {
+    Ok(Template::render("manage", templates::Index::new(None)))
 }
 
 #[derive(FromForm)]
@@ -481,7 +486,7 @@ fn manage_post(
     let tpk = match db.lookup(&query) {
         Ok(Some(tpk)) => tpk,
         Ok(None) => return MyResponse::not_found(
-            Some("/vks/v1/manage"),
+            Some("manage"),
             Some(format!("No such key found for {:?}", request.search_term))),
         Err(e) => return MyResponse::ise(e),
     };
@@ -571,25 +576,9 @@ fn lookup(db: rocket::State<Polymorphic>, domain: rocket::State<Domain>,
     }
 }
 
-fn error_from_flash(flash: &FlashMessage) -> Option<String> {
-    if flash.name() == "error" {
-        Some(flash.msg().to_owned())
-    } else {
-        None
-    }
-}
-
 #[get("/")]
-fn root(
-    flash: Option<FlashMessage>
-) -> Template {
-    let context = templates::Index {
-        error: flash.and_then(|flash| error_from_flash(&flash)),
-        version: env!("VERGEN_SEMVER").to_string(),
-        commit: env!("VERGEN_SHA_SHORT").to_string(),
-    };
-
-    Template::render("index", context)
+fn root() -> Template {
+    Template::render("index", templates::Index::new(None))
 }
 
 #[get("/about")]
