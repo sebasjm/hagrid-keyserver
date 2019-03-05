@@ -442,7 +442,7 @@ fn by_keyid(db: rocket::State<Polymorphic>, domain: rocket::State<Domain>,
 #[get("/vks/v1/verify/<token>")]
 fn verify(
     db: rocket::State<Polymorphic>, domain: rocket::State<Domain>, token: String,
-) -> result::Result<Template, Custom<String>> {
+) -> MyResponse {
     match db.verify_token(&token) {
         Ok(Some((userid, fpr))) => {
             let context = templates::Verify {
@@ -454,20 +454,10 @@ fn verify(
                 commit: env!("VERGEN_SHA_SHORT").to_string(),
             };
 
-            Ok(Template::render("verify", context))
+            MyResponse::ok("verify", context)
         }
-        Ok(None) | Err(_) => {
-            let context = templates::Verify {
-                verified: false,
-                domain: domain.0.clone(),
-                userid: "".into(),
-                fpr: "".into(),
-                version: env!("VERGEN_SEMVER").to_string(),
-                commit: env!("VERGEN_SHA_SHORT").to_string(),
-            };
-
-            Ok(Template::render("verify", context))
-        }
+        Ok(None) => MyResponse::not_found(Some("generic-error"), None),
+        Err(e) => MyResponse::ise(e),
     }
 }
 
