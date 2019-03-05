@@ -800,8 +800,6 @@ mod tests {
         let (tpk, _) = TPKBuilder::autocrypt(
             None, Some("foo@invalid.example.com".into()))
             .generate().unwrap();
-        let fp = tpk.fingerprint().to_hex();
-        let keyid = tpk.fingerprint().to_keyid().to_hex();
 
         let mut tpk_serialized = Vec::new();
         tpk.serialize(&mut tpk_serialized).unwrap();
@@ -812,83 +810,14 @@ mod tests {
 
         // Prior to email confirmation, we should not be able to look
         // it up by email address.
-        fn check_null_response(client: &Client, uri: &str) {
-            let response = client.get(uri).dispatch();
-            assert_eq!(response.status(), Status::NotFound);
-        }
+        check_null_responses_by_email(&client, "foo@invalid.example.com");
 
-        check_null_response(
-            &client, "/vks/v1/by-email/foo@invalid.example.com");
-        check_null_response(
-            &client, "/pks/lookup?op=get&search=foo@invalid.example.com");
-        check_null_response(
-            &client, "/pks/lookup?op=get&options=mr&search=foo@invalid.example.com");
-
-        // And check that we can get it back, modulo user ids.
-        fn check_mr_response(client: &Client, uri: &str, tpk: &TPK,
-                             nr_uids: usize) {
-            let mut response = client.get(uri).dispatch();
-            assert_eq!(response.status(), Status::Ok);
-            assert_eq!(response.content_type(),
-                       Some(ContentType::new("application", "pgp-keys")));
-            let body = response.body_string().unwrap();
-            assert!(body.contains("END PGP PUBLIC KEY BLOCK"));
-            let tpk_ = TPK::from_bytes(body.as_bytes()).unwrap();
-            assert_eq!(tpk.fingerprint(), tpk_.fingerprint());
-            assert_eq!(tpk.subkeys().map(|skb| skb.subkey().fingerprint())
-                       .collect::<Vec<_>>(),
-                       tpk_.subkeys().map(|skb| skb.subkey().fingerprint())
-                       .collect::<Vec<_>>());
-            assert_eq!(tpk_.userids().count(), nr_uids);
-        }
-
-        check_mr_response(
-            &client, &format!("/vks/v1/by-keyid/{}", keyid), &tpk, 0);
-        check_mr_response(
-            &client, &format!("/vks/v1/by-fingerprint/{}", fp), &tpk, 0);
-        check_mr_response(
-            &client,
-            &format!("/pks/lookup?op=get&options=mr&search={}", fp),
-            &tpk, 0);
-        check_mr_response(
-            &client,
-            &format!("/pks/lookup?op=get&options=mr&search=0x{}", fp),
-            &tpk, 0);
-        check_mr_response(
-            &client,
-            &format!("/pks/lookup?op=get&options=mr&search={}", keyid),
-            &tpk, 0);
-        check_mr_response(
-            &client,
-            &format!("/pks/lookup?op=get&options=mr&search=0x{}", keyid),
-            &tpk, 0);
+        // And check that we can get it back via the machine readable
+        // interface.
+        check_mr_responses_by_fingerprint(&client, &tpk, 0);
 
         // And check that we can see the human-readable result page.
-        fn check_hr_response(client: &Client, uri: &str, tpk: &TPK) {
-            let mut response = client.get(uri).dispatch();
-            assert_eq!(response.status(), Status::Ok);
-            assert_eq!(response.content_type(), Some(ContentType::HTML));
-            let body = response.body_string().unwrap();
-            assert!(body.contains("found"));
-            assert!(body.contains(&tpk.fingerprint().to_hex()));
-        }
-
-        check_hr_response(
-            &client,
-            &format!("/pks/lookup?op=get&search={}", fp),
-            &tpk);
-        check_hr_response(
-            &client,
-            &format!("/pks/lookup?op=get&search=0x{}", fp),
-            &tpk);
-        check_hr_response(
-            &client,
-            &format!("/pks/lookup?op=get&search={}", keyid),
-            &tpk);
-        check_hr_response(
-            &client,
-            &format!("/pks/lookup?op=get&search=0x{}", keyid),
-            &tpk);
+        check_hr_responses_by_fingerprint(&client, &tpk);
 
         // Now check for the confirmation mail.
         let confirm_re =
@@ -921,6 +850,106 @@ mod tests {
         check_hr_response(
             &client,
             "/pks/lookup?op=get&search=foo@invalid.example.com",
+            &tpk);
+    }
+
+    /// Asserts that the given URI 404s.
+    fn check_null_response(client: &Client, uri: &str) {
+        let response = client.get(uri).dispatch();
+        assert_eq!(response.status(), Status::NotFound);
+    }
+
+    /// Asserts that lookups by the given address 404.
+    fn check_null_responses_by_email(client: &Client, addr: &str) {
+        check_null_response(
+            &client, &format!("/vks/v1/by-email/{}", addr));
+        check_null_response(
+            &client, &format!("/pks/lookup?op=get&search={}", addr));
+        check_null_response(
+            &client, &format!("/pks/lookup?op=get&options=mr&search={}",
+                              addr));
+    }
+
+    /// Asserts that the given URI returns a TPK matching the given
+    /// one, with the given number of userids.
+    fn check_mr_response(client: &Client, uri: &str, tpk: &TPK,
+                         nr_uids: usize) {
+        let mut response = client.get(uri).dispatch();
+        assert_eq!(response.status(), Status::Ok);
+        assert_eq!(response.content_type(),
+                   Some(ContentType::new("application", "pgp-keys")));
+        let body = response.body_string().unwrap();
+        assert!(body.contains("END PGP PUBLIC KEY BLOCK"));
+        let tpk_ = TPK::from_bytes(body.as_bytes()).unwrap();
+        assert_eq!(tpk.fingerprint(), tpk_.fingerprint());
+        assert_eq!(tpk.subkeys().map(|skb| skb.subkey().fingerprint())
+                   .collect::<Vec<_>>(),
+                   tpk_.subkeys().map(|skb| skb.subkey().fingerprint())
+                   .collect::<Vec<_>>());
+        assert_eq!(tpk_.userids().count(), nr_uids);
+    }
+
+    /// Asserts that we can get the given TPK back using the various
+    /// by-fingerprint or by-keyid lookup mechanisms.
+    fn check_mr_responses_by_fingerprint(client: &Client, tpk: &TPK,
+                                         nr_uids: usize) {
+        let fp = tpk.fingerprint().to_hex();
+        let keyid = tpk.fingerprint().to_keyid().to_hex();
+
+        check_mr_response(
+            &client, &format!("/vks/v1/by-keyid/{}", keyid), &tpk, nr_uids);
+        check_mr_response(
+            &client, &format!("/vks/v1/by-fingerprint/{}", fp), &tpk, nr_uids);
+        check_mr_response(
+            &client,
+            &format!("/pks/lookup?op=get&options=mr&search={}", fp),
+            &tpk, nr_uids);
+        check_mr_response(
+            &client,
+            &format!("/pks/lookup?op=get&options=mr&search=0x{}", fp),
+            &tpk, nr_uids);
+        check_mr_response(
+            &client,
+            &format!("/pks/lookup?op=get&options=mr&search={}", keyid),
+            &tpk, nr_uids);
+        check_mr_response(
+            &client,
+            &format!("/pks/lookup?op=get&options=mr&search=0x{}", keyid),
+            &tpk, nr_uids);
+    }
+
+    /// Asserts that the given URI returns human readable response
+    /// page.
+    fn check_hr_response(client: &Client, uri: &str, tpk: &TPK) {
+        let mut response = client.get(uri).dispatch();
+        assert_eq!(response.status(), Status::Ok);
+        assert_eq!(response.content_type(), Some(ContentType::HTML));
+        let body = response.body_string().unwrap();
+        assert!(body.contains("found"));
+        assert!(body.contains(&tpk.fingerprint().to_hex()));
+    }
+
+    /// Asserts that we can get the given TPK back using the various
+    /// by-fingerprint or by-keyid lookup mechanisms.
+    fn check_hr_responses_by_fingerprint(client: &Client, tpk: &TPK) {
+        let fp = tpk.fingerprint().to_hex();
+        let keyid = tpk.fingerprint().to_keyid().to_hex();
+
+        check_hr_response(
+            &client,
+            &format!("/pks/lookup?op=get&search={}", fp),
+            &tpk);
+        check_hr_response(
+            &client,
+            &format!("/pks/lookup?op=get&search=0x{}", fp),
+            &tpk);
+        check_hr_response(
+            &client,
+            &format!("/pks/lookup?op=get&search={}", keyid),
+            &tpk);
+        check_hr_response(
+            &client,
+            &format!("/pks/lookup?op=get&search=0x{}", keyid),
             &tpk);
     }
 
