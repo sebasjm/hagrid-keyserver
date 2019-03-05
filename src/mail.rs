@@ -12,7 +12,7 @@ use Result;
 #[derive(Serialize, Clone)]
 pub struct Context {
     pub token: String,
-    pub userid: String,
+    pub userid: Option<String>,
     pub domain: String,
 }
 
@@ -52,7 +52,7 @@ impl Service {
                              -> Result<()> {
         let ctx = Context {
             token: token.to_string(),
-            userid: userid.to_string(),
+            userid: Some(userid.to_string()),
             domain: domain.to_string(),
         };
 
@@ -68,7 +68,7 @@ impl Service {
                              -> Result<()> {
         let ctx = Context {
             token: token.to_string(),
-            userid: userid.to_string(),
+            userid: None,
             domain: domain.to_string(),
         };
 
