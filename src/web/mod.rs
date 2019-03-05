@@ -51,7 +51,7 @@ mod queries {
 use rocket::http::hyper::header::ContentDisposition;
 
 #[derive(Responder)]
-enum MyResponse {
+pub enum MyResponse {
     #[response(status = 200, content_type = "html")]
     Success(Template),
      #[response(status = 200, content_type = "plain")]
@@ -638,6 +638,7 @@ fn rocket_factory(rocket: rocket::Rocket, db: Polymorphic) -> rocket::Rocket {
         by_keyid,
         // HKP
         lookup,
+        upload::pks_add,
         upload::vks_publish,
         upload::vks_publish_submit,
         // verification & deletion
@@ -951,6 +952,61 @@ mod tests {
             &client,
             &format!("/pks/lookup?op=get&search=0x{}", keyid),
             &tpk);
+    }
+
+    #[test]
+    fn hkp() {
+        let (tmpdir, config) = configuration().unwrap();
+        let filemail_into = tmpdir.path().join("filemail");
+
+        // eprintln!("LEAKING: {:?}", tmpdir);
+        // ::std::mem::forget(tmpdir);
+
+        let db = Polymorphic::Filesystem(
+            Filesystem::new(config.root().unwrap().to_path_buf()).unwrap());
+        let rocket = rocket_factory(rocket::custom(config), db);
+        let client = Client::new(rocket).expect("valid rocket instance");
+
+        // Generate a key and upload it.
+        let (tpk, _) = TPKBuilder::autocrypt(
+            None, Some("foo@invalid.example.com".into()))
+            .generate().unwrap();
+
+        // Prepare to /pks/add
+        let mut armored = Vec::new();
+        {
+            use sequoia_openpgp::armor::{Writer, Kind};
+            let mut w = Writer::new(&mut armored, Kind::PublicKey, &[])
+                .unwrap();
+            tpk.serialize(&mut w).unwrap();
+        }
+        let mut post_data = String::from("keytext=");
+        for enc in url::form_urlencoded::byte_serialize(&armored) {
+            post_data.push_str(enc);
+        }
+
+        // Add!
+        let mut response = client.post("/pks/add")
+            .body(post_data.as_bytes())
+            .header(ContentType::Form)
+            .dispatch();
+        assert_eq!(response.status(), Status::Ok);
+        let body = response.body_string().unwrap();
+        eprintln!("response: {}", body);
+
+        // Check that we do not get a confirmation mail.
+        let confirm_mail = pop_mail(filemail_into.as_path()).unwrap();
+        assert!(confirm_mail.is_none());
+
+        // We should not be able to look it up by email address.
+        check_null_responses_by_email(&client, "foo@invalid.example.com");
+
+        // And check that we can get it back via the machine readable
+        // interface.
+        check_mr_responses_by_fingerprint(&client, &tpk, 0);
+
+        // And check that we can see the human-readable result page.
+        check_hr_responses_by_fingerprint(&client, &tpk);
     }
 
     /// Returns and removes the first mail it finds from the given

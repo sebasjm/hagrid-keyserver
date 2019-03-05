@@ -36,8 +36,7 @@ OpenKeychain can use it directly. The differences to SKS are
  - only exact matches for user IDs are returned (i.e. `exact=on` is
    always assumed),
  - `op=index` returns either one or no keys,
- - all packets that aren't public keys, user IDs or signatures are filtered out,
- - Uploading a key via the HKP interface is not supported.
+ - all packets that aren't public keys, user IDs or signatures are filtered out.
 
 ### VKS
 

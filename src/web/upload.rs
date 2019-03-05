@@ -18,6 +18,8 @@ use web::Domain;
 
 use std::io::Read;
 
+use super::MyResponse;
+
 mod template {
     #[derive(Serialize)]
     pub struct Upload {
@@ -83,16 +85,26 @@ pub fn vks_publish_submit(
     db: State<Polymorphic>, cont_type: &ContentType, data: Data,
     mail_service: State<mail::Service>, domain: State<Domain>,
 ) -> Flash<Redirect> {
-    match do_upload_hkp(db, cont_type, data, mail_service, domain) {
+    match do_upload_hkp(db, cont_type, data, Some(mail_service), domain) {
         Ok(ok) => ok,
         Err(err) => Flash::error(Redirect::to("/vks/v1/publish?err"), err.to_string()),
+    }
+}
+
+#[post("/pks/add", data = "<data>")]
+pub fn pks_add(db: State<Polymorphic>, cont_type: &ContentType, data: Data,
+               domain: State<Domain>)
+               -> MyResponse {
+    match do_upload_hkp(db, cont_type, data, None, domain) {
+        Ok(_) => MyResponse::plain("Ok".into()),
+        Err(err) => MyResponse::ise(err),
     }
 }
 
 // signature requires the request to have a `Content-Type`
 fn do_upload_hkp(
     db: State<Polymorphic>, cont_type: &ContentType, data: Data,
-    mail_service: State<mail::Service>, domain: State<Domain>,
+    mail_service: Option<State<mail::Service>>, domain: State<Domain>,
 ) -> Result<Flash<Redirect>> {
     if cont_type.is_form_data() {
         // multipart/form-data
@@ -142,7 +154,7 @@ fn do_upload_hkp(
 
 fn process_upload(
     boundary: &str, data: Data, db: &Polymorphic,
-    mail_service: State<mail::Service>,
+    mail_service: Option<State<mail::Service>>,
     domain: &str,
 ) -> Result<Flash<Redirect>> {
     // saves all fields, any field longer than 10kB goes to a temporary directory
@@ -159,10 +171,9 @@ fn process_upload(
     }
 }
 
-fn process_multipart(
-    entries: Entries, db: &Polymorphic, mail_service: State<mail::Service>,
-    domain: &str,
-) -> Result<Flash<Redirect>> {
+fn process_multipart(entries: Entries, db: &Polymorphic,
+                     mail_service: Option<State<mail::Service>>,
+                     domain: &str) -> Result<Flash<Redirect>> {
     match entries.fields.get("keytext") {
         Some(ent) if ent.len() == 1 => {
             let reader = ent[0].data.readable()?;
@@ -175,7 +186,7 @@ fn process_multipart(
 }
 
 fn process_key<R>(
-    reader: R, db: &Polymorphic, mail_service: State<mail::Service>,
+    reader: R, db: &Polymorphic, mail_service: Option<State<mail::Service>>,
     domain: &str,
 ) -> Result<Flash<Redirect>>
 where
@@ -188,13 +199,15 @@ where
     let tokens = db.merge_or_publish(tpk)?;
     let mut results: Vec<String> = vec!();
 
-    for (email,token) in tokens {
-        mail_service.send_verification(
-            &email,
-            &token,
-            domain,
-        )?;
-        results.push(email.to_string());
+    if let Some(mail_service) = mail_service {
+        for (email, token) in tokens {
+            mail_service.send_verification(
+                &email,
+                &token,
+                domain,
+            )?;
+            results.push(email.to_string());
+        }
     }
 
     let json = serde_json::to_string(&results).unwrap();
