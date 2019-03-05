@@ -148,7 +148,6 @@ mod templates {
 
     #[derive(Serialize)]
     pub struct Delete {
-        pub token: String,
         pub fpr: String,
         pub commit: String,
         pub version: String,
@@ -495,7 +494,6 @@ fn manage_post(
         Ok((token, uids)) => {
             let context = templates::Delete {
                 fpr: tpk.fingerprint().to_string(),
-                token: token.clone(),
                 version: env!("VERGEN_SEMVER").to_string(),
                 commit: env!("VERGEN_SHA_SHORT").to_string(),
             };
