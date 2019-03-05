@@ -815,7 +815,8 @@ mod tests {
             &client, "/pks/lookup?op=get&options=mr&search=foo@invalid.example.com");
 
         // And check that we can get it back, modulo user ids.
-        fn check_mr_response(client: &Client, uri: &str, tpk: &TPK) {
+        fn check_mr_response(client: &Client, uri: &str, tpk: &TPK,
+                             nr_uids: usize) {
             let mut response = client.get(uri).dispatch();
             assert_eq!(response.status(), Status::Ok);
             assert_eq!(response.content_type(),
@@ -828,27 +829,29 @@ mod tests {
                        .collect::<Vec<_>>(),
                        tpk_.subkeys().map(|skb| skb.subkey().fingerprint())
                        .collect::<Vec<_>>());
-            assert_eq!(tpk_.userids().count(), 0);
+            assert_eq!(tpk_.userids().count(), nr_uids);
         }
 
-        check_mr_response(&client, &format!("/vks/v1/by-keyid/{}", keyid), &tpk);
-        check_mr_response(&client, &format!("/vks/v1/by-fingerprint/{}", fp), &tpk);
+        check_mr_response(
+            &client, &format!("/vks/v1/by-keyid/{}", keyid), &tpk, 0);
+        check_mr_response(
+            &client, &format!("/vks/v1/by-fingerprint/{}", fp), &tpk, 0);
         check_mr_response(
             &client,
             &format!("/pks/lookup?op=get&options=mr&search={}", fp),
-            &tpk);
+            &tpk, 0);
         check_mr_response(
             &client,
             &format!("/pks/lookup?op=get&options=mr&search=0x{}", fp),
-            &tpk);
+            &tpk, 0);
         check_mr_response(
             &client,
             &format!("/pks/lookup?op=get&options=mr&search={}", keyid),
-            &tpk);
+            &tpk, 0);
         check_mr_response(
             &client,
             &format!("/pks/lookup?op=get&options=mr&search=0x{}", keyid),
-            &tpk);
+            &tpk, 0);
 
         // And check that we can see the human-readable result page.
         fn check_hr_response(client: &Client, uri: &str, tpk: &TPK) {
