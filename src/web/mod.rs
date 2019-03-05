@@ -498,11 +498,9 @@ fn manage_post(
                 commit: env!("VERGEN_SHA_SHORT").to_string(),
             };
 
-            for uid in uids {
-                if let Err(e) = mail_service.send_confirmation(
-                    &uid, &token, &domain.0) {
-                    return MyResponse::ise(e);
-                }
+            if let Err(e) = mail_service.send_confirmation(
+                &uids, &token, &domain.0) {
+                return MyResponse::ise(e);
             }
 
             MyResponse::ok("delete", context)

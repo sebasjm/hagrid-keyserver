@@ -57,14 +57,15 @@ impl Service {
         };
 
         self.send(
-            userid,
+            &vec![userid.clone()],
             "Please verify your email address",
             "verify",
             ctx,
         )
     }
 
-    pub fn send_confirmation(&self, userid: &Email, token: &str, domain: &str)
+    pub fn send_confirmation(&self, userids: &[Email], token: &str,
+                             domain: &str)
                              -> Result<()> {
         let ctx = Context {
             token: token.to_string(),
@@ -73,14 +74,14 @@ impl Service {
         };
 
         self.send(
-            userid,
+            userids,
             "Please confirm deletion of your key",
             "confirm",
             ctx,
         )
     }
 
-    fn send<T>(&self, to: &Email, subject: &str, template: &str, ctx: T)
+    fn send<T>(&self, to: &[Email], subject: &str, template: &str, ctx: T)
                -> Result<()>
         where T: Serialize + Clone,
     {
@@ -97,14 +98,19 @@ impl Service {
             }
         };
 
-        let email = EmailBuilder::new()
-            .to(to.to_string())
+        let mut email = EmailBuilder::new()
             .from(self.from.clone())
             .subject(subject)
             .alternative(
                 html.ok_or(failure::err_msg("Email template failed to render"))?,
                 txt.ok_or(failure::err_msg("Email template failed to render"))?,
-            )
+            );
+
+        for recipient in to.iter() {
+            email.add_to(recipient.to_string());
+        }
+
+        let email = email
             .build()
             .unwrap();
 
