@@ -1,3 +1,6 @@
+use failure;
+use failure::Fallible as Result;
+
 use multipart::server::save::Entries;
 use multipart::server::save::SaveResult::*;
 use multipart::server::Multipart;
@@ -90,11 +93,12 @@ pub fn vks_publish_submit(
 fn do_upload_hkp(
     db: State<Polymorphic>, cont_type: &ContentType, data: Data,
     mail_service: State<mail::Service>, domain: State<Domain>,
-) -> Result<Flash<Redirect>, String> {
+) -> Result<Flash<Redirect>> {
     if cont_type.is_form_data() {
         // multipart/form-data
         let (_, boundary) = cont_type.params().find(|&(k, _)| k == "boundary").ok_or_else(
-            || "`Content-Type: multipart/form-data` boundary param not provided".to_owned())?;
+            || failure::err_msg("`Content-Type: multipart/form-data` boundary \
+                                 param not provided"))?;
 
         process_upload(boundary, data, db.inner(), mail_service, &domain.0)
     } else if cont_type.is_form() {
@@ -105,13 +109,16 @@ fn do_upload_hkp(
         let mut buf = Vec::default();
 
         data.stream_to(&mut buf).or_else(|_| {
-            Err("`Content-Type: application/x-www-form-urlencoded` not valid".to_owned())
+            Err(failure::err_msg(
+                "`Content-Type: application/x-www-form-urlencoded` not valid"))
         })?;
 
         for item in FormItems::from(&*String::from_utf8_lossy(&buf)) {
             let (key, value) = item.key_value();
             let decoded_value = value.url_decode().or_else(|_| {
-                Err("`Content-Type: application/x-www-form-urlencoded` not valid".to_owned())
+                Err(failure::err_msg(
+                    "`Content-Type: application/x-www-form-urlencoded` \
+                     not valid"))
             })?;
 
             match key.as_str() {
@@ -127,9 +134,9 @@ fn do_upload_hkp(
             }
         }
 
-        Err("Not a PGP public key".to_owned())
+        Err(failure::err_msg("Not a PGP public key"))
     } else {
-        Err("Content-Type not a form".to_owned())
+        Err(failure::err_msg("Content-Type not a form"))
     }
 }
 
@@ -137,7 +144,7 @@ fn process_upload(
     boundary: &str, data: Data, db: &Polymorphic,
     mail_service: State<mail::Service>,
     domain: &str,
-) -> Result<Flash<Redirect>, String> {
+) -> Result<Flash<Redirect>> {
     // saves all fields, any field longer than 10kB goes to a temporary directory
     // Entries could implement FromData though that would give zero control over
     // how the files are saved; Multipart would be a good impl candidate though
@@ -148,24 +155,21 @@ fn process_upload(
         Partial(partial, _) => {
             process_multipart(partial.entries, db, mail_service, domain)
         }
-        Error(err) => Err(err.to_string())
+        Error(err) => Err(err.into())
     }
 }
 
 fn process_multipart(
     entries: Entries, db: &Polymorphic, mail_service: State<mail::Service>,
     domain: &str,
-) -> Result<Flash<Redirect>, String> {
+) -> Result<Flash<Redirect>> {
     match entries.fields.get("keytext") {
         Some(ent) if ent.len() == 1 => {
-            let reader = ent[0].data.readable().map_err(|err| {
-                err.to_string()
-            })?;
-
+            let reader = ent[0].data.readable()?;
             process_key(reader, db, mail_service, domain)
         }
         Some(_) | None => {
-            Err("Not a PGP public key".into())
+            Err(failure::err_msg("Not a PGP public key"))
         }
     }
 }
@@ -173,16 +177,15 @@ fn process_multipart(
 fn process_key<R>(
     reader: R, db: &Polymorphic, mail_service: State<mail::Service>,
     domain: &str,
-) -> Result<Flash<Redirect>, String>
+) -> Result<Flash<Redirect>>
 where
     R: Read,
 {
     use sequoia_openpgp::parse::Parse;
     use sequoia_openpgp::TPK;
 
-    let tpk = TPK::from_reader(reader).map_err(|err| err.to_string())?;
-    let tokens = db.merge_or_publish(tpk)
-        .map_err(|e| format!("{}", e))?;
+    let tpk = TPK::from_reader(reader)?;
+    let tokens = db.merge_or_publish(tpk)?;
     let mut results: Vec<String> = vec!();
 
     for (email,token) in tokens {
@@ -190,7 +193,7 @@ where
             &email,
             &token,
             domain,
-        ).map_err(|e| format!("{}", e))?;
+        )?;
         results.push(email.to_string());
     }
 
