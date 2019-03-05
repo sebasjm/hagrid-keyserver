@@ -32,7 +32,7 @@ mod queries {
     pub enum Hkp {
         Fingerprint { fpr: Fingerprint, index: bool, machine_readable: bool },
         KeyID { keyid: KeyID, index: bool, machine_readable: bool },
-        Email { email: Email, index: bool },
+        Email { email: Email, index: bool, machine_readable: bool },
         Invalid{ query: String, },
     }
 
@@ -266,6 +266,7 @@ impl<'a, 'r> FromRequest<'a, 'r> for queries::Hkp {
                         Outcome::Success(queries::Hkp::Email {
                             email: email,
                             index: index,
+                            machine_readable: machine_readable,
                         })
                     }
                     Err(_) => {
@@ -553,9 +554,8 @@ fn lookup(db: rocket::State<Polymorphic>, domain: rocket::State<Domain>,
             (Query::ByFingerprint(fpr), index, machine_readable),
         Some(queries::Hkp::KeyID { keyid, index, machine_readable }) =>
             (Query::ByKeyID(keyid), index, machine_readable),
-        Some(queries::Hkp::Email { email, index }) => {
-            // XXX: Maybe return 501 Not Implemented if machine_readable
-            (Query::ByEmail(email), index, false)
+        Some(queries::Hkp::Email { email, index, machine_readable }) => {
+            (Query::ByEmail(email), index, machine_readable)
         }
         Some(queries::Hkp::Invalid { query: _ }) => {
             return MyResponse::not_found(None, None);
