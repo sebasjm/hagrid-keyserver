@@ -102,7 +102,10 @@ impl Filesystem {
     }
 
     /// Returns the path to the given Email.
-    fn email_to_path(&self, email: &str) -> PathBuf {
+    fn email_to_path(&self, email: &Email) -> PathBuf {
+        let email =
+            url::form_urlencoded::byte_serialize(email.as_str().as_bytes())
+                .collect::<String>();
         if email.len() > 2 {
             self.base_by_email.join(&email[..2]).join(&email[2..])
         } else {
@@ -245,7 +248,7 @@ impl Database for Filesystem {
                     .and_then(|path| self.path_to_fingerprint(&path))
             },
             ByEmail(ref email) => {
-                let path = self.email_to_path(email.as_str());
+                let path = self.email_to_path(email);
                 path.read_link().ok()
                     .and_then(|path| self.path_to_fingerprint(&path))
             },
@@ -258,7 +261,7 @@ impl Database for Filesystem {
         let path = match term {
             ByFingerprint(ref fp) => self.fingerprint_to_path(fp),
             ByKeyID(ref keyid) => self.keyid_to_path(keyid),
-            ByEmail(ref email) => self.email_to_path(email.as_str()),
+            ByEmail(ref email) => self.email_to_path(email),
         };
 
         if path.exists() {
@@ -269,9 +272,6 @@ impl Database for Filesystem {
     }
 
     fn link_email(&self, email: &Email, fpr: &Fingerprint) -> Result<()> {
-        let email =
-            url::form_urlencoded::byte_serialize(email.to_string().as_bytes())
-                .collect::<String>();
         let link = self.email_to_path(&email);
         let target = diff_paths(&self.fingerprint_to_path(fpr),
                                 link.parent().unwrap()).unwrap();
@@ -284,9 +284,6 @@ impl Database for Filesystem {
     }
 
     fn unlink_email(&self, email: &Email, fpr: &Fingerprint) -> Result<()> {
-        let email =
-            url::form_urlencoded::byte_serialize(email.to_string().as_bytes())
-                .collect::<String>();
         let link = self.email_to_path(&email);
 
         match read_link(link.clone()) {
@@ -407,9 +404,6 @@ impl Database for Filesystem {
     fn by_email(&self, email: &Email) -> Option<String> {
         use std::fs;
 
-        let email =
-            url::form_urlencoded::byte_serialize(email.to_string().as_bytes())
-                .collect::<String>();
         let path = self.email_to_path(&email);
 
         fs::canonicalize(path)
