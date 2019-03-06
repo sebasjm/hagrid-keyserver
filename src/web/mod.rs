@@ -585,20 +585,17 @@ fn files(file: PathBuf, state: rocket::State<State>) -> Option<NamedFile> {
 #[get("/pks/lookup")]
 fn lookup(state: rocket::State<State>,
           db: rocket::State<Polymorphic>,
-          key: Option<queries::Hkp>) -> MyResponse {
-    let query_string = key.as_ref().map(|k| format!("{}", k));
+          key: queries::Hkp) -> MyResponse {
+    let query_string = key.to_string();
     let (query, index, machine_readable) = match key {
-        Some(queries::Hkp::Fingerprint { fpr, index, machine_readable }) =>
+        queries::Hkp::Fingerprint { fpr, index, machine_readable } =>
             (Query::ByFingerprint(fpr), index, machine_readable),
-        Some(queries::Hkp::KeyID { keyid, index, machine_readable }) =>
+        queries::Hkp::KeyID { keyid, index, machine_readable } =>
             (Query::ByKeyID(keyid), index, machine_readable),
-        Some(queries::Hkp::Email { email, index, machine_readable }) => {
+        queries::Hkp::Email { email, index, machine_readable } => {
             (Query::ByEmail(email), index, machine_readable)
         }
-        Some(queries::Hkp::Invalid { query: _ }) => {
-            return MyResponse::not_found(None, None);
-        }
-        None => {
+        queries::Hkp::Invalid { query: _ } => {
             return MyResponse::not_found(None, None);
         }
     };
@@ -606,9 +603,7 @@ fn lookup(state: rocket::State<State>,
     if index {
         key_to_hkp_index(db, query)
     } else {
-        key_to_response(state, db,
-                        query_string.expect("key was Some if we made it here"),
-                        query, machine_readable)
+        key_to_response(state, db, query_string, query, machine_readable)
     }
 }
 
