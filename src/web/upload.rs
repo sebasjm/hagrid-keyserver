@@ -20,6 +20,8 @@ use std::io::Read;
 
 use super::MyResponse;
 
+const UPLOAD_LIMIT: u64 = 1024 * 1024; // 1 MiB.
+
 mod template {
     #[derive(Serialize)]
     pub struct Upload {
@@ -120,8 +122,8 @@ fn do_upload_hkp(
         // application/x-www-form-urlencoded
         let mut buf = Vec::default();
 
-        data.stream_to(&mut buf).or_else(|_| {
-            Err(failure::err_msg(
+        std::io::copy(&mut data.open().take(UPLOAD_LIMIT), &mut buf).or_else(
+            |_| { Err(failure::err_msg(
                 "`Content-Type: application/x-www-form-urlencoded` not valid"))
         })?;
 
@@ -160,7 +162,7 @@ fn process_upload(
     // saves all fields, any field longer than 10kB goes to a temporary directory
     // Entries could implement FromData though that would give zero control over
     // how the files are saved; Multipart would be a good impl candidate though
-    match Multipart::with_body(data.open(), boundary).save().temp() {
+    match Multipart::with_body(data.open().take(UPLOAD_LIMIT), boundary).save().temp() {
         Full(entries) => {
             process_multipart(entries, db, mail_service, domain)
         }
