@@ -156,6 +156,7 @@ mod templates {
     #[derive(Serialize)]
     pub struct Search {
         pub query: String,
+        pub gpg_options: Option<&'static str>,
         pub fpr: Option<String>,
         pub domain: Option<String>,
         pub commit: String,
@@ -318,8 +319,18 @@ fn key_to_response<'a>(state: rocket::State<State>,
         }
     }
 
+    let has_uids = match key_has_uids(&state, &db, &query) {
+        Ok(x) => x,
+        Err(e) => return MyResponse::ise(e),
+    };
+
     let context = templates::Search{
         query: query_string,
+        gpg_options: if has_uids {
+            None
+        } else {
+            Some("--keyserver-options import-drop-uids ")
+        },
         domain: Some(state.domain.clone()),
         fpr: fp.to_string().into(),
         version: env!("VERGEN_SEMVER").to_string(),
@@ -327,6 +338,25 @@ fn key_to_response<'a>(state: rocket::State<State>,
     };
 
     MyResponse::ok("found", context)
+}
+
+fn key_has_uids(state: &State, db: &Polymorphic, query: &Query)
+                -> Result<bool> {
+    use sequoia_openpgp::Packet;
+    use sequoia_openpgp::parse::{Parse, PacketParser, PacketParserResult};
+    let mut ppr = match db.lookup_path(query) {
+        Some(path) => PacketParser::from_file(&state.state_dir.join(path))?,
+        None => return Err(failure::err_msg("key vanished")),
+    };
+
+    while let PacketParserResult::Some(pp) = ppr {
+        if let Packet::UserID(_) = pp.packet {
+            return Ok(true);
+        }
+        ppr = pp.recurse()?.1;
+    }
+
+    Ok(false)
 }
 
 fn key_to_hkp_index<'a>(db: rocket::State<Polymorphic>, query: Query)
