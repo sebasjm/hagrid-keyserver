@@ -246,7 +246,7 @@ impl<'a, 'r> FromRequest<'a, 'r> for queries::Hkp {
             })
             .collect::<HashMap<_, _>>();
 
-        if fields.len() >= 2
+        if fields.contains_key("search")
             && fields
                 .get("op")
                 .map(|x| x == "get" || x == "index")
