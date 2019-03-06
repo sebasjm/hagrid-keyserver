@@ -137,7 +137,10 @@ a.brand {
   box-shadow: 0 2px 6px hsla(0, 0%, 0%, 0.2);
 }
 
+/* This is used to enlarge the card, but is also used to constrain the
+   flow of text in /about.  */
 .card > .spacer {
+  text-align: left;
   width: 80vw;
   max-width: 800px;
 }
