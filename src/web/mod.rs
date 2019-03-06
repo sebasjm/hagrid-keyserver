@@ -11,7 +11,7 @@ use rocket::request::Form;
 use serde::Serialize;
 use handlebars::Handlebars;
 
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 mod upload;
 use mail;
@@ -750,6 +750,7 @@ mod tests {
     use fs_extra;
     use regex;
     use std::fs;
+    use std::path::Path;
     use tempfile::{tempdir, TempDir};
     use super::rocket;
     use rocket::local::Client;
