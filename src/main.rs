@@ -70,15 +70,23 @@ pub struct Opt {
 }
 
 fn main() {
+    if let Err(e) = real_main() {
+        let mut cause = e.as_fail();
+        eprint!("{}", cause);
+        while let Some(c) = cause.cause() {
+            eprint!(":\n  {}", c);
+            cause = c;
+        }
+        eprintln!();
+        ::std::process::exit(2);
+    }
+}
+
+fn real_main() -> Result<()> {
     use database::{Filesystem, Polymorphic};
 
-    let opt = Opt::from_args();
-    println!("{:#?}", opt);
-
-    if !opt.base.is_absolute() {
-        panic!("Base directory must be absolute");
-    }
-
-    let db = Filesystem::new(opt.base.clone()).unwrap();
-    web::serve(&opt, Polymorphic::Filesystem(db)).unwrap();
+    let mut opt = Opt::from_args();
+    opt.base = opt.base.canonicalize()?;
+    let db = Filesystem::new(&opt.base)?;
+    web::serve(&opt, Polymorphic::Filesystem(db))
 }
