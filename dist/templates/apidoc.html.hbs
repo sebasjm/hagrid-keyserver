@@ -1,0 +1,112 @@
+{{#> layout }}
+<div class="spacer">
+  <h2>API documentation</h2>
+  <p>
+    Hagrid implements both the legacy HKP interface, as well as our
+    native interface, VKS.
+  </p>
+  <h3>VKS interface</h3>
+
+  <p>Hagrid has its own URL scheme to fetch keys.</p>
+
+  <h4><code>GET /vks/v1/by-fingerprint/&lt;FINGERPRINT&gt;</code></h4>
+
+  <p>
+    Retrieves the key with the
+    given <em>Fingerprint</em>.  <em>Fingerprint</em> may refer to the
+    primary key, or any subkey.  Hexadecimal digits MUST be uppercase,
+    and MUST NOT be prefixed with <code>0x</code>.  The returned key
+    is <em>ASCII Armored</em>.
+  </p>
+
+  <h4><code>GET /vks/v1/by-keyid/&lt;KEY-ID&gt;</code></h4>
+
+  <p>
+    Retrieves the key with the given
+    long <em>KeyID</em>.  <em>KeyID</em> may refer to the primary key,
+    or any subkey.  Hexadecimal digits MUST be uppercase, and MUST NOT
+    be prefixed with <code>0x</code>.  returned key is <em>ASCII
+    Armored</em>.
+  </p>
+
+  <h4><code>GET /vks/v1/by-email/&lt;URL-encoded user ID&gt;</code></h4>
+
+  <p>
+    Retrieves the key with the given <em>User ID</em>.  Only exact
+    matches are accepted.  Lookup by <em>User ID</em> requires opt-in
+    by the key's owner.  The returned key is <em>ASCII Armored</em>.
+  </p>
+
+  <h3>HPK interface</h3>
+  <p>
+    Hagrid implements a subset of
+    the <a href="https://tools.ietf.org/html/draft-shaw-openpgp-hkp-00">HKP</a>
+    protocol so that tools like GnuPG and OpenKeychain can use it
+    without modification.
+  </p>
+
+  <h4><code>GET /pks/lookup?op=get&amp;options=mr&amp;search=&lt;QUERY&gt;</code></h4>
+
+  <p>Returns an <em>ASCII Armored</em> key matching the query.  Query may be:</p>
+
+  <ul>
+    <li>An exact email address query of the form <code>localpart@example.org</code>.</li>
+    <li>
+      A hexadecimal representation of a long <em>KeyID</em> of either a primary
+      key, or a subkey (<code>069C0C348DD82C19</code>, optionally prefixed by <code>0x</code>).
+    </li>
+    <li>
+      A hexadecimal representation of a <em>Fingerprint</em> of either a primary
+      key, or a subkey (<code>8E8C33FA4626337976D97978069C0C348DD82C19</code>,
+      optionally prefixed by <code>0x</code>).
+    </li>
+  </ul>
+
+  <p>
+    Note that while the hexadecimal digits may use either case, using
+    upper case letters is more efficient with Hagrid.
+  </p>
+
+  <h4><code>GET /pks/lookup?op=index&amp;options=mr&amp;search=&lt;QUERY&gt;</code></h4>
+
+  <p>
+    Returns
+    a <a href="https://tools.ietf.org/html/draft-shaw-openpgp-hkp-00#section-5.2">machine-readable
+    list</a> of keys matching the query.  Query may have the forms
+    detailed above.  Hagrid always returns either one or no keys at
+    all.
+  </p>
+
+  <h4><code>POST /pks/add</code></h4>
+
+  <p>
+    Keys may be submitted using a POST request
+    to <code>/pks/add</code>, the body of the request being
+    a <code>application/x-www-form-urlencoded</code> query.
+    <code>keytext</code> must be the key to submit, either <em>ASCII
+      Armored</em> or not.
+  </p>
+
+  <h4>Limitations</h4>
+
+  <p>
+    By design, Hagrid cannot (or intentionally chooses not to) implement,
+    the full HKP protocol.  The main limitations are:
+  </p>
+
+  <ul>
+    <li>No support for <code>op=vindex</code>,</li>
+    <li>only exact matches for user IDs are returned (i.e. <code>exact=on</code> is
+      always assumed),</li>
+    <li>the <code>fingerprint</code> variable is ignored,</li>
+    <li>the <code>nm</code> option is ignored,</li>
+    <li><code>op=index</code> returns either one or no keys,</li>
+    <li>only one key may be submitted in one request,</li>
+    <li>uploads are restricted to 1 MiB,</li>
+    <li>all packets that aren't public keys, user IDs or signatures are filtered out.</li>
+  </ul>
+  <p>
+    <strong><a href="/">&laquo; Back</a></strong>
+  </p>
+</div>
+{{/layout}}

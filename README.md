@@ -29,36 +29,77 @@ Usage
 
 ### HKP
 
-Hagrid implements basic HKP (`op=get` and `op=index`) so tools like GnuPG and
-OpenKeychain can use it directly. The differences to SKS are
+Hagrid implements a subset of the [HKP][] protocol so that tools like
+GnuPG and OpenKeychain can use it without modification.
 
- - no support for `op=vindex`,
+[HKP]: https://tools.ietf.org/html/draft-shaw-openpgp-hkp-00
+
+#### `GET /pks/lookup?op=get&options=mr&search=<QUERY>`
+
+Returns an *ASCII Armored* key matching the query.  Query may be:
+
+ - An exact email address query of the form `localpart@example.org`.
+ - A hexadecimal representation of a long *KeyID* of either a primary
+   key, or a subkey (`069C0C348DD82C19`, optionally prefixed by `0x`).
+ - A hexadecimal representation of a *Fingerprint* of either a primary
+   key, or a subkey (`8E8C33FA4626337976D97978069C0C348DD82C19`,
+   optionally prefixed by `0x`).
+
+Note that while the hexadecimal digits may use either case, using
+upper case letters is more efficient with Hagrid.
+
+#### `GET /pks/lookup?op=index&options=mr&search=<QUERY>`
+
+Returns a [machine-readable list][] of keys matching the query.  Query may
+have the forms detailed above.  Hagrid always returns either one or no
+keys at all.
+
+[machine-readable list]: https://tools.ietf.org/html/draft-shaw-openpgp-hkp-00#section-5.2
+
+#### `POST /pks/add`
+
+Keys may be submitted using a POST request to `/pks/add`, the body of
+the request being a `application/x-www-form-urlencoded` query.
+`keytext` must be the key to submit, either *ASCII Armored* or not.
+
+#### Limitations
+
+By design, Hagrid cannot (or intentionally chooses not to) implement
+the full HKP protocol.  The main limitations are:
+
+ - No support for `op=vindex`,
  - only exact matches for user IDs are returned (i.e. `exact=on` is
    always assumed),
+ - the `fingerprint` variable is ignored,
+ - the `nm` option is ignored,
  - `op=index` returns either one or no keys,
+ - only one key may be submitted in one request,
+ - uploads are restricted to 1 MiB,
  - all packets that aren't public keys, user IDs or signatures are filtered out.
 
 ### VKS
 
-Hagrid has it's own URL scheme to fetch keys, verify user IDs and delete keys.
-It's meant to be machine readable, but it's not a REST API. The following URLs
-are handled.
+Hagrid has its own URL scheme to fetch keys.
 
-- `GET /vks/by-fingerprint/<FINGERPRINT>` retrieves the key with the given
-  fingerprint.  Hexadecimal digits must be uppercase.
-- `GET /vks/by-keyid/<KEY-ID>` retrieves the key with the given long key
-  ID.  Hexadecimal digits must be uppercase.
-- `GET /vks/by-email/<URL-encoded user ID>` retrieves the key with the given user
-  ID. Only exact matches are accepted.
-- `GET /vks/verify/<token>` verifies a user ID using a token string send by
-  email.
-- `GET /vks/delete/<fingerprint>` requests deletion of the key with the given
-  fingerprint.
-- `GET /vks/confirm/<token>` confirms a keys deletion request using a token
-  string send by email.
+#### `GET /vks/v1/by-fingerprint/<FINGERPRINT>`
 
-Keys can also be fetched by their subkeys fingerprint and key
-ID. Note: keys will show up even if no user IDs are verified.
+Retrieves the key with the given *Fingerprint*.  *Fingerprint* may
+refer to the primary key, or any subkey.  Hexadecimal digits MUST be
+uppercase, and MUST NOT be prefixed with `0x`.  The returned key is
+*ASCII Armored*.
+
+#### `GET /vks/v1/by-keyid/<KEY-ID>`
+
+Retrieves the key with the given long *KeyID*.  *KeyID* may refer to
+the primary key, or any subkey.  Hexadecimal digits MUST be uppercase,
+and MUST NOT be prefixed with `0x`.  The returned key is *ASCII
+Armored*.
+
+#### `GET /vks/v1/by-email/<URL-encoded user ID>`
+
+Retrieves the key with the given *User ID*.  Only exact matches are
+accepted.  Lookup by *User ID* requires opt-in by the key's owner.
+The returned key is *ASCII Armored*.
 
 Building
 --------
@@ -106,8 +147,8 @@ Reverse Proxy
 Hagrid is designed to defer lookups to reverse proxy server like Nginx
 and Apache. The key database is a set of 3 directories with static
 files in them.  The directory structure reflects Hagrids URL
-scheme. This way, lookups via `/vks/by-finingerprint`,
-`/vks/by-keyid`, and `/vks/by-email` can be handled by (multiple)
+scheme. This way, lookups via `/vks/v1/by-finingerprint`,
+`/vks/v1/by-keyid`, and `/vks/v1/by-email` can be handled by (multiple)
 simple HTTP server(s). A sample configuration for Nginx is part of the
 repository (`nginx.conf`).
 

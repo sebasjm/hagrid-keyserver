@@ -622,6 +622,11 @@ fn about() -> Template {
     Template::render("about", templates::General::default())
 }
 
+#[get("/apidoc")]
+fn apidoc() -> Template {
+    Template::render("apidoc", templates::General::default())
+}
+
 pub fn serve(opt: &Opt, db: Polymorphic) -> Result<()> {
     use rocket::config::{Config, Environment};
     use std::str::FromStr;
@@ -687,6 +692,7 @@ fn rocket_factory(rocket: rocket::Rocket, db: Polymorphic) -> rocket::Rocket {
         confirm,
         // about
         about,
+        apidoc,
     ];
 
     rocket
