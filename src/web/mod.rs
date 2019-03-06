@@ -288,6 +288,8 @@ impl<'a, 'r> FromRequest<'a, 'r> for queries::Hkp {
                     }
                 }
             }
+        } else if fields.get("op").map(|x| x == "vindex").unwrap_or(false) {
+            Outcome::Failure((Status::NotImplemented, ()))
         } else {
             Outcome::Failure((Status::BadRequest, ()))
         }
