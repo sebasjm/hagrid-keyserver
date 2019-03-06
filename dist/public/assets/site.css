@@ -130,13 +130,16 @@ a.brand {
 .card {
   position: relative;
   display: inline-block;
-  width: 80vw;
-  max-width: 800px;
   margin-top: 4vh;
   padding: 20px 30px 50px;
   background-color: #fff;
   border-top: 5px solid #4aa3ff;
   box-shadow: 0 2px 6px hsla(0, 0%, 0%, 0.2);
+}
+
+.card > .spacer {
+  width: 80vw;
+  max-width: 800px;
 }
 
 .attribution {
