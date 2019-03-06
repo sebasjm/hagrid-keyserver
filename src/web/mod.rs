@@ -4,7 +4,7 @@ use rocket::http::{Header, Status};
 use rocket::request::{self, FromRequest, Request};
 use rocket::response::status::Custom;
 use rocket::response::NamedFile;
-use rocket::{Outcome, State};
+use rocket::Outcome;
 use rocket_contrib::templates::Template;
 use rocket::request::Form;
 
@@ -209,9 +209,21 @@ mod templates {
     }
 }
 
-struct StaticDir(String);
-pub struct Domain(String);
-pub struct XAccelRedirect(bool);
+pub struct State {
+    /// The base directory.
+    state_dir: PathBuf,
+
+    /// The public directory.
+    ///
+    /// This is what nginx serves.
+    public_dir: PathBuf,
+
+    /// XXX
+    domain: String,
+
+    /// Controls the use of NGINX'es XAccelRedirect feature.
+    x_accel_redirect: bool,
+}
 
 impl<'a, 'r> FromRequest<'a, 'r> for queries::Hkp {
     type Error = ();
@@ -281,11 +293,11 @@ impl<'a, 'r> FromRequest<'a, 'r> for queries::Hkp {
     }
 }
 
-fn key_to_response<'a>(db: rocket::State<Polymorphic>,
-                       query_string: String, domain: String,
+fn key_to_response<'a>(state: rocket::State<State>,
+                       db: rocket::State<Polymorphic>,
+                       query_string: String,
                        query: Query,
-                       machine_readable: bool,
-                       x_accel_redirect: rocket::State<XAccelRedirect>)
+                       machine_readable: bool)
                        -> MyResponse {
     let fp = if let Some(fp) = db.lookup_primary_fingerprint(&query) {
         fp
@@ -294,7 +306,7 @@ fn key_to_response<'a>(db: rocket::State<Polymorphic>,
     };
 
     if machine_readable {
-        if x_accel_redirect.0 {
+        if state.x_accel_redirect {
             if let Some(path) = db.lookup_path(&query) {
                 return MyResponse::x_accel_redirect(path, &fp);
             }
@@ -308,7 +320,7 @@ fn key_to_response<'a>(db: rocket::State<Polymorphic>,
 
     let context = templates::Search{
         query: query_string,
-        domain: Some(domain),
+        domain: Some(state.domain.clone()),
         fpr: fp.to_string().into(),
         version: env!("VERGEN_SEMVER").to_string(),
         commit: env!("VERGEN_SHA_SHORT").to_string(),
@@ -404,50 +416,50 @@ fn key_to_hkp_index<'a>(db: rocket::State<Polymorphic>, query: Query)
 }
 
 #[get("/vks/v1/by-fingerprint/<fpr>")]
-fn by_fingerprint(db: rocket::State<Polymorphic>, domain: rocket::State<Domain>,
-                  x_accel_redirect: rocket::State<XAccelRedirect>,
+fn by_fingerprint(state: rocket::State<State>,
+                  db: rocket::State<Polymorphic>,
                   fpr: String) -> MyResponse {
     let query = match Fingerprint::from_str(&fpr) {
         Ok(fpr) => Query::ByFingerprint(fpr),
         Err(e) => return MyResponse::ise(e),
     };
 
-    key_to_response(db, fpr, domain.0.clone(), query, true, x_accel_redirect)
+    key_to_response(state, db, fpr, query, true)
 }
 
 #[get("/vks/v1/by-email/<email>")]
-fn by_email(db: rocket::State<Polymorphic>, domain: rocket::State<Domain>,
-            x_accel_redirect: rocket::State<XAccelRedirect>,
+fn by_email(state: rocket::State<State>,
+            db: rocket::State<Polymorphic>,
             email: String) -> MyResponse {
     let query = match Email::from_str(&email) {
         Ok(email) => Query::ByEmail(email),
         Err(e) => return MyResponse::ise(e),
     };
 
-    key_to_response(db, email, domain.0.clone(), query, true, x_accel_redirect)
+    key_to_response(state, db, email, query, true)
 }
 
 #[get("/vks/v1/by-keyid/<kid>")]
-fn by_keyid(db: rocket::State<Polymorphic>, domain: rocket::State<Domain>,
-            x_accel_redirect: rocket::State<XAccelRedirect>,
+fn by_keyid(state: rocket::State<State>,
+            db: rocket::State<Polymorphic>,
             kid: String) -> MyResponse {
     let query = match KeyID::from_str(&kid) {
         Ok(keyid) => Query::ByKeyID(keyid),
         Err(e) => return MyResponse::ise(e),
     };
 
-    key_to_response(db, kid, domain.0.clone(), query, true, x_accel_redirect)
+    key_to_response(state, db, kid, query, true)
 }
 
 #[get("/vks/v1/verify/<token>")]
-fn verify(
-    db: rocket::State<Polymorphic>, domain: rocket::State<Domain>, token: String,
-) -> MyResponse {
+fn verify(state: rocket::State<State>,
+          db: rocket::State<Polymorphic>,
+          token: String) -> MyResponse {
     match db.verify_token(&token) {
         Ok(Some((userid, fpr))) => {
             let context = templates::Verify {
                 verified: true,
-                domain: domain.0.clone(),
+                domain: state.domain.clone(),
                 userid: userid.to_string(),
                 fpr: fpr.to_string(),
                 version: env!("VERGEN_SEMVER").to_string(),
@@ -472,10 +484,10 @@ struct ManageRequest {
 }
 
 #[post("/vks/v1/manage", data="<request>")]
-fn manage_post(
-    db: State<Polymorphic>, mail_service: State<mail::Service>,
-    domain: State<Domain>, request: Form<ManageRequest>,
-) -> MyResponse {
+fn manage_post(state: rocket::State<State>,
+               db: rocket::State<Polymorphic>,
+               mail_service: rocket::State<mail::Service>,
+               request: Form<ManageRequest>) -> MyResponse {
     use std::convert::TryInto;
 
     let query = match request.search_term.parse() {
@@ -499,7 +511,7 @@ fn manage_post(
             };
 
             if let Err(e) = mail_service.send_confirmation(
-                &uids, &token, &domain.0) {
+                &uids, &token, &state.domain) {
                 return MyResponse::ise(e);
             }
 
@@ -536,13 +548,13 @@ fn confirm(
 }
 
 #[get("/assets/<file..>")]
-fn files(file: PathBuf, static_dir: State<StaticDir>) -> Option<NamedFile> {
-    NamedFile::open(Path::new(&static_dir.0).join("assets").join(file)).ok()
+fn files(file: PathBuf, state: rocket::State<State>) -> Option<NamedFile> {
+    NamedFile::open(state.public_dir.join("assets").join(file)).ok()
 }
 
 #[get("/pks/lookup")]
-fn lookup(db: rocket::State<Polymorphic>, domain: rocket::State<Domain>,
-          x_accel_redirect: rocket::State<XAccelRedirect>,
+fn lookup(state: rocket::State<State>,
+          db: rocket::State<Polymorphic>,
           key: Option<queries::Hkp>) -> MyResponse {
     let query_string = key.as_ref().map(|k| format!("{}", k));
     let (query, index, machine_readable) = match key {
@@ -564,10 +576,9 @@ fn lookup(db: rocket::State<Polymorphic>, domain: rocket::State<Domain>,
     if index {
         key_to_hkp_index(db, query)
     } else {
-        key_to_response(db,
+        key_to_response(state, db,
                         query_string.expect("key was Some if we made it here"),
-                        domain.0.clone(), query, machine_readable,
-                        x_accel_redirect)
+                        query, machine_readable)
     }
 }
 
@@ -612,8 +623,8 @@ pub fn serve(opt: &Opt, db: Polymorphic) -> Result<()> {
                 .ok_or(failure::err_msg("Template path invalid"))?,
         )
         .extra(
-            "static_dir",
-            opt.base.join("public").to_str()
+            "state_dir",
+            opt.base.to_str()
                 .ok_or(failure::err_msg("Static path invalid"))?,
         )
         .extra("domain", opt.domain.clone())
@@ -650,22 +661,19 @@ fn rocket_factory(rocket: rocket::Rocket, db: Polymorphic) -> rocket::Rocket {
 
     rocket
         .attach(Template::fairing())
-        .attach(AdHoc::on_attach("static_dir", |rocket| {
-            let static_dir =
-                rocket.config().get_str("static_dir").unwrap().to_string();
-
-            Ok(rocket.manage(StaticDir(static_dir)))
-        }))
-        .attach(AdHoc::on_attach("domain", |rocket| {
+        .attach(AdHoc::on_attach("state", |rocket| {
+            let state_dir: PathBuf = rocket.config().get_str("state_dir")
+                .unwrap().into();
+            let public_dir = state_dir.join("public");
             let domain = rocket.config().get_str("domain").unwrap().to_string();
-
-            Ok(rocket.manage(Domain(domain)))
-        }))
-        .attach(AdHoc::on_attach("x-accel-redirect", |rocket| {
             let x_accel_redirect =
                 rocket.config().get_bool("x-accel-redirect").unwrap();
-
-            Ok(rocket.manage(XAccelRedirect(x_accel_redirect)))
+            Ok(rocket.manage(State {
+                state_dir: state_dir,
+                public_dir: public_dir,
+                domain: domain,
+                x_accel_redirect: x_accel_redirect,
+            }))
         }))
         .attach(AdHoc::on_attach("mail-service", |rocket| {
             let dir: PathBuf = rocket
@@ -749,8 +757,8 @@ mod tests {
                     .ok_or(failure::err_msg("Template path invalid"))?,
             )
             .extra(
-                "static_dir",
-                root.path().join("public").to_str()
+                "state_dir",
+                root.path().to_str()
                     .ok_or(failure::err_msg("Static path invalid"))?,
             )
             .extra("domain", "domain")

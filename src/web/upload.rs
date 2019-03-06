@@ -8,13 +8,13 @@ use multipart::server::Multipart;
 use rocket::http::ContentType;
 use rocket::request::FlashMessage;
 use rocket::response::Redirect;
-use rocket::{Data, State};
+use rocket::Data;
 use rocket_contrib::templates::Template;
 use rocket::response::Flash;
 
 use database::{Database, Polymorphic};
 use mail;
-use web::Domain;
+use web::State;
 
 use std::io::Read;
 
@@ -82,20 +82,20 @@ fn show_error(error: String) -> Template {
 
 #[post("/vks/v1/publish/submit", data = "<data>")]
 pub fn vks_publish_submit(
-    db: State<Polymorphic>, cont_type: &ContentType, data: Data,
-    mail_service: State<mail::Service>, domain: State<Domain>,
+    db: rocket::State<Polymorphic>, cont_type: &ContentType, data: Data,
+    mail_service: rocket::State<mail::Service>, state: rocket::State<State>,
 ) -> Flash<Redirect> {
-    match do_upload_hkp(db, cont_type, data, Some(mail_service), domain) {
+    match do_upload_hkp(db, cont_type, data, Some(mail_service), state) {
         Ok(ok) => ok,
         Err(err) => Flash::error(Redirect::to("/vks/v1/publish?err"), err.to_string()),
     }
 }
 
 #[post("/pks/add", data = "<data>")]
-pub fn pks_add(db: State<Polymorphic>, cont_type: &ContentType, data: Data,
-               domain: State<Domain>)
+pub fn pks_add(db: rocket::State<Polymorphic>, cont_type: &ContentType, data: Data,
+               state: rocket::State<State>)
                -> MyResponse {
-    match do_upload_hkp(db, cont_type, data, None, domain) {
+    match do_upload_hkp(db, cont_type, data, None, state) {
         Ok(_) => MyResponse::plain("Ok".into()),
         Err(err) => MyResponse::ise(err),
     }
@@ -103,8 +103,8 @@ pub fn pks_add(db: State<Polymorphic>, cont_type: &ContentType, data: Data,
 
 // signature requires the request to have a `Content-Type`
 fn do_upload_hkp(
-    db: State<Polymorphic>, cont_type: &ContentType, data: Data,
-    mail_service: Option<State<mail::Service>>, domain: State<Domain>,
+    db: rocket::State<Polymorphic>, cont_type: &ContentType, data: Data,
+    mail_service: Option<rocket::State<mail::Service>>, state: rocket::State<State>,
 ) -> Result<Flash<Redirect>> {
     if cont_type.is_form_data() {
         // multipart/form-data
@@ -112,7 +112,7 @@ fn do_upload_hkp(
             || failure::err_msg("`Content-Type: multipart/form-data` boundary \
                                  param not provided"))?;
 
-        process_upload(boundary, data, db.inner(), mail_service, &domain.0)
+        process_upload(boundary, data, db.inner(), mail_service, &state.domain)
     } else if cont_type.is_form() {
         use rocket::request::FormItems;
         use std::io::Cursor;
@@ -139,7 +139,7 @@ fn do_upload_hkp(
                         Cursor::new(decoded_value.as_bytes()),
                         &db,
                         mail_service,
-                        &domain.0,
+                        &state.domain,
                     );
                 }
                 _ => { /* skip */ }
@@ -154,7 +154,7 @@ fn do_upload_hkp(
 
 fn process_upload(
     boundary: &str, data: Data, db: &Polymorphic,
-    mail_service: Option<State<mail::Service>>,
+    mail_service: Option<rocket::State<mail::Service>>,
     domain: &str,
 ) -> Result<Flash<Redirect>> {
     // saves all fields, any field longer than 10kB goes to a temporary directory
@@ -172,7 +172,7 @@ fn process_upload(
 }
 
 fn process_multipart(entries: Entries, db: &Polymorphic,
-                     mail_service: Option<State<mail::Service>>,
+                     mail_service: Option<rocket::State<mail::Service>>,
                      domain: &str) -> Result<Flash<Redirect>> {
     match entries.fields.get("keytext") {
         Some(ent) if ent.len() == 1 => {
@@ -186,7 +186,7 @@ fn process_multipart(entries: Entries, db: &Polymorphic,
 }
 
 fn process_key<R>(
-    reader: R, db: &Polymorphic, mail_service: Option<State<mail::Service>>,
+    reader: R, db: &Polymorphic, mail_service: Option<rocket::State<mail::Service>>,
     domain: &str,
 ) -> Result<Flash<Redirect>>
 where
