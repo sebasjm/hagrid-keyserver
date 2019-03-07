@@ -51,12 +51,16 @@ a, a:visited {
 }
 
 code {
-  font-size: 12px;
-  padding: 1em;
   background-color: #ccc;
-  border: 1px solid #aaa;
+  padding: 0 0.3em;
   border-radius: 3px;
   box-shadow: 0 2px 6px hsla(0, 0%, 0%, 0.2);
+}
+
+code.snippet {
+  border: 1px solid #aaa;
+  font-size: 12px;
+  padding: 1em;
 }
 
 li {
