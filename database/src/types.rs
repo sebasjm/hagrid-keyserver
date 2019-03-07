@@ -1,4 +1,5 @@
 use std::convert::TryFrom;
+use std::fmt;
 use std::result;
 use std::str::FromStr;
 
@@ -32,9 +33,9 @@ impl TryFrom<&UserID> for Email {
     }
 }
 
-impl ToString for Email {
-    fn to_string(&self) -> String {
-        self.0.clone()
+impl fmt::Display for Email {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str(&self.0)
     }
 }
 
@@ -97,9 +98,10 @@ impl TryFrom<sequoia_openpgp::Fingerprint> for Fingerprint {
     }
 }
 
-impl ToString for Fingerprint {
-    fn to_string(&self) -> String {
-        hex::encode_upper(&self.0[..])
+impl fmt::Display for Fingerprint {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use ::hex::ToHex;
+        self.0.write_hex_upper(f)
     }
 }
 
@@ -162,9 +164,10 @@ impl From<Fingerprint> for KeyID {
     }
 }
 
-impl ToString for KeyID {
-    fn to_string(&self) -> String {
-        hex::encode_upper(&self.0[..])
+impl fmt::Display for KeyID {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use ::hex::ToHex;
+        self.0.write_hex_upper(f)
     }
 }
 
