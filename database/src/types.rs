@@ -6,6 +6,15 @@ use openpgp::packet::UserID;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use {Error, Result};
 
+/// Holds a normalized email address.
+///
+/// Email addresses should be normalized as follows:
+///
+///  - Convert to UTF-8 and ignore user ids that are not valid UTF-8
+///  - Do puny code normalization
+///  - Lower-case the whole thing using the empty locale
+///
+/// See https://autocrypt.org/level1.html#e-mail-address-canonicalization
 #[derive(Serialize, Deserialize, Clone, Debug, Hash, PartialEq, Eq)]
 pub struct Email(String);
 
@@ -57,7 +66,19 @@ impl FromStr for Email {
         let domain = idna::domain_to_ascii(domain)
             .map_err(|e| failure::format_err!(
                 "punycode conversion failed: {:?}", e))?;
-        Ok(Email(format!("{}@{}", localpart, domain)))
+
+        // Join.
+        let address = format!("{}@{}", localpart, domain);
+
+        // Convert to lowercase without tailoring, i.e. without taking
+        // any locale into account.  See:
+        //
+        //  - https://www.w3.org/International/wiki/Case_folding
+        //  - https://doc.rust-lang.org/std/primitive.str.html#method.to_lowercase
+        //  - http://www.unicode.org/versions/Unicode7.0.0/ch03.pdf#G33992
+        let address = address.to_lowercase();
+
+        Ok(Email(address))
     }
 }
 
@@ -174,5 +195,7 @@ mod tests {
                    "foo@example.org");
         assert_eq!(c("foo@👍.example.org").as_str(),
                    "foo@xn--yp8h.example.org");
+        assert_eq!(c("Foo@example.org").as_str(), "foo@example.org");
+        assert_eq!(c("foo@EXAMPLE.ORG").as_str(), "foo@example.org");
     }
 }
