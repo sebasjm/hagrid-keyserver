@@ -40,9 +40,9 @@ mod queries {
     impl fmt::Display for Hkp {
         fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
             match self {
-                Hkp::Fingerprint{ ref fpr,.. } => write!(f, "{}", fpr.to_string()),
-                Hkp::KeyID{ ref keyid,.. } => write!(f, "{}", keyid.to_string()),
-                Hkp::Email{ ref email,.. } => write!(f, "{}", email.to_string()),
+                Hkp::Fingerprint{ ref fpr,.. } => write!(f, "{}", fpr),
+                Hkp::KeyID{ ref keyid,.. } => write!(f, "{}", keyid),
+                Hkp::Email{ ref email,.. } => write!(f, "{}", email),
                 Hkp::Invalid{ ref query } => write!(f, "{}", query),
             }
         }
