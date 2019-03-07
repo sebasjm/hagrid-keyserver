@@ -141,8 +141,3 @@ impl FromStr for KeyID {
     }
 }
 
-// impl From<Error> for String {
-//     fn from(error: Error) -> Self {
-//         format!("{:?}", error)
-//     }
-// }
