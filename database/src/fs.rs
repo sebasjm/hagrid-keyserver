@@ -131,7 +131,7 @@ impl Filesystem {
         // 43 chars ~ 256 bit
         let name: String = rng.sample_iter(&Alphanumeric).take(43).collect();
         let dir = self.base.join(base);
-        let fd = File::create(dir.join(name.clone()))?;
+        let fd = File::create(dir.join(&name))?;
 
         Ok((fd, name))
     }
@@ -141,7 +141,7 @@ impl Filesystem {
     ) -> Result<Box<[u8]>> {
         let path = self.base.join(base).join(token);
         let buf = {
-            let mut fd = File::open(path.clone())?;
+            let mut fd = File::open(&path)?;
             let mut buf = Vec::default();
 
             fd.read_to_end(&mut buf)?;
@@ -286,7 +286,7 @@ impl Database for Filesystem {
     fn unlink_email(&self, email: &Email, fpr: &Fingerprint) -> Result<()> {
         let link = self.email_to_path(&email);
 
-        match read_link(link.clone()) {
+        match read_link(&link) {
             Ok(target) => {
                 let expected = diff_paths(&self.fingerprint_to_path(fpr),
                                           link.parent().unwrap()).unwrap();
@@ -327,7 +327,7 @@ impl Database for Filesystem {
     fn unlink_kid(&self, kid: &KeyID, fpr: &Fingerprint) -> Result<()> {
         let link = self.keyid_to_path(kid);
 
-        match read_link(link.clone()) {
+        match read_link(&link) {
             Ok(target) => {
                 let expected = self.fingerprint_to_path(fpr);
 
@@ -356,7 +356,7 @@ impl Database for Filesystem {
     fn unlink_fpr(&self, from: &Fingerprint, fpr: &Fingerprint) -> Result<()> {
         let link = self.fingerprint_to_path(from);
 
-        match read_link(link.clone()) {
+        match read_link(&link) {
             Ok(target) => {
                 let expected = self.fingerprint_to_path(fpr);
 
