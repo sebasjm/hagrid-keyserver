@@ -29,17 +29,30 @@ impl ToString for Email {
     }
 }
 
+/// Placeholder parser.
+///
+/// See https://gitlab.com/sequoia-pgp/hagrid/issues/58
+fn parse2822address(s: &str) -> Result<(&str, &str)> {
+    let segs = s.split(|c| c == '<' || c == '>').collect::<Vec<_>>();
+    let addr = match segs.len() {
+        3 => segs[1],
+        1 => s,
+        _ => return Err(failure::err_msg("malformed")),
+    };
+
+    match addr.split(|c| c == '@').collect::<Vec<_>>() {
+        ref parts if parts.len() == 2 =>
+            Ok((parts[0], parts[1])),
+        _ => Err(failure::err_msg("malformed")),
+    }
+}
+
 impl FromStr for Email {
     type Err = Error;
 
     fn from_str(s: &str) -> Result<Email> {
-        let segs = s.split(|c| c == '<' || c == '>').collect::<Vec<_>>();
-
-        if segs.len() == 3 {
-            Ok(Email(segs[1].to_string()))
-        } else {
-            Ok(Email(s.to_string()))
-        }
+        let (localpart, domain) = parse2822address(s)?;
+        Ok(Email(format!("{}@{}", localpart, domain)))
     }
 }
 
@@ -141,3 +154,18 @@ impl FromStr for KeyID {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn email() {
+        let c = |s| Email::from_str(s).unwrap();
+        assert_eq!(c("foo@example.org").as_str(), "foo@example.org");
+        assert_eq!(c("<foo@example.org>").as_str(), "foo@example.org");
+        assert_eq!(c("Foo <foo@example.org>").as_str(), "foo@example.org");
+        assert_eq!(c("Foo Bar <foo@example.org>").as_str(), "foo@example.org");
+        assert_eq!(c("\"Foo Bar\" <foo@example.org>").as_str(),
+                   "foo@example.org");
+    }
+}
