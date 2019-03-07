@@ -59,7 +59,8 @@ fn delete(db: &Filesystem, query: &Query, all_bindings: bool, mut all: bool)
           -> Result<()> {
     match query {
         Query::ByFingerprint(_) | Query::ByKeyID(_) => {
-            eprintln!("Fingerprint or KeyID given, deleting all bindings.");
+            eprintln!("Fingerprint or KeyID given, deleting key and all \
+                       bindings.");
             all = true;
         },
         Query::ByEmail(_) => (),
@@ -73,14 +74,16 @@ fn delete(db: &Filesystem, query: &Query, all_bindings: bool, mut all: bool)
 
     // First, delete the bindings.
     if all_bindings || all {
-        for uidb in tpk.userids() {
-            results.push(
-                (uidb.userid().to_string(),
-                 db.unlink_email(&uidb.userid().try_into()?, &fp)));
-        }
+        results.push(
+            ("all bindings".into(),
+             db.filter_userids(&fp, |_| false)));
     } else {
         if let Query::ByEmail(ref email) = query {
-            results.push((email.to_string(), db.unlink_email(email, &fp)));
+            use std::convert::TryFrom;
+            use database::types::Email;
+            results.push((email.to_string(), db.filter_userids(
+                &fp,
+                |u| Email::try_from(u).map(|e| &e != email).unwrap_or(true))));
         } else {
             unreachable!()
         }
