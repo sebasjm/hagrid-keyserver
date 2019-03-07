@@ -506,6 +506,15 @@ mod tests {
     }
 
     #[test]
+    fn uid_deletion_request() {
+        let tmpdir = TempDir::new().unwrap();
+        let mut db = Filesystem::new(tmpdir.path()).unwrap();
+
+        test::test_uid_deletion_request(&mut db);
+    }
+
+
+    #[test]
     fn subkey_lookup() {
         let tmpdir = TempDir::new().unwrap();
         let mut db = Filesystem::new(tmpdir.path()).unwrap();

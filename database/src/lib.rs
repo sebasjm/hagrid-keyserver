@@ -2,7 +2,7 @@
 #![recursion_limit = "1024"]
 #![feature(try_from)]
 
-use std::convert::TryFrom;
+use std::convert::{TryFrom, TryInto};
 use std::io::Cursor;
 use std::io::Write;
 use std::path::PathBuf;
@@ -552,6 +552,48 @@ pub trait Database: Sync + Send {
             }
 
             None => Ok(false),
+        }
+    }
+
+    /// Deletes all user ids NOT matching fulfilling `filter`.
+    ///
+    /// I.e. we retain fulfilling `filter`.
+    fn filter_userids<F>(&self, fp: &Fingerprint, filter: F) -> Result<()>
+        where F: Fn(&UserID) -> bool
+    {
+        let _ = self.lock();
+        match self.lookup(&Query::ByFingerprint(fp.clone()))? {
+            Some(tpk) => {
+                let mut ok = true;
+
+                // First, we delete the links.
+                for uidb in tpk.userids() {
+                    if filter(uidb.userid()) {
+                        continue;
+                    }
+
+                    if let Ok(email) = uidb.userid().try_into() {
+                        if let Err(_) =
+                            self.unlink_email(&email, fp)
+                        {
+                            // XXX: We could try to detect failures, and
+                            // update the TPK accordingly.
+                            ok = false;
+                        }
+                    }
+                }
+
+                // Second, we update the TPK.
+                let tpk = filter_userids(&tpk, filter)?;
+                self.update_tpk(fp, Some(tpk))?;
+
+                if ok {
+                    Ok(())
+                } else {
+                    Err(failure::err_msg("partial update"))
+                }
+            },
+            None => Ok(()),
         }
     }
 }
