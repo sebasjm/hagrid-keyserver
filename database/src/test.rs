@@ -418,7 +418,6 @@ pub fn test_uid_deletion_request<D: Database>(db: &mut D) {
     assert!(db.confirm_deletion(&del).unwrap());
 
     // check it's gone
-    assert!(db.by_fpr(&fpr).is_none());
     assert!(db.by_email(&email1).is_none());
     assert!(db.by_email(&email2).is_none());
 
@@ -426,7 +425,6 @@ pub fn test_uid_deletion_request<D: Database>(db: &mut D) {
     assert!(!db.confirm_deletion(&del).unwrap());
 
     // check it's still gone
-    assert!(db.by_fpr(&fpr).is_none());
     assert!(db.by_email(&email1).is_none());
     assert!(db.by_email(&email2).is_none());
 }

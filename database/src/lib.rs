@@ -505,13 +505,12 @@ pub trait Database: Sync + Send {
         }
     }
 
-    // if fpr = pop-token(tok) {
-    //  tpk = by_fpr(fpr)
-    //  for uid in tpk.userids {
-    //    del-uid(uid)
-    //  }
-    //  del-fpr(fpr)
-    // }
+    /// Deletes (address, key)-mappings.
+    ///
+    /// Given a valid deletion token, this function unlinks all email
+    /// addresses and strips all UserIDs from the stored TPK.
+    ///
+    /// Returns true if the token was valid.
     fn confirm_deletion(&self, token: &str) -> Result<bool> {
         let _ = self.lock();
 
@@ -522,33 +521,8 @@ pub trait Database: Sync + Send {
                     return Ok(false);
                 }
 
-                loop {
-                    match self.by_fpr(&fpr) {
-                        Some(old) => {
-                            let tpk = match TPK::from_bytes(old.as_bytes()) {
-                                Ok(tpk) => tpk,
-                                Err(e) => {
-                                    return Err(failure::format_err!(
-                                        "Failed to parse old TPK: {:?}",
-                                        e));
-                                }
-                            };
-
-                            for uid in tpk.userids() {
-                                self.unlink_email(
-                                    &Email::try_from(uid.userid())?,
-                                    &fpr,
-                                )?;
-                            }
-
-                            self.update(&fpr, None)?;
-                            return Ok(true);
-                        }
-                        None => {
-                            return Ok(false);
-                        }
-                    }
-                }
+                self.filter_userids(&fpr, |_| false)?;
+                Ok(true)
             }
 
             None => Ok(false),
