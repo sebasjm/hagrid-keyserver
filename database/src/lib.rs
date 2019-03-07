@@ -354,7 +354,12 @@ pub trait Database: Sync + Send {
 
         // update verify tokens
         for uid in tpk.userids() {
-            let email = Email::try_from(uid.userid().clone())?;
+            let email = if let Ok(m) = Email::try_from(uid.userid().clone()) {
+                m
+            } else {
+                // Ignore non-UTF8 userids.
+                continue;
+            };
 
             match uid.revoked(None) {
                 RevocationStatus::CouldBe(_) | RevocationStatus::Revoked(_) => {

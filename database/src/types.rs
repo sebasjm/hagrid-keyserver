@@ -19,9 +19,7 @@ impl TryFrom<UserID> for Email {
     type Error = Error;
 
     fn try_from(uid: UserID) -> Result<Self> {
-        let email = String::from_utf8_lossy(uid.userid());
-
-        Self::from_str(&email)
+        Self::from_str(&String::from_utf8(uid.userid().into())?)
     }
 }
 
