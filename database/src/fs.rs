@@ -474,9 +474,12 @@ mod tests {
     fn new() {
         let tmpdir = TempDir::new().unwrap();
         let db = Filesystem::new(tmpdir.path()).unwrap();
-        let k1 = TPKBuilder::default().add_userid("a").generate().unwrap().0;
-        let k2 = TPKBuilder::default().add_userid("b").generate().unwrap().0;
-        let k3 = TPKBuilder::default().add_userid("c").generate().unwrap().0;
+        let k1 = TPKBuilder::default().add_userid("a@invalid.example.org")
+            .generate().unwrap().0;
+        let k2 = TPKBuilder::default().add_userid("b@invalid.example.org")
+            .generate().unwrap().0;
+        let k3 = TPKBuilder::default().add_userid("c@invalid.example.org")
+            .generate().unwrap().0;
 
         assert!(db.merge_or_publish(k1).unwrap().len() > 0);
         assert!(db.merge_or_publish(k2.clone()).unwrap().len() > 0);
