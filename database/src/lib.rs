@@ -27,11 +27,11 @@ extern crate hex;
 
 extern crate sequoia_openpgp as openpgp;
 use openpgp::{
-    Packet, TPK,
+    TPK,
     PacketPile,
     armor::{Writer, Kind},
-    constants::SignatureType, packet::Signature, packet::UserID, parse::Parse,
-    packet::Tag,
+    packet::{Signature, UserID, Tag},
+    parse::Parse,
     serialize::Serialize as OpenPgpSerialize,
 };
 
@@ -207,25 +207,6 @@ pub trait Database: Sync + Send {
     fn by_kid(&self, kid: &KeyID) -> Option<String>;
     fn by_email(&self, email: &Email) -> Option<String>;
 
-    fn strip_userids(tpk: TPK) -> Result<TPK> {
-        let pile = tpk
-            .into_packet_pile()
-            .into_children()
-            .filter(|pkt| {
-                match pkt {
-                    &Packet::PublicKey(_) | &Packet::PublicSubkey(_) => true,
-                    &Packet::Signature(ref sig) => {
-                        sig.sigtype() == SignatureType::DirectKey
-                            || sig.sigtype() == SignatureType::SubkeyBinding
-                    }
-                    _ => false,
-                }
-            })
-            .collect::<Vec<_>>();
-
-        Ok(TPK::from_packet_pile(pile.into())?)
-    }
-
     fn tpk_into_bytes(tpk: &TPK) -> Result<Vec<u8>> {
         use openpgp::serialize::Serialize;
         use std::io::Cursor;
@@ -386,7 +367,7 @@ pub trait Database: Sync + Send {
         let subkeys =
             tpk.subkeys().map(|s| s.subkey().fingerprint()).collect::<Vec<_>>();
 
-        tpk = Self::strip_userids(tpk)?;
+        tpk = filter_userids(&tpk, |_| false)?;
 
         for (email, fpr) in all_uids {
             self.unlink_email(&email, &Fingerprint::try_from(fpr).unwrap())?;
