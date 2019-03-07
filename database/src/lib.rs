@@ -273,7 +273,6 @@ pub trait Database: Sync + Send {
     /// new certificates.
     fn merge(&self, new_tpk: TPK) -> Result<()> {
         let fpr = Fingerprint::try_from(new_tpk.primary().fingerprint())?;
-        let mut acc = Vec::new();
         let _ = self.lock();
 
         // See if the TPK is in the database.
@@ -283,51 +282,22 @@ pub trait Database: Sync + Send {
             None
         };
 
-        // Iterate over the new TPK, pushing packets we want to merge
-        // into the accumulator.
-
-        // The primary key and related signatures.
-        acc.push(new_tpk.primary().clone().into_packet(Tag::PublicKey)?);
-        for s in new_tpk.selfsigs()          { acc.push(s.clone().into()) }
-        for s in new_tpk.certifications()    { acc.push(s.clone().into()) }
-        for s in new_tpk.self_revocations()  { acc.push(s.clone().into()) }
-        for s in new_tpk.other_revocations() { acc.push(s.clone().into()) }
-
-        // The subkeys and related signatures.
-        for skb in new_tpk.subkeys() {
-            acc.push(skb.subkey().clone().into_packet(Tag::PublicSubkey)?);
-            for s in skb.selfsigs()          { acc.push(s.clone().into()) }
-            for s in skb.certifications()    { acc.push(s.clone().into()) }
-            for s in skb.self_revocations()  { acc.push(s.clone().into()) }
-            for s in skb.other_revocations() { acc.push(s.clone().into()) }
-        }
-
-        // Updates for known UserIDs.
+        // If we already know some UserIDs, we want to keep any
+        // updates that come in.
+        use std::collections::HashSet;
+        let mut known_uids = HashSet::new();
         if let Some(old_tpk) = old_tpk.as_ref() {
-            use std::collections::HashSet;
-            let mut known_uids = HashSet::new();
             for uidb in old_tpk.userids() {
                 known_uids.insert(uidb.userid().clone());
             }
-
-            for uidb in new_tpk.userids() {
-                // Skip unknown ones.
-                if ! known_uids.contains(uidb.userid()) {
-                    continue;
-                }
-
-                for s in uidb.selfsigs()          { acc.push(s.clone().into()) }
-                for s in uidb.certifications()    { acc.push(s.clone().into()) }
-                for s in uidb.self_revocations()  { acc.push(s.clone().into()) }
-                for s in uidb.other_revocations() { acc.push(s.clone().into()) }
-            }
         }
+        let new_tpk = filter_userids(&new_tpk, move |u| known_uids.contains(u))?;
 
-        // Merge or assemble.
+        // Maybe merge.
         let tpk = if let Some(old_tpk) = old_tpk {
-            old_tpk.merge_packets(acc)?
+            old_tpk.merge(new_tpk)?
         } else {
-            TPK::from_packet_pile(acc.into())?
+            new_tpk
         };
 
         let mut buf = Vec::new();
@@ -586,4 +556,45 @@ pub trait Database: Sync + Send {
             None => Ok(false),
         }
     }
+}
+
+/// Filters the TPK, keeping only those UserIDs that fulfill the
+/// predicate `filter`.
+fn filter_userids<F>(tpk: &TPK, filter: F) -> Result<TPK>
+    where F: Fn(&UserID) -> bool
+{
+    // Iterate over the TPK, pushing packets we want to merge
+    // into the accumulator.
+    let mut acc = Vec::new();
+
+    // The primary key and related signatures.
+    acc.push(tpk.primary().clone().into_packet(Tag::PublicKey)?);
+    for s in tpk.selfsigs()          { acc.push(s.clone().into()) }
+    for s in tpk.certifications()    { acc.push(s.clone().into()) }
+    for s in tpk.self_revocations()  { acc.push(s.clone().into()) }
+    for s in tpk.other_revocations() { acc.push(s.clone().into()) }
+
+    // The subkeys and related signatures.
+    for skb in tpk.subkeys() {
+        acc.push(skb.subkey().clone().into_packet(Tag::PublicSubkey)?);
+        for s in skb.selfsigs()          { acc.push(s.clone().into()) }
+        for s in skb.certifications()    { acc.push(s.clone().into()) }
+        for s in skb.self_revocations()  { acc.push(s.clone().into()) }
+        for s in skb.other_revocations() { acc.push(s.clone().into()) }
+    }
+
+    // Updates for UserIDs fulfilling `filter`.
+    for uidb in tpk.userids() {
+        if ! filter(uidb.userid()) {
+            continue;
+        }
+
+        acc.push(uidb.userid().clone().into());
+        for s in uidb.selfsigs()          { acc.push(s.clone().into()) }
+        for s in uidb.certifications()    { acc.push(s.clone().into()) }
+        for s in uidb.self_revocations()  { acc.push(s.clone().into()) }
+        for s in uidb.other_revocations() { acc.push(s.clone().into()) }
+    }
+
+    TPK::from_packet_pile(acc.into())
 }
