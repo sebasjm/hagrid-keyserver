@@ -94,7 +94,7 @@ impl Verify {
             created: time::now().to_timespec().sec,
             packets: cur.into_inner().into(),
             fpr: fpr,
-            email: Email::try_from(uid.clone())?,
+            email: Email::try_from(uid)?,
         })
     }
 }
@@ -354,7 +354,7 @@ pub trait Database: Sync + Send {
 
         // update verify tokens
         for uid in tpk.userids() {
-            let email = if let Ok(m) = Email::try_from(uid.userid().clone()) {
+            let email = if let Ok(m) = Email::try_from(uid.userid()) {
                 m
             } else {
                 // Ignore non-UTF8 userids.
@@ -524,7 +524,7 @@ pub trait Database: Sync + Send {
                 let emails = tpk
                     .userids()
                     .filter_map(|uid| {
-                        Email::try_from(uid.userid().clone()).ok()
+                        Email::try_from(uid.userid()).ok()
                     })
                     .collect::<Vec<_>>();
 
@@ -566,7 +566,7 @@ pub trait Database: Sync + Send {
 
                             for uid in tpk.userids() {
                                 self.unlink_email(
-                                    &Email::try_from(uid.userid().clone())?,
+                                    &Email::try_from(uid.userid())?,
                                     &fpr,
                                 )?;
                             }

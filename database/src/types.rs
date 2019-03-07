@@ -15,10 +15,10 @@ impl Email {
     }
 }
 
-impl TryFrom<UserID> for Email {
+impl TryFrom<&UserID> for Email {
     type Error = Error;
 
-    fn try_from(uid: UserID) -> Result<Self> {
+    fn try_from(uid: &UserID) -> Result<Self> {
         Self::from_str(&String::from_utf8(uid.userid().into())?)
     }
 }

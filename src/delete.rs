@@ -76,7 +76,7 @@ fn delete(db: &Filesystem, query: &Query, all_bindings: bool, mut all: bool)
         for uidb in tpk.userids() {
             results.push(
                 (uidb.userid().to_string(),
-                 db.unlink_email(&uidb.userid().clone().try_into()?, &fp)));
+                 db.unlink_email(&uidb.userid().try_into()?, &fp)));
         }
     } else {
         if let Query::ByEmail(ref email) = query {
