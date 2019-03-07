@@ -12,6 +12,7 @@ use std::str::FromStr;
 extern crate failure;
 use failure::Error;
 use failure::Fallible as Result;
+extern crate idna;
 #[macro_use] extern crate log;
 extern crate parking_lot;
 use parking_lot::MutexGuard;

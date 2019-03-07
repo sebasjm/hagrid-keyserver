@@ -19,6 +19,7 @@ url = "1.6"
 hex = "0.3"
 base64 = "0.10"
 pathdiff = "0.1"
+idna = "0.1"
 
 [lib]
 name = "hagrid_database"

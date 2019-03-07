@@ -52,6 +52,11 @@ impl FromStr for Email {
 
     fn from_str(s: &str) -> Result<Email> {
         let (localpart, domain) = parse2822address(s)?;
+
+        // Normalize Unicode in domains.
+        let domain = idna::domain_to_ascii(domain)
+            .map_err(|e| failure::format_err!(
+                "punycode conversion failed: {:?}", e))?;
         Ok(Email(format!("{}@{}", localpart, domain)))
     }
 }
@@ -167,5 +172,7 @@ mod tests {
         assert_eq!(c("Foo Bar <foo@example.org>").as_str(), "foo@example.org");
         assert_eq!(c("\"Foo Bar\" <foo@example.org>").as_str(),
                    "foo@example.org");
+        assert_eq!(c("foo@👍.example.org").as_str(),
+                   "foo@xn--yp8h.example.org");
     }
 }
