@@ -1,10 +1,8 @@
 use rocket;
 use rocket::fairing::AdHoc;
-use rocket::http::{Header, Status};
-use rocket::request::{self, FromRequest, Request};
+use rocket::http::Header;
 use rocket::response::status::Custom;
 use rocket::response::NamedFile;
-use rocket::Outcome;
 use rocket_contrib::templates::Template;
 use rocket::request::Form;
 
@@ -26,6 +24,9 @@ use std::str::FromStr;
 
 mod queries {
     use std::fmt;
+    use rocket::request::{self, Request, FromRequest};
+    use rocket::http::Status;
+    use rocket::Outcome;
     use database::types::{Email, Fingerprint, KeyID};
 
     #[derive(Debug)]
@@ -43,6 +44,75 @@ mod queries {
                 Hkp::KeyID{ ref keyid,.. } => write!(f, "{}", keyid.to_string()),
                 Hkp::Email{ ref email,.. } => write!(f, "{}", email.to_string()),
                 Hkp::Invalid{ ref query } => write!(f, "{}", query),
+            }
+        }
+    }
+
+    impl<'a, 'r> FromRequest<'a, 'r> for Hkp {
+        type Error = ();
+
+        fn from_request(request: &'a Request<'r>) -> request::Outcome<Hkp, ()> {
+            use std::str::FromStr;
+            use rocket::request::FormItems;
+            use std::collections::HashMap;
+
+            let query = request.uri().query().unwrap_or("");
+            let fields = FormItems::from(query)
+                .map(|item| {
+                    let (k, v) = item.key_value();
+
+                    let key = k.url_decode().unwrap_or_default();
+                    let value = v.url_decode().unwrap_or_default();
+                    (key, value)
+                })
+                .collect::<HashMap<_, _>>();
+
+            if fields.contains_key("search")
+                && fields
+                .get("op")
+                .map(|x| x == "get" || x == "index")
+                .unwrap_or(false)
+            {
+                let index = fields.get("op").map(|x| x == "index").unwrap_or(false);
+                let machine_readable =
+                    fields.get("options").map(|x| x.contains("mr"))
+                    .unwrap_or(false);
+                let search = fields.get("search").cloned().unwrap_or_default();
+                let maybe_fpr = Fingerprint::from_str(&search);
+                let maybe_keyid = KeyID::from_str(&search);
+
+                if let Ok(fpr) = maybe_fpr {
+                    Outcome::Success(Hkp::Fingerprint {
+                        fpr: fpr,
+                        index: index,
+                        machine_readable: machine_readable,
+                    })
+                } else if let Ok(keyid) = maybe_keyid {
+                    Outcome::Success(Hkp::KeyID {
+                        keyid: keyid,
+                        index: index,
+                        machine_readable: machine_readable,
+                    })
+                } else {
+                    match Email::from_str(&search) {
+                        Ok(email) => {
+                            Outcome::Success(Hkp::Email {
+                                email: email,
+                                index: index,
+                                machine_readable: machine_readable,
+                            })
+                        }
+                        Err(_) => {
+                            Outcome::Success(Hkp::Invalid{
+                                query: search
+                            })
+                        }
+                    }
+                }
+            } else if fields.get("op").map(|x| x == "vindex").unwrap_or(false) {
+                Outcome::Failure((Status::NotImplemented, ()))
+            } else {
+                Outcome::Failure((Status::BadRequest, ()))
             }
         }
     }
@@ -224,76 +294,6 @@ pub struct State {
 
     /// Controls the use of NGINX'es XAccelRedirect feature.
     x_accel_redirect: bool,
-}
-
-impl<'a, 'r> FromRequest<'a, 'r> for queries::Hkp {
-    type Error = ();
-
-    fn from_request(
-        request: &'a Request<'r>,
-    ) -> request::Outcome<queries::Hkp, ()> {
-        use rocket::request::FormItems;
-        use std::collections::HashMap;
-
-        let query = request.uri().query().unwrap_or("");
-        let fields = FormItems::from(query)
-            .map(|item| {
-                let (k, v) = item.key_value();
-
-                let key = k.url_decode().unwrap_or_default();
-                let value = v.url_decode().unwrap_or_default();
-                (key, value)
-            })
-            .collect::<HashMap<_, _>>();
-
-        if fields.contains_key("search")
-            && fields
-                .get("op")
-                .map(|x| x == "get" || x == "index")
-                .unwrap_or(false)
-        {
-            let index = fields.get("op").map(|x| x == "index").unwrap_or(false);
-            let machine_readable =
-                fields.get("options").map(|x| x.contains("mr"))
-                .unwrap_or(false);
-            let search = fields.get("search").cloned().unwrap_or_default();
-            let maybe_fpr = Fingerprint::from_str(&search);
-            let maybe_keyid = KeyID::from_str(&search);
-
-            if let Ok(fpr) = maybe_fpr {
-                Outcome::Success(queries::Hkp::Fingerprint {
-                    fpr: fpr,
-                    index: index,
-                    machine_readable: machine_readable,
-                })
-            } else if let Ok(keyid) = maybe_keyid {
-                Outcome::Success(queries::Hkp::KeyID {
-                    keyid: keyid,
-                    index: index,
-                    machine_readable: machine_readable,
-                })
-            } else {
-                match Email::from_str(&search) {
-                    Ok(email) => {
-                        Outcome::Success(queries::Hkp::Email {
-                            email: email,
-                            index: index,
-                            machine_readable: machine_readable,
-                        })
-                    }
-                    Err(_) => {
-                        Outcome::Success(queries::Hkp::Invalid{
-                            query: search
-                        })
-                    }
-                }
-            }
-        } else if fields.get("op").map(|x| x == "vindex").unwrap_or(false) {
-            Outcome::Failure((Status::NotImplemented, ()))
-        } else {
-            Outcome::Failure((Status::BadRequest, ()))
-        }
-    }
 }
 
 fn key_to_response<'a>(state: rocket::State<State>,
