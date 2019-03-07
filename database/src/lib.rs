@@ -163,6 +163,30 @@ pub trait Database: Sync + Send {
         &self, fpr: &Fingerprint, new: Option<String>,
     ) -> Result<()>;
 
+    /// Update the TPK associated with `fpr` with the TPK in new.
+    ///
+    /// If new is None, this removes any associated TPK.
+    ///
+    /// This function updates the TPK atomically.  That is, readers
+    /// can continue to read from the associated file and they will
+    /// either have the old version or the new version, but never an
+    /// inconsistent mix or a partial version.
+    ///
+    /// Note: it is up to the caller to serialize writes.
+    fn update_tpk(&self, fp: &Fingerprint, new: Option<TPK>) -> Result<()> {
+        self.update(fp, if let Some(tpk) = new {
+            let mut buf = Vec::new();
+            {
+                let mut armor_writer = Writer::new(&mut buf, Kind::PublicKey,
+                                                   &[][..])?;
+                tpk.serialize(&mut armor_writer)?;
+            };
+            Some(String::from_utf8_lossy(&buf).to_string())
+        } else {
+            None
+        })
+    }
+
     /// Queries the database using Fingerprint, KeyID, or
     /// email-address.
     fn lookup(&self, term: &Query) -> Result<Option<TPK>> {
@@ -281,17 +305,10 @@ pub trait Database: Sync + Send {
             new_tpk
         };
 
-        let mut buf = Vec::new();
-        {
-            let mut armor_writer = Writer::new(&mut buf, Kind::PublicKey,
-                                               &[][..])?;
-            tpk.serialize(&mut armor_writer)?;
-        };
-        let armored = String::from_utf8_lossy(&buf);
-        self.update(&fpr, Some(armored.into_owned()))?;
         self.link_subkeys(&fpr,
                           tpk.subkeys().map(|s| s.subkey().fingerprint())
                           .collect())?;
+        self.update_tpk(&fpr, Some(tpk))?;
         Ok(())
     }
 
