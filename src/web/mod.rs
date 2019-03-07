@@ -109,7 +109,10 @@ mod queries {
                         }
                     }
                 }
-            } else if fields.get("op").map(|x| x == "vindex").unwrap_or(false) {
+            } else if fields.get("op").map(|x| x == "vindex"
+                                           || x.starts_with("x-"))
+                .unwrap_or(false)
+            {
                 Outcome::Failure((Status::NotImplemented, ()))
             } else {
                 Outcome::Failure((Status::BadRequest, ()))
