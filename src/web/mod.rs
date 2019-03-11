@@ -807,6 +807,15 @@ mod tests {
         Ok((root, config))
     }
 
+    fn assert_consistency(rocket: &rocket::Rocket) {
+        let db = rocket.state::<Polymorphic>().unwrap();
+        if let Polymorphic::Filesystem(fs) = db {
+            fs.check_consistency().unwrap();
+        } else {
+            unreachable!();
+        }
+    }
+
     #[test]
     fn basics() {
         let (_tmpdir, config) = configuration().unwrap();
@@ -833,6 +842,8 @@ mod tests {
         assert_eq!(response.status(), Status::Ok);
         assert_eq!(response.content_type(), Some(ContentType::HTML));
         assert!(response.body_string().unwrap().contains("/vks/v1/by-keyid"));
+
+        assert_consistency(client.rocket());
     }
 
     #[test]
@@ -891,6 +902,8 @@ mod tests {
             &client,
             "/pks/lookup?op=get&search=foo@invalid.example.com",
             &tpk);
+
+        assert_consistency(client.rocket());
     }
 
     #[test]
@@ -946,6 +959,8 @@ mod tests {
             &client,
             "/vks/v1/by-email/bar@invalid.example.com",
             &tpk_1, 1);
+
+        assert_consistency(client.rocket());
     }
 
     /// Asserts that the given URI 404s.
@@ -1116,6 +1131,8 @@ mod tests {
 
         // And check that we can see the human-readable result page.
         check_hr_responses_by_fingerprint(&client, &tpk);
+
+        assert_consistency(client.rocket());
     }
 
     #[test]
@@ -1162,6 +1179,8 @@ mod tests {
         check_mr_responses_by_fingerprint(&client, &tpk_1, 0);
         check_hr_responses_by_fingerprint(&client, &tpk_0);
         check_hr_responses_by_fingerprint(&client, &tpk_1);
+
+        assert_consistency(client.rocket());
     }
 
     /// Returns and removes the first mail it finds from the given
