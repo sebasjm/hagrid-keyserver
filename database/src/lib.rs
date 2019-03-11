@@ -55,19 +55,19 @@ mod test;
 pub struct Verify {
     created: i64,
     #[serde(serialize_with = "as_base64", deserialize_with = "from_base64")]
-    packets: Box<[u8]>,
+    packets: Vec<u8>,
     fpr: Fingerprint,
     email: Email,
 }
 
-fn as_base64<S>(d: &Box<[u8]>, serializer: S) -> result::Result<S::Ok, S::Error>
+fn as_base64<S>(d: &Vec<u8>, serializer: S) -> result::Result<S::Ok, S::Error>
 where
     S: Serializer,
 {
     serializer.serialize_str(&base64::encode(&d))
 }
 
-fn from_base64<'de, D>(deserializer: D) -> result::Result<Box<[u8]>, D::Error>
+fn from_base64<'de, D>(deserializer: D) -> result::Result<Vec<u8>, D::Error>
 where
     D: Deserializer<'de>,
 {
@@ -77,7 +77,6 @@ where
             base64::decode(&string)
                 .map_err(|err| Error::custom(err.to_string()))
         })
-        .map(|bytes| bytes.into_boxed_slice())
 }
 
 impl Verify {
@@ -94,7 +93,7 @@ impl Verify {
 
         Ok(Verify {
             created: time::now().to_timespec().sec,
-            packets: cur.into_inner().into(),
+            packets: cur.into_inner(),
             fpr: fpr,
             email: Email::try_from(uidb.userid())?,
         })
