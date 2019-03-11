@@ -6,12 +6,15 @@ use lettre_email::EmailBuilder;
 
 use serde::Serialize;
 
+use sequoia_openpgp as openpgp;
+
 use database::types::Email;
 use Result;
 
 mod context {
     #[derive(Serialize, Clone)]
     pub struct Verification {
+        pub primary_fp: String,
         pub token: String,
         pub userid: String,
         pub domain: String,
@@ -56,9 +59,11 @@ impl Service {
         }
     }
 
-    pub fn send_verification(&self, userid: &Email, token: &str, domain: &str)
+    pub fn send_verification(&self, tpk: &openpgp::TPK, userid: &Email,
+                             token: &str, domain: &str)
                              -> Result<()> {
         let ctx = context::Verification {
+            primary_fp: tpk.fingerprint().to_string(),
             token: token.to_string(),
             userid: userid.to_string(),
             domain: domain.to_string(),

@@ -5,6 +5,28 @@
     <title>Please verify your email address</title>
   </head>
   <body>
-    <a href='https://{{ domain }}/vks/v1/verify/{{ token }}'>Click here</a> to verify {{ address }}
+    <p>
+      Someone, presumably you, has uploaded a key
+      to <a href="https://{{domain}}">{{domain}}</a>.  The key has the
+      following fingerprint:
+    </p>
+    <p>
+      <pre>{{primary_fp}}</pre>
+    </p>
+    <p>
+      If it was not you, or this is not your key, please ignore this
+      email.
+    </p>
+    <p>
+      To make your key available when searching for "{{userid}}" on
+      {{domain}}, follow this link:
+    </p>
+    <p>
+      <a href="https://{{domain}}/vks/v1/verify/{{token}}">https://{{domain}}/vks/v1/verify/{{token}}</a>
+    </p>
+    <p>
+      If you don't want to make the key available when searching for
+      "{{userid}}", please ignore this email.
+    </p>
   </body>
 </html>

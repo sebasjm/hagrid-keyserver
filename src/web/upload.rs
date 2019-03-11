@@ -210,6 +210,7 @@ where
         if let Some(ref mail_service) = mail_service {
             for (email, token) in tokens {
                 mail_service.send_verification(
+                    &tpk,
                     &email,
                     &token,
                     domain,

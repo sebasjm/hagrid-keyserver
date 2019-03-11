@@ -1065,7 +1065,7 @@ mod tests {
 
     fn check_mails_and_confirm(client: &Client, filemail_path: &Path) {
         let confirm_re =
-            regex::bytes::Regex::new("https://domain(/vks/v1/verify[^ \t]*)")
+            regex::bytes::Regex::new("https://domain(/vks/v1/verify[^ \t\n]*)")
             .unwrap();
         let confirm_mail = pop_mail(filemail_path).unwrap().unwrap();
         let confirm_bytes = confirm_mail.message();

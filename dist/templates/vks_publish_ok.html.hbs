@@ -1,8 +1,13 @@
 {{#> layout }}
-  <h2>Verify Ok</h2>
-	<ul>
-		{{#each emails}}
-			<li>{{this}}</li>
-		{{/each}}
-	</ul>
+<h2>Email verification required</h2>
+<p>
+  We have sent verification emails to the following addresses:
+  <ul>
+    {{#each emails}}
+    <li>{{this}}</li>
+    {{/each}}
+  </ul>
+  To make the keys available when searching by address, you need to
+  follow the link sent to each address.
+</p>
 {{/layout}}
