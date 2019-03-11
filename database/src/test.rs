@@ -45,7 +45,7 @@ pub fn test_uid_verification<D: Database>(db: &mut D) {
     let email2 = Email::from_str(str_uid2).unwrap();
 
     // upload key
-    let tokens = db.merge_or_publish(tpk.clone()).unwrap();
+    let tokens = db.merge_or_publish(&tpk).unwrap();
     let fpr = Fingerprint::try_from(tpk.fingerprint()).unwrap();
 
     assert_eq!(tokens.len(), 2);
@@ -147,7 +147,7 @@ pub fn test_uid_verification<D: Database>(db: &mut D) {
 
     // upload again
     assert_eq!(
-        db.merge_or_publish(tpk.clone()).unwrap(),
+        db.merge_or_publish(&tpk).unwrap(),
         Vec::<(Email, String)>::default()
     );
 
@@ -164,7 +164,7 @@ pub fn test_uid_verification<D: Database>(db: &mut D) {
         let short_tpk = TPK::from_packet_pile(pile).unwrap();
 
         assert_eq!(
-            db.merge_or_publish(short_tpk.clone()).unwrap(),
+            db.merge_or_publish(&short_tpk).unwrap(),
             Vec::<(Email, String)>::default()
         );
 
@@ -215,7 +215,7 @@ pub fn test_uid_verification<D: Database>(db: &mut D) {
 
         let pile : PacketPile = packets.into();
         let ext_tpk = TPK::from_packet_pile(pile).unwrap();
-        let tokens = db.merge_or_publish(ext_tpk.clone()).unwrap();
+        let tokens = db.merge_or_publish(&ext_tpk).unwrap();
 
         assert_eq!(tokens.len(), 1);
 
@@ -259,14 +259,14 @@ pub fn test_reupload<D: Database>(db: &mut D) {
     let email2 = Email::from_str(str_uid2).unwrap();
 
     // upload key
-    let tokens = db.merge_or_publish(tpk.clone()).unwrap();
+    let tokens = db.merge_or_publish(&tpk).unwrap();
 
     // verify 1st uid
     assert!(db.verify_token(&tokens[0].1).unwrap().is_some());
     assert!(db.by_email(&email2).is_none() ^ db.by_email(&email1).is_none());
 
     // reupload
-    let tokens = db.merge_or_publish(tpk.clone()).unwrap();
+    let tokens = db.merge_or_publish(&tpk).unwrap();
 
     assert_eq!(tokens.len(), 1);
     assert!(db.by_email(&email2).is_none() ^ db.by_email(&email1).is_none());
@@ -282,7 +282,7 @@ pub fn test_uid_replacement<D: Database>(db: &mut D) {
     let fpr2 = tpk2.fingerprint();
 
     // upload key
-    let tokens = db.merge_or_publish(tpk1.clone()).unwrap();
+    let tokens = db.merge_or_publish(&tpk1).unwrap();
 
     // verify 1st uid
     assert!(db.verify_token(&tokens[0].1).unwrap().is_some());
@@ -292,7 +292,7 @@ pub fn test_uid_replacement<D: Database>(db: &mut D) {
     );
 
     // replace
-    let tokens = db.merge_or_publish(tpk2.clone()).unwrap();
+    let tokens = db.merge_or_publish(&tpk2).unwrap();
 
     assert!(db.by_email(&email).is_none());
     assert!(db.verify_token(&tokens[0].1).unwrap().is_some());
@@ -324,7 +324,7 @@ pub fn test_uid_deletion<D: Database>(db: &mut D) {
     let email2 = Email::from_str(str_uid2).unwrap();
 
     // upload key and verify uids
-    let tokens = db.merge_or_publish(tpk.clone()).unwrap();
+    let tokens = db.merge_or_publish(&tpk).unwrap();
 
     assert_eq!(tokens.len(), 2);
     assert!(db.verify_token(&tokens[0].1).unwrap().is_some());
@@ -382,7 +382,7 @@ pub fn test_uid_deletion_request<D: Database>(db: &mut D) {
     let email2 = Email::from_str(str_uid2).unwrap();
 
     // upload key and verify uids
-    let tokens = db.merge_or_publish(tpk.clone()).unwrap();
+    let tokens = db.merge_or_publish(&tpk).unwrap();
 
     assert_eq!(tokens.len(), 2);
     assert!(db.verify_token(&tokens[0].1).unwrap().is_some());
@@ -439,7 +439,7 @@ pub fn test_subkey_lookup<D: Database>(db: &mut D) {
         .0;
 
     // upload key
-    let _ = db.merge_or_publish(tpk.clone()).unwrap();
+    let _ = db.merge_or_publish(&tpk).unwrap();
     let primary_fpr = Fingerprint::try_from(tpk.fingerprint()).unwrap();
     let sub1_fpr = Fingerprint::try_from(
         tpk.subkeys().next().map(|x| x.subkey().fingerprint()).unwrap(),
@@ -468,7 +468,7 @@ pub fn test_kid_lookup<D: Database>(db: &mut D) {
         .0;
 
     // upload key
-    let _ = db.merge_or_publish(tpk.clone()).unwrap();
+    let _ = db.merge_or_publish(&tpk).unwrap();
     let primary_kid = KeyID::try_from(tpk.fingerprint()).unwrap();
     let sub1_kid = KeyID::try_from(
         tpk.subkeys().next().map(|x| x.subkey().fingerprint()).unwrap(),
@@ -502,7 +502,7 @@ pub fn test_upload_revoked_tpk<D: Database>(db: &mut D) {
     }
 
     // upload key
-    let tokens = db.merge_or_publish(tpk.clone()).unwrap();
+    let tokens = db.merge_or_publish(&tpk).unwrap();
     assert!(tokens.is_empty());
 }
 
@@ -527,7 +527,7 @@ pub fn test_uid_revocation<D: Database>(db: &mut D) {
     let email2 = Email::from_str(str_uid2).unwrap();
 
     // upload key
-    let tokens = db.merge_or_publish(tpk.clone()).unwrap();
+    let tokens = db.merge_or_publish(&tpk).unwrap();
 
     // verify uid
     assert_eq!(tokens.len(), 2);
@@ -555,7 +555,7 @@ pub fn test_uid_revocation<D: Database>(db: &mut D) {
     };
     assert_eq!(sig.sigtype(), SignatureType::CertificateRevocation);
     let tpk = tpk.merge_packets(vec![sig.into()]).unwrap();
-    let tokens = db.merge_or_publish(tpk.clone()).unwrap();
+    let tokens = db.merge_or_publish(&tpk).unwrap();
     assert_eq!(tokens.len(), 0);
 
     // fail to fetch by one uid, fail by another
@@ -574,14 +574,14 @@ pub fn test_steal_uid<D: Database>(db: &mut D) {
     let email1 = Email::from_str(str_uid1).unwrap();
 
     // upload key
-    let tokens = db.merge_or_publish(tpk1.clone()).unwrap();
+    let tokens = db.merge_or_publish(&tpk1).unwrap();
 
     // verify uid
     assert!(db.verify_token(&tokens[0].1).unwrap().is_some());
     assert!(db.by_email(&email1).is_some());
 
     // upload 2nd key with same uid
-    let tokens = db.merge_or_publish(tpk2.clone()).unwrap();
+    let tokens = db.merge_or_publish(&tpk2).unwrap();
 
     assert_eq!(tokens.len(), 1);
     assert!(db.by_email(&email1).is_none());
@@ -622,9 +622,9 @@ pub fn test_same_email_1<D: Database>(db: &mut D) {
     let email2 = Email::from_str(str_uid2).unwrap();
 
     // upload keys.
-    let tokens1 = db.merge_or_publish(tpk1.clone()).unwrap();
+    let tokens1 = db.merge_or_publish(&tpk1).unwrap();
     assert_eq!(tokens1.len(), 1);
-    let tokens2 = db.merge_or_publish(tpk2.clone()).unwrap();
+    let tokens2 = db.merge_or_publish(&tpk2).unwrap();
     assert_eq!(tokens2.len(), 1);
 
     // verify tpk1
@@ -661,7 +661,7 @@ pub fn test_same_email_1<D: Database>(db: &mut D) {
     };
     assert_eq!(sig.sigtype(), SignatureType::CertificateRevocation);
     let tpk2 = tpk2.merge_packets(vec![sig.into()]).unwrap();
-    let tokens2 = db.merge_or_publish(tpk2.clone()).unwrap();
+    let tokens2 = db.merge_or_publish(&tpk2).unwrap();
     assert_eq!(tokens2.len(), 0);
 
     // fetch by both user ids.  We should get nothing.
@@ -692,7 +692,7 @@ pub fn test_same_email_2<D: Database>(db: &mut D) {
     let email2 = Email::from_str(str_uid2).unwrap();
 
     // upload key
-    let tokens = db.merge_or_publish(tpk.clone()).unwrap();
+    let tokens = db.merge_or_publish(&tpk).unwrap();
 
     // verify uid1
     assert_eq!(tokens.len(), 1);
@@ -721,7 +721,7 @@ pub fn test_same_email_2<D: Database>(db: &mut D) {
     };
     assert_eq!(sig.sigtype(), SignatureType::CertificateRevocation);
     let tpk = tpk.merge_packets(vec![sig.into()]).unwrap();
-    let tokens = db.merge_or_publish(tpk.clone()).unwrap();
+    let tokens = db.merge_or_publish(&tpk).unwrap();
     assert_eq!(tokens.len(), 0);
 
     // fetch by both user ids.  We should still get both user ids.

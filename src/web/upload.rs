@@ -205,7 +205,7 @@ where
 
     let mut results: Vec<String> = vec!();
     for tpk in tpks {
-        let tokens = db.merge_or_publish(tpk)?;
+        let tokens = db.merge_or_publish(&tpk)?;
 
         if let Some(ref mail_service) = mail_service {
             for (email, token) in tokens {

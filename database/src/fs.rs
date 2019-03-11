@@ -697,12 +697,12 @@ mod tests {
         let k3 = TPKBuilder::default().add_userid("c@invalid.example.org")
             .generate().unwrap().0;
 
-        assert!(db.merge_or_publish(k1).unwrap().len() > 0);
-        assert!(db.merge_or_publish(k2.clone()).unwrap().len() > 0);
-        assert!(!db.merge_or_publish(k2).unwrap().len() > 0);
-        assert!(db.merge_or_publish(k3.clone()).unwrap().len() > 0);
-        assert!(!db.merge_or_publish(k3.clone()).unwrap().len() > 0);
-        assert!(!db.merge_or_publish(k3).unwrap().len() > 0);
+        assert!(db.merge_or_publish(&k1).unwrap().len() > 0);
+        assert!(db.merge_or_publish(&k2).unwrap().len() > 0);
+        assert!(!db.merge_or_publish(&k2).unwrap().len() > 0);
+        assert!(db.merge_or_publish(&k3).unwrap().len() > 0);
+        assert!(!db.merge_or_publish(&k3).unwrap().len() > 0);
+        assert!(!db.merge_or_publish(&k3).unwrap().len() > 0);
     }
 
     #[test]

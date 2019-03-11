@@ -78,7 +78,7 @@ fn do_import(base: PathBuf, keyrings: Vec<PathBuf>) -> Result<()> {
                         openpgp::PacketPile::from(
                             ::std::mem::replace(&mut acc, Vec::new())))
                     {
-                        db.merge(tpk)?;
+                        db.merge(&tpk)?;
                     }
                 }
 
@@ -92,7 +92,7 @@ fn do_import(base: PathBuf, keyrings: Vec<PathBuf>) -> Result<()> {
             openpgp::PacketPile::from(
                 ::std::mem::replace(&mut acc, Vec::new())))
         {
-            db.merge(tpk)?;
+            db.merge(&tpk)?;
         }
     }
 

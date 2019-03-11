@@ -288,7 +288,7 @@ pub trait Database: Sync + Send {
     ///
     /// UserIDs that are already present in the database will receive
     /// new certificates.
-    fn merge(&self, new_tpk: TPK) -> Result<()> {
+    fn merge(&self, new_tpk: &TPK) -> Result<()> {
         let fpr = Fingerprint::try_from(new_tpk.primary().fingerprint())?;
         let _ = self.lock();
 
@@ -324,7 +324,7 @@ pub trait Database: Sync + Send {
         Ok(())
     }
 
-    fn merge_or_publish(&self, mut tpk: TPK) -> Result<Vec<(Email, String)>> {
+    fn merge_or_publish(&self, tpk: &TPK) -> Result<Vec<(Email, String)>> {
         use std::collections::HashMap;
         use openpgp::RevocationStatus;
 
@@ -400,7 +400,7 @@ pub trait Database: Sync + Send {
         let subkeys =
             tpk.subkeys().map(|s| s.subkey().fingerprint()).collect::<Vec<_>>();
 
-        tpk = filter_userids(&tpk, |_| false)?;
+        let tpk = filter_userids(&tpk, |_| false)?;
 
         for (email, fpr) in all_uids {
             self.unlink_email(&email, &Fingerprint::try_from(fpr).unwrap())?;
