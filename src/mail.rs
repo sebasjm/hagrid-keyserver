@@ -9,11 +9,19 @@ use serde::Serialize;
 use database::types::Email;
 use Result;
 
-#[derive(Serialize, Clone)]
-pub struct Context {
-    pub token: String,
-    pub userid: Option<String>,
-    pub domain: String,
+mod context {
+    #[derive(Serialize, Clone)]
+    pub struct Verification {
+        pub token: String,
+        pub userid: String,
+        pub domain: String,
+    }
+
+    #[derive(Serialize, Clone)]
+    pub struct Deletion {
+        pub token: String,
+        pub domain: String,
+    }
 }
 
 pub struct Service {
@@ -50,9 +58,9 @@ impl Service {
 
     pub fn send_verification(&self, userid: &Email, token: &str, domain: &str)
                              -> Result<()> {
-        let ctx = Context {
+        let ctx = context::Verification {
             token: token.to_string(),
-            userid: Some(userid.to_string()),
+            userid: userid.to_string(),
             domain: domain.to_string(),
         };
 
@@ -67,9 +75,8 @@ impl Service {
     pub fn send_confirmation(&self, userids: &[Email], token: &str,
                              domain: &str)
                              -> Result<()> {
-        let ctx = Context {
+        let ctx = context::Deletion {
             token: token.to_string(),
-            userid: None,
             domain: domain.to_string(),
         };
 
