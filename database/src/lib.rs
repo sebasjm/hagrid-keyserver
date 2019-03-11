@@ -332,35 +332,28 @@ pub trait Database: Sync + Send {
             };
 
             match uid.revoked(None) {
+                // XXX: This looks wrong.  It means that anyone can
+                // unlink email addresses by uploading TPK with a
+                // revoked userid matching the target address.
                 RevocationStatus::CouldBe(_) | RevocationStatus::Revoked(_) => {
-                    match self.by_email(&email) {
-                        None => {}
-                        Some(other_tpk) => {
-                            match TPK::from_bytes(other_tpk.as_bytes()) {
-                                Ok(other_tpk) => {
-                                    all_uids
-                                        .push((email, other_tpk.fingerprint()));
-                                }
-                                Err(_) => {}
-                            }
-                        }
+                    match self.lookup(&Query::ByEmail(email.clone())) {
+                        Ok(None) => (),
+                        Ok(Some(other_tpk)) =>
+                            all_uids.push((email, other_tpk.fingerprint())),
+                        Err(_) => (),
                     };
                 }
                 RevocationStatus::NotAsFarAsWeKnow => {
-                    let add_to_verified = match self.by_email(&email) {
-                        None => false,
-                        Some(other_tpk) => {
-                            match TPK::from_bytes(other_tpk.as_bytes()) {
-                                Ok(other_tpk) => {
-                                    all_uids.push((
-                                        email.clone(),
-                                        other_tpk.fingerprint(),
-                                    ));
-                                    other_tpk.fingerprint() == tpk.fingerprint()
-                                }
-                                Err(_) => false,
-                            }
-                        }
+                    let add_to_verified =
+                        match self.lookup(&Query::ByEmail(email.clone()))
+                    {
+                        Ok(None) => false,
+                        Ok(Some(other_tpk)) => {
+                            all_uids.push((email.clone(),
+                                           other_tpk.fingerprint()));
+                            other_tpk.fingerprint() == tpk.fingerprint()
+                        },
+                        Err(_) => false,
                     };
 
                     if add_to_verified {
@@ -391,29 +384,11 @@ pub trait Database: Sync + Send {
         }
 
         // merge or update key db
-        let data = match self.by_fpr(&fpr) {
-            Some(old) => {
-                let new = TPK::from_bytes(old.as_bytes()).unwrap();
-                let tpk = new.merge(tpk.clone()).unwrap();
-                Self::tpk_into_bytes(&tpk)?
-            }
-
-            None => {
-                Self::tpk_into_bytes(&tpk)?
-            }
+        let tpk = match self.lookup(&Query::ByFingerprint(fpr.clone()))? {
+            Some(old) => old.merge(tpk)?,
+            None => tpk,
         };
-
-        let mut buf = std::io::Cursor::new(vec![]);
-        {
-            let mut armor_writer = Writer::new(&mut buf, Kind::PublicKey,
-                                               &[][..])?;
-
-            armor_writer.write_all(&data)?;
-        };
-        let armored = String::from_utf8_lossy(buf.get_ref());
-
-
-        self.update(&fpr, Some(armored.into_owned()))?;
+        self.update_tpk(&fpr, Some(tpk))?;
 
         self.link_subkeys(&fpr, subkeys)?;
         for email in verified_uids {
