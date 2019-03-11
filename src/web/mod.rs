@@ -893,6 +893,61 @@ mod tests {
             &tpk);
     }
 
+    #[test]
+    fn upload_two() {
+        let (tmpdir, config) = configuration().unwrap();
+        let filemail_into = tmpdir.path().join("filemail");
+
+        let db = Polymorphic::Filesystem(
+            Filesystem::new(config.root().unwrap().to_path_buf()).unwrap());
+        let rocket = rocket_factory(rocket::custom(config), db);
+        let client = Client::new(rocket).expect("valid rocket instance");
+
+        // Generate two keys and upload them.
+        let tpk_0 = TPKBuilder::autocrypt(
+            None, Some("foo@invalid.example.com".into()))
+            .generate().unwrap().0;
+        let tpk_1 = TPKBuilder::autocrypt(
+            None, Some("bar@invalid.example.com".into()))
+            .generate().unwrap().0;
+
+        let mut tpk_serialized = Vec::new();
+        tpk_0.serialize(&mut tpk_serialized).unwrap();
+        tpk_1.serialize(&mut tpk_serialized).unwrap();
+        let response = vks_publish_submit(&client, &tpk_serialized);
+        assert_eq!(response.status(), Status::SeeOther);
+        assert_eq!(response.headers().get_one("Location"),
+                   Some("/vks/v1/publish?ok"));
+
+        // Prior to email confirmation, we should not be able to look
+        // them up by email address.
+        check_null_responses_by_email(&client, "foo@invalid.example.com");
+        check_null_responses_by_email(&client, "bar@invalid.example.com");
+
+        // And check that we can get them back via the machine readable
+        // interface.
+        check_mr_responses_by_fingerprint(&client, &tpk_0, 0);
+        check_mr_responses_by_fingerprint(&client, &tpk_1, 0);
+
+        // And check that we can see the human-readable result page.
+        check_hr_responses_by_fingerprint(&client, &tpk_0);
+        check_hr_responses_by_fingerprint(&client, &tpk_1);
+
+        // Now check for the confirmation mails.
+        check_mails_and_confirm(&client, filemail_into.as_path());
+        check_mails_and_confirm(&client, filemail_into.as_path());
+
+        // Now lookups using the mail address should work.
+        check_mr_response(
+            &client,
+            "/vks/v1/by-email/foo@invalid.example.com",
+            &tpk_0, 1);
+        check_mr_response(
+            &client,
+            "/vks/v1/by-email/bar@invalid.example.com",
+            &tpk_1, 1);
+    }
+
     /// Asserts that the given URI 404s.
     fn check_null_response(client: &Client, uri: &str) {
         let response = client.get(uri).dispatch();
@@ -1061,6 +1116,52 @@ mod tests {
 
         // And check that we can see the human-readable result page.
         check_hr_responses_by_fingerprint(&client, &tpk);
+    }
+
+    #[test]
+    fn hkp_add_two() {
+        let (tmpdir, config) = configuration().unwrap();
+        let filemail_into = tmpdir.path().join("filemail");
+
+        let db = Polymorphic::Filesystem(
+            Filesystem::new(config.root().unwrap().to_path_buf()).unwrap());
+        let rocket = rocket_factory(rocket::custom(config), db);
+        let client = Client::new(rocket).expect("valid rocket instance");
+
+        // Generate two keys and upload them.
+        let tpk_0 = TPKBuilder::autocrypt(
+            None, Some("foo@invalid.example.com".into()))
+            .generate().unwrap().0;
+        let tpk_1 = TPKBuilder::autocrypt(
+            None, Some("bar@invalid.example.com".into()))
+            .generate().unwrap().0;
+
+        // Prepare to /pks/add
+        let mut armored = Vec::new();
+        {
+            use sequoia_openpgp::armor::{Writer, Kind};
+            let mut w = Writer::new(&mut armored, Kind::PublicKey, &[])
+                .unwrap();
+            tpk_0.serialize(&mut w).unwrap();
+            tpk_1.serialize(&mut w).unwrap();
+        }
+        let mut post_data = String::from("keytext=");
+        for enc in url::form_urlencoded::byte_serialize(&armored) {
+            post_data.push_str(enc);
+        }
+
+        // Add!
+        let response = client.post("/pks/add")
+            .body(post_data.as_bytes())
+            .header(ContentType::Form)
+            .dispatch();
+        assert_eq!(response.status(), Status::Ok);
+        let confirm_mail = pop_mail(filemail_into.as_path()).unwrap();
+        assert!(confirm_mail.is_none());
+        check_mr_responses_by_fingerprint(&client, &tpk_0, 0);
+        check_mr_responses_by_fingerprint(&client, &tpk_1, 0);
+        check_hr_responses_by_fingerprint(&client, &tpk_0);
+        check_hr_responses_by_fingerprint(&client, &tpk_1);
     }
 
     /// Returns and removes the first mail it finds from the given

@@ -195,20 +195,27 @@ where
     R: Read,
 {
     use sequoia_openpgp::parse::Parse;
-    use sequoia_openpgp::TPK;
+    use sequoia_openpgp::tpk::TPKParser;
 
-    let tpk = TPK::from_reader(reader)?;
-    let tokens = db.merge_or_publish(tpk)?;
+    // First, parse all TPKs and error out if one fails.
+    let mut tpks = Vec::new();
+    for tpk in TPKParser::from_reader(reader)? {
+        tpks.push(tpk?);
+    }
+
     let mut results: Vec<String> = vec!();
+    for tpk in tpks {
+        let tokens = db.merge_or_publish(tpk)?;
 
-    if let Some(mail_service) = mail_service {
-        for (email, token) in tokens {
-            mail_service.send_verification(
-                &email,
-                &token,
-                domain,
-            )?;
-            results.push(email.to_string());
+        if let Some(ref mail_service) = mail_service {
+            for (email, token) in tokens {
+                mail_service.send_verification(
+                    &email,
+                    &token,
+                    domain,
+                )?;
+                results.push(email.to_string());
+            }
         }
     }
 

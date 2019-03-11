@@ -73,7 +73,6 @@ the full HKP protocol.  The main limitations are:
  - the `fingerprint` variable is ignored,
  - the `nm` option is ignored,
  - `op=index` returns either one or no keys,
- - only one key may be submitted in one request,
  - uploads are restricted to 1 MiB,
  - all packets that aren't public keys, user IDs or signatures are filtered out.
 
