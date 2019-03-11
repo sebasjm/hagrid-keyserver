@@ -872,19 +872,7 @@ mod tests {
         check_hr_responses_by_fingerprint(&client, &tpk);
 
         // Now check for the confirmation mail.
-        let confirm_re =
-            regex::bytes::Regex::new("https://domain(/vks/v1/verify[^ \t]*)")
-            .unwrap();
-        let confirm_mail =
-            pop_mail(filemail_into.as_path()).unwrap().unwrap();
-        let confirm_bytes = confirm_mail.message();
-        // eprintln!("{}", String::from_utf8_lossy(&confirm_bytes));
-        let confirm_link =
-            confirm_re.captures(&confirm_bytes).unwrap()
-            .get(1).unwrap().as_bytes();
-        let confirm_uri = String::from_utf8_lossy(confirm_link).to_string();
-        let response = client.get(&confirm_uri).dispatch();
-        assert_eq!(response.status(), Status::Ok);
+        check_mails_and_confirm(&client, filemail_into.as_path());
 
         // Now lookups using the mail address should work.
         check_mr_response(
@@ -1003,6 +991,21 @@ mod tests {
             &client,
             &format!("/pks/lookup?op=get&search=0x{}", keyid),
             &tpk);
+    }
+
+    fn check_mails_and_confirm(client: &Client, filemail_path: &Path) {
+        let confirm_re =
+            regex::bytes::Regex::new("https://domain(/vks/v1/verify[^ \t]*)")
+            .unwrap();
+        let confirm_mail = pop_mail(filemail_path).unwrap().unwrap();
+        let confirm_bytes = confirm_mail.message();
+        // eprintln!("{}", String::from_utf8_lossy(&confirm_bytes));
+        let confirm_link =
+            confirm_re.captures(&confirm_bytes).unwrap()
+            .get(1).unwrap().as_bytes();
+        let confirm_uri = String::from_utf8_lossy(confirm_link).to_string();
+        let response = client.get(&confirm_uri).dispatch();
+        assert_eq!(response.status(), Status::Ok);
     }
 
     #[test]
