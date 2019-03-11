@@ -28,9 +28,10 @@ extern crate hex;
 extern crate sequoia_openpgp as openpgp;
 use openpgp::{
     TPK,
+    tpk::UserIDBinding,
     PacketPile,
     armor::{Writer, Kind},
-    packet::{Signature, UserID, Tag},
+    packet::{UserID, Tag},
     parse::Parse,
     serialize::Serialize as OpenPgpSerialize,
 };
@@ -80,23 +81,22 @@ where
 }
 
 impl Verify {
-    pub fn new(
-        uid: &UserID, sig: &[Signature], fpr: Fingerprint,
-    ) -> Result<Self> {
+    pub fn new(uidb: &UserIDBinding, fpr: Fingerprint) -> Result<Self> {
         use openpgp::serialize::Serialize;
 
         let mut cur = Cursor::new(Vec::default());
-        uid.serialize(&mut cur)?;
+        uidb.userid().serialize(&mut cur)?;
 
-        for s in sig {
-            s.serialize(&mut cur)?;
-        }
+        // Serialize selfsigs and certifications, revocations are
+        // never stripped from the TPKs in the first place.
+        for s in uidb.selfsigs()          { s.serialize(&mut cur)? }
+        for s in uidb.certifications()    { s.serialize(&mut cur)? }
 
         Ok(Verify {
             created: time::now().to_timespec().sec,
             packets: cur.into_inner().into(),
             fpr: fpr,
-            email: Email::try_from(uid)?,
+            email: Email::try_from(uidb.userid())?,
         })
     }
 }
@@ -359,11 +359,7 @@ pub trait Database: Sync + Send {
                     if add_to_verified {
                         verified_uids.push(email.clone());
                     } else {
-                        let payload = Verify::new(
-                            uid.userid(),
-                            uid.selfsigs(),
-                            fpr.clone(),
-                        )?;
+                        let payload = Verify::new(uid, fpr.clone())?;
 
                         active_uids.push((
                             email.clone(),
