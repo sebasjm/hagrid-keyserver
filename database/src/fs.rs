@@ -531,6 +531,13 @@ mod tests {
     }
 
     #[test]
+    fn upload_revoked_tpk() {
+        let tmpdir = TempDir::new().unwrap();
+        let mut db = Filesystem::new(tmpdir.path()).unwrap();
+        test::test_upload_revoked_tpk(&mut db);
+    }
+
+    #[test]
     fn uid_revocation() {
         let tmpdir = TempDir::new().unwrap();
         let mut db = Filesystem::new(tmpdir.path()).unwrap();

@@ -487,6 +487,25 @@ pub fn test_kid_lookup<D: Database>(db: &mut D) {
     assert_eq!(raw1, raw3);
 }
 
+pub fn test_upload_revoked_tpk<D: Database>(db: &mut D) {
+    let str_uid1 = "Test A <test_a@example.com>";
+    let str_uid2 = "Test B <test_b@example.com>";
+    let (mut tpk, revocation) = TPKBuilder::default()
+        .add_userid(str_uid1)
+        .add_userid(str_uid2)
+        .generate()
+        .unwrap();
+    tpk = tpk.merge_packets(vec![revocation.into()]).unwrap();
+    match tpk.revoked(None) {
+        RevocationStatus::Revoked(_) => (),
+        _ => panic!("expected TPK to be revoked"),
+    }
+
+    // upload key
+    let tokens = db.merge_or_publish(tpk.clone()).unwrap();
+    assert!(tokens.is_empty());
+}
+
 pub fn test_uid_revocation<D: Database>(db: &mut D) {
     use std::{thread, time};
 

@@ -328,6 +328,12 @@ pub trait Database: Sync + Send {
         use std::collections::HashMap;
         use openpgp::RevocationStatus;
 
+        if let RevocationStatus::Revoked(_) = tpk.revoked(None) {
+            // Merge, but don't trigger any verifications.
+            self.merge(tpk)?;
+            return Ok(Vec::new());
+        }
+
         let fpr = Fingerprint::try_from(tpk.primary().fingerprint())?;
         let mut all_uids = Vec::default();
         let mut unverified_uids: HashMap<Email, Verify> = HashMap::new();
