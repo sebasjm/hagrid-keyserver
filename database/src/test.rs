@@ -676,19 +676,10 @@ pub fn test_same_email_2<D: Database>(db: &mut D) {
     let tokens = db.merge_or_publish(tpk.clone()).unwrap();
 
     // verify uid1
-    assert_eq!(tokens.len(), 2);
+    assert_eq!(tokens.len(), 1);
     assert!(db.verify_token(&tokens[0].1).unwrap().is_some());
 
-    // fetch by both user ids.  Even though we didn't verify uid2, the
-    // email is the same, and both should return exactly uid1.
-    assert_eq!(get_userids(&db.by_email(&email1).unwrap()[..]),
-               vec![ uid1.clone() ]);
-    assert_eq!(get_userids(&db.by_email(&email2).unwrap()[..]),
-               vec![ uid1.clone() ]);
-
-    assert!(db.verify_token(&tokens[1].1).unwrap().is_some());
-
-    // fetch by both user ids.  We've now verified uid2.
+    // fetch by both user ids.
     assert_eq!(get_userids(&db.by_email(&email1).unwrap()[..]),
                vec![ uid1.clone(), uid2.clone() ]);
     assert_eq!(get_userids(&db.by_email(&email2).unwrap()[..]),

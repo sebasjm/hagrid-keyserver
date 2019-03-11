@@ -98,6 +98,19 @@ impl Verify {
             email: Email::try_from(uidb.userid())?,
         })
     }
+
+    /// Extends the verification token by this userid binding.
+    fn extend(&mut self, uidb: &UserIDBinding) -> Result<()> {
+        use openpgp::serialize::Serialize;
+
+        uidb.userid().serialize(&mut self.packets)?;
+
+        // Serialize selfsigs and certifications, revocations are
+        // never stripped from the TPKs in the first place.
+        for s in uidb.selfsigs()          { s.serialize(&mut self.packets)? }
+        for s in uidb.certifications()    { s.serialize(&mut self.packets)? }
+        Ok(())
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -312,11 +325,12 @@ pub trait Database: Sync + Send {
     }
 
     fn merge_or_publish(&self, mut tpk: TPK) -> Result<Vec<(Email, String)>> {
+        use std::collections::HashMap;
         use openpgp::RevocationStatus;
 
         let fpr = Fingerprint::try_from(tpk.primary().fingerprint())?;
         let mut all_uids = Vec::default();
-        let mut active_uids = Vec::default();
+        let mut unverified_uids: HashMap<Email, Verify> = HashMap::new();
         let mut verified_uids = Vec::default();
 
         let _ = self.lock();
@@ -358,12 +372,20 @@ pub trait Database: Sync + Send {
                     if add_to_verified {
                         verified_uids.push(email.clone());
                     } else {
-                        let payload = Verify::new(uid, fpr.clone())?;
+                        // Hackaround mutable borrow in else.
+                        let updated =
+                            if let Some(token) = unverified_uids.get_mut(&email)
+                        {
+                            token.extend(uid)?;
+                            true
+                        } else {
+                            false
+                        };
 
-                        active_uids.push((
-                            email.clone(),
-                            self.new_verify_token(payload)?,
-                        ));
+                        if ! updated {
+                            unverified_uids.insert(
+                                email.clone(), Verify::new(uid, fpr.clone())?);
+                        }
                     }
                 }
             }
@@ -390,7 +412,11 @@ pub trait Database: Sync + Send {
             self.link_email(&email, &fpr)?;
         }
 
-        Ok(active_uids)
+        let mut tokens = Vec::new();
+        for (fp, verify) in unverified_uids.into_iter() {
+            tokens.push((fp, self.new_verify_token(verify)?));
+        }
+        Ok(tokens)
     }
 
     // if (uid, fpr) = pop-token(tok) {
