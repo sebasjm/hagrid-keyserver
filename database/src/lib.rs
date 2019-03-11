@@ -599,13 +599,14 @@ fn filter_userids<F>(tpk: &TPK, filter: F) -> Result<TPK>
 
     // Updates for UserIDs fulfilling `filter`.
     for uidb in tpk.userids() {
-        if ! filter(uidb.userid()) {
-            continue;
+        // Only include userids matching filter...
+        if filter(uidb.userid()) {
+            acc.push(uidb.userid().clone().into());
+            for s in uidb.selfsigs()          { acc.push(s.clone().into()) }
+            for s in uidb.certifications()    { acc.push(s.clone().into()) }
         }
 
-        acc.push(uidb.userid().clone().into());
-        for s in uidb.selfsigs()          { acc.push(s.clone().into()) }
-        for s in uidb.certifications()    { acc.push(s.clone().into()) }
+        // ... but always keep revocations.
         for s in uidb.self_revocations()  { acc.push(s.clone().into()) }
         for s in uidb.other_revocations() { acc.push(s.clone().into()) }
     }
