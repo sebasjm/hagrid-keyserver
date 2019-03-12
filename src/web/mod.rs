@@ -103,7 +103,7 @@ impl MyResponse {
         MyResponse::NotFound(
             Template::render(
                 tmpl.unwrap_or("index"),
-                templates::Index::new(
+                templates::General::new(
                     Some(message.into()
                          .unwrap_or_else(|| "Key not found".to_owned())))))
     }
@@ -152,13 +152,13 @@ mod templates {
     }
 
     #[derive(Serialize)]
-    pub struct Index {
+    pub struct General {
         pub error: Option<String>,
         pub commit: String,
         pub version: String,
     }
 
-    impl Index {
+    impl General {
         pub fn new(error: Option<String>) -> Self {
             Self {
                 error: error,
@@ -168,18 +168,9 @@ mod templates {
         }
     }
 
-    #[derive(Serialize)]
-    pub struct General {
-        pub commit: String,
-        pub version: String,
-    }
-
     impl Default for General {
         fn default() -> Self {
-            General {
-                version: env!("VERGEN_SEMVER").to_string(),
-                commit: env!("VERGEN_SHA_SHORT").to_string(),
-            }
+            Self::new(None)
         }
     }
 }
@@ -325,7 +316,7 @@ fn publish_verify(state: rocket::State<State>,
 
 #[get("/delete")]
 fn delete() -> result::Result<Template, Custom<String>> {
-    Ok(Template::render("delete", templates::Index::new(None)))
+    Ok(Template::render("delete", templates::General::default()))
 }
 
 #[derive(FromForm)]
@@ -404,7 +395,7 @@ fn files(file: PathBuf, state: rocket::State<State>) -> Option<NamedFile> {
 
 #[get("/")]
 fn root() -> Template {
-    Template::render("index", templates::Index::new(None))
+    Template::render("index", templates::General::default())
 }
 
 #[get("/about")]
