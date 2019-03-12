@@ -613,10 +613,7 @@ pub mod tests {
 
         let mut tpk_serialized = Vec::new();
         tpk.serialize(&mut tpk_serialized).unwrap();
-        let response = vks_publish_submit(&client, &tpk_serialized);
-        assert_eq!(response.status(), Status::SeeOther);
-        assert_eq!(response.headers().get_one("Location"),
-                   Some("/publish?ok"));
+        vks_publish_submit(&client, &tpk_serialized);
 
         // Prior to email confirmation, we should not be able to look
         // it up by email address.
@@ -673,10 +670,7 @@ pub mod tests {
         let mut tpk_serialized = Vec::new();
         tpk_0.serialize(&mut tpk_serialized).unwrap();
         tpk_1.serialize(&mut tpk_serialized).unwrap();
-        let response = vks_publish_submit(&client, &tpk_serialized);
-        assert_eq!(response.status(), Status::SeeOther);
-        assert_eq!(response.headers().get_one("Location"),
-                   Some("/publish?ok"));
+        vks_publish_submit(&client, &tpk_serialized);
 
         // Prior to email confirmation, we should not be able to look
         // them up by email address.
@@ -890,8 +884,7 @@ pub mod tests {
         Ok(None)
     }
 
-    fn vks_publish_submit<'a>(client: &'a Client, data: &[u8])
-                              -> rocket::local::LocalResponse<'a> {
+    fn vks_publish_submit<'a>(client: &'a Client, data: &[u8]) {
         let ct = ContentType::with_params(
             "multipart", "form-data",
             ("boundary", "---------------------------14733842173518794281682249499"));
@@ -911,10 +904,11 @@ pub mod tests {
         body.extend_from_slice(header);
         body.extend_from_slice(data);
         body.extend_from_slice(footer);
-        client.post("/publish")
+        let response = client.post("/publish")
             .header(ct)
             .body(&body[..])
-            .dispatch()
+            .dispatch();
+        assert_eq!(response.status(), Status::Ok);
     }
 
     fn vks_manage<'a>(client: &'a Client, search_term: &str) {

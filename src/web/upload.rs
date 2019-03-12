@@ -6,15 +6,11 @@ use multipart::server::save::SaveResult::*;
 use multipart::server::Multipart;
 
 use rocket::http::ContentType;
-use rocket::request::FlashMessage;
-use rocket::response::Redirect;
 use rocket::Data;
-use rocket_contrib::templates::Template;
-use rocket::response::Flash;
 
 use database::{Database, Polymorphic};
 use mail;
-use web::State;
+use web::{State, MyResponse};
 
 use std::io::Read;
 
@@ -30,52 +26,24 @@ mod template {
 }
 
 #[get("/publish")]
-pub fn publish(
-    flash: Option<FlashMessage>
-) -> Template {
-    if let Some(flash) = flash {
-        match flash.name() {
-            "success" => {
-                let emails: Vec<String> = serde_json::from_str(flash.msg()).unwrap();
-                let context = template::VerificationSent {
-                    emails: emails,
-                    version: env!("VERGEN_SEMVER").to_string(),
-                    commit: env!("VERGEN_SHA_SHORT").to_string(),
-                };
-
-                Template::render("publish_ok", context)
-            }
-            _ => show_error(flash.msg().to_owned())
-        }
-    } else {
-        let context = super::templates::General {
-            error: None,
-            version: env!("VERGEN_SEMVER").to_string(),
-            commit: env!("VERGEN_SHA_SHORT").to_string(),
-        };
-
-        Template::render("publish", context)
-    }
-}
-
-fn show_error(error: String) -> Template {
+pub fn publish() -> MyResponse {
     let context = super::templates::General {
-        error: Some(error),
+        error: None,
         version: env!("VERGEN_SEMVER").to_string(),
         commit: env!("VERGEN_SHA_SHORT").to_string(),
     };
 
-    Template::render("publish_err", context)
+    MyResponse::ok("publish", context)
 }
 
 #[post("/publish", data = "<data>")]
 pub fn publish_post(
     db: rocket::State<Polymorphic>, cont_type: &ContentType, data: Data,
     mail_service: rocket::State<mail::Service>, state: rocket::State<State>,
-) -> Flash<Redirect> {
+) -> MyResponse {
     match handle_upload(db, cont_type, data, Some(mail_service), state) {
         Ok(ok) => ok,
-        Err(err) => Flash::error(Redirect::to("/publish?err"), err.to_string()),
+        Err(err) => MyResponse::ise(err),
     }
 }
 
@@ -83,12 +51,17 @@ pub fn publish_post(
 pub fn handle_upload(
     db: rocket::State<Polymorphic>, cont_type: &ContentType, data: Data,
     mail_service: Option<rocket::State<mail::Service>>, state: rocket::State<State>,
-) -> Result<Flash<Redirect>> {
+) -> Result<MyResponse> {
     if cont_type.is_form_data() {
         // multipart/form-data
-        let (_, boundary) = cont_type.params().find(|&(k, _)| k == "boundary").ok_or_else(
-            || failure::err_msg("`Content-Type: multipart/form-data` boundary \
-                                 param not provided"))?;
+        let (_, boundary) =
+            match cont_type.params().find(|&(k, _)| k == "boundary") {
+                Some(v) => v,
+                None => return Ok(MyResponse::bad_request(
+                    "publish",
+                    failure::err_msg("`Content-Type: multipart/form-data` \
+                                      boundary param not provided"))),
+            };
 
         process_upload(boundary, data, db.inner(), mail_service, &state.domain)
     } else if cont_type.is_form() {
@@ -98,10 +71,7 @@ pub fn handle_upload(
         // application/x-www-form-urlencoded
         let mut buf = Vec::default();
 
-        std::io::copy(&mut data.open().take(UPLOAD_LIMIT), &mut buf).or_else(
-            |_| { Err(failure::err_msg(
-                "`Content-Type: application/x-www-form-urlencoded` not valid"))
-        })?;
+        std::io::copy(&mut data.open().take(UPLOAD_LIMIT), &mut buf)?;
 
         for item in FormItems::from(&*String::from_utf8_lossy(&buf)) {
             let (key, value) = item.key_value();
@@ -124,9 +94,11 @@ pub fn handle_upload(
             }
         }
 
-        Err(failure::err_msg("Not a PGP public key"))
+        Ok(MyResponse::bad_request("publish",
+                                   failure::err_msg("No keytext found")))
     } else {
-        Err(failure::err_msg("Content-Type not a form"))
+        Ok(MyResponse::bad_request("publish",
+                                   failure::err_msg("Bad Content-Type")))
     }
 }
 
@@ -134,7 +106,7 @@ fn process_upload(
     boundary: &str, data: Data, db: &Polymorphic,
     mail_service: Option<rocket::State<mail::Service>>,
     domain: &str,
-) -> Result<Flash<Redirect>> {
+) -> Result<MyResponse> {
     // saves all fields, any field longer than 10kB goes to a temporary directory
     // Entries could implement FromData though that would give zero control over
     // how the files are saved; Multipart would be a good impl candidate though
@@ -151,22 +123,25 @@ fn process_upload(
 
 fn process_multipart(entries: Entries, db: &Polymorphic,
                      mail_service: Option<rocket::State<mail::Service>>,
-                     domain: &str) -> Result<Flash<Redirect>> {
+                     domain: &str) -> Result<MyResponse> {
     match entries.fields.get("keytext") {
         Some(ent) if ent.len() == 1 => {
             let reader = ent[0].data.readable()?;
             process_key(reader, db, mail_service, domain)
         }
-        Some(_) | None => {
-            Err(failure::err_msg("Not a PGP public key"))
-        }
+        Some(_) =>
+            Ok(MyResponse::bad_request(
+                "publish", failure::err_msg("Multiple keytexts found"))),
+        None =>
+            Ok(MyResponse::bad_request(
+                "publish", failure::err_msg("No keytext found"))),
     }
 }
 
 fn process_key<R>(
     reader: R, db: &Polymorphic, mail_service: Option<rocket::State<mail::Service>>,
     domain: &str,
-) -> Result<Flash<Redirect>>
+) -> Result<MyResponse>
 where
     R: Read,
 {
@@ -174,9 +149,16 @@ where
     use sequoia_openpgp::tpk::TPKParser;
 
     // First, parse all TPKs and error out if one fails.
+    let parser = match TPKParser::from_reader(reader) {
+        Ok(p) => p,
+        Err(e) => return Ok(MyResponse::bad_request("publish", e)),
+    };
     let mut tpks = Vec::new();
-    for tpk in TPKParser::from_reader(reader)? {
-        tpks.push(tpk?);
+    for tpk in parser {
+        tpks.push(match tpk {
+            Ok(t) => t,
+            Err(e) => return Ok(MyResponse::bad_request("publish", e)),
+        });
     }
 
     let mut results: Vec<String> = vec!();
@@ -196,6 +178,11 @@ where
         }
     }
 
-    let json = serde_json::to_string(&results).unwrap();
-    Ok(Flash::success(Redirect::to("/publish?ok"), json))
+    let context = template::VerificationSent {
+        emails: results,
+        version: env!("VERGEN_SEMVER").to_string(),
+        commit: env!("VERGEN_SHA_SHORT").to_string(),
+    };
+
+    Ok(MyResponse::ok("publish_ok", context))
 }
