@@ -266,9 +266,9 @@ fn key_has_uids(state: &State, db: &Polymorphic, query: &Query)
 }
 
 #[get("/vks/v1/by-fingerprint/<fpr>")]
-fn by_fingerprint(state: rocket::State<State>,
-                  db: rocket::State<Polymorphic>,
-                  fpr: String) -> MyResponse {
+fn vks_v1_by_fingerprint(state: rocket::State<State>,
+                         db: rocket::State<Polymorphic>,
+                         fpr: String) -> MyResponse {
     let query = match Fingerprint::from_str(&fpr) {
         Ok(fpr) => Query::ByFingerprint(fpr),
         Err(e) => return MyResponse::ise(e),
@@ -278,9 +278,9 @@ fn by_fingerprint(state: rocket::State<State>,
 }
 
 #[get("/vks/v1/by-email/<email>")]
-fn by_email(state: rocket::State<State>,
-            db: rocket::State<Polymorphic>,
-            email: String) -> MyResponse {
+fn vks_v1_by_email(state: rocket::State<State>,
+                   db: rocket::State<Polymorphic>,
+                   email: String) -> MyResponse {
     let query = match Email::from_str(&email) {
         Ok(email) => Query::ByEmail(email),
         Err(e) => return MyResponse::ise(e),
@@ -290,9 +290,9 @@ fn by_email(state: rocket::State<State>,
 }
 
 #[get("/vks/v1/by-keyid/<kid>")]
-fn by_keyid(state: rocket::State<State>,
-            db: rocket::State<Polymorphic>,
-            kid: String) -> MyResponse {
+fn vks_v1_by_keyid(state: rocket::State<State>,
+                   db: rocket::State<Polymorphic>,
+                   kid: String) -> MyResponse {
     let query = match KeyID::from_str(&kid) {
         Ok(keyid) => Query::ByKeyID(keyid),
         Err(e) => return MyResponse::ise(e),
@@ -425,24 +425,23 @@ fn rocket_factory(rocket: rocket::Rocket) -> Result<rocket::Rocket> {
     let routes = routes![
         // infra
         root,
+        about,
+        apidoc,
+        files,
+        // VKSv1
+        vks_v1_by_email,
+        vks_v1_by_fingerprint,
+        vks_v1_by_keyid,
+        // User interaction.
         manage,
         manage_post,
-        files,
-        // nginx-supported lookup
-        by_email,
-        by_fingerprint,
-        by_keyid,
         upload::vks_publish,
         upload::vks_publish_submit,
-        // verification & deletion
         verify,
         confirm,
         // HKP
         hkp::pks_lookup,
         hkp::pks_add,
-        // about
-        about,
-        apidoc,
     ];
 
     use database::{Filesystem, Polymorphic};
