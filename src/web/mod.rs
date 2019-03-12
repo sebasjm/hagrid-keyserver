@@ -323,9 +323,9 @@ fn verify(state: rocket::State<State>,
     }
 }
 
-#[get("/vks/v1/manage")]
-fn manage() -> result::Result<Template, Custom<String>> {
-    Ok(Template::render("manage", templates::Index::new(None)))
+#[get("/delete")]
+fn delete() -> result::Result<Template, Custom<String>> {
+    Ok(Template::render("delete", templates::Index::new(None)))
 }
 
 #[derive(FromForm)]
@@ -333,8 +333,8 @@ struct ManageRequest {
     search_term: String,
 }
 
-#[post("/vks/v1/manage", data="<request>")]
-fn manage_post(state: rocket::State<State>,
+#[post("/delete", data="<request>")]
+fn delete_post(state: rocket::State<State>,
                db: rocket::State<Polymorphic>,
                mail_service: rocket::State<mail::Service>,
                request: Form<ManageRequest>) -> MyResponse {
@@ -347,7 +347,7 @@ fn manage_post(state: rocket::State<State>,
     let tpk = match db.lookup(&query) {
         Ok(Some(tpk)) => tpk,
         Ok(None) => return MyResponse::not_found(
-            Some("manage"),
+            Some("delete"),
             Some(format!("No such key found for {:?}", request.search_term))),
         Err(e) => return MyResponse::ise(e),
     };
@@ -371,8 +371,8 @@ fn manage_post(state: rocket::State<State>,
     }
 }
 
-#[get("/vks/v1/confirm/<token>")]
-fn confirm(
+#[get("/delete/<token>")]
+fn delete_confirm(
     db: rocket::State<Polymorphic>, token: String,
 ) -> result::Result<Template, Custom<String>> {
     match db.confirm_deletion(&token) {
@@ -383,7 +383,7 @@ fn confirm(
                 commit: env!("VERGEN_SHA_SHORT").to_string(),
             };
 
-            Ok(Template::render("confirm", context))
+            Ok(Template::render("deletion-result", context))
         }
         Ok(false) | Err(_) => {
             let context = templates::Confirm {
@@ -392,7 +392,7 @@ fn confirm(
                 commit: env!("VERGEN_SHA_SHORT").to_string(),
             };
 
-            Ok(Template::render("confirm", context))
+            Ok(Template::render("deletion-result", context))
         }
     }
 }
@@ -433,12 +433,12 @@ fn rocket_factory(rocket: rocket::Rocket) -> Result<rocket::Rocket> {
         vks_v1_by_fingerprint,
         vks_v1_by_keyid,
         // User interaction.
-        manage,
-        manage_post,
+        delete,
+        delete_post,
+        delete_confirm,
         upload::vks_publish,
         upload::vks_publish_submit,
         verify,
-        confirm,
         // HKP
         hkp::pks_lookup,
         hkp::pks_add,
@@ -462,8 +462,8 @@ fn rocket_factory(rocket: rocket::Rocket) -> Result<rocket::Rocket> {
     // Mail service
     let template_dir: PathBuf = rocket.config().get_str("template_dir")?.into();
     let from = rocket.config().get_str("from")?.to_string();
-    let confirm_html = template_dir.join("confirm-email-html.hbs");
-    let confirm_txt = template_dir.join("confirm-email-txt.hbs");
+    let confirm_html = template_dir.join("deletion-email-html.hbs");
+    let confirm_txt = template_dir.join("deletion-email-txt.hbs");
     let verify_html = template_dir.join("verify-email-html.hbs");
     let verify_txt = template_dir.join("verify-email-txt.hbs");
 
@@ -847,7 +847,7 @@ pub mod tests {
 
     fn check_mails_and_confirm_deletion(client: &Client, filemail_path: &Path) {
         let confirm_re =
-            regex::bytes::Regex::new("https://domain(/vks/v1/confirm[^ \t\n]*)")
+            regex::bytes::Regex::new("https://domain(/delete/[^ \t\n]*)")
             .unwrap();
         let confirm_mail = pop_mail(filemail_path).unwrap().unwrap();
         let confirm_bytes = confirm_mail.message();
@@ -907,7 +907,7 @@ pub mod tests {
         let encoded = ::url::form_urlencoded::Serializer::new(String::new())
             .append_pair("search_term", search_term)
             .finish();
-        let response = client.post("/vks/v1/manage")
+        let response = client.post("/delete")
             .header(ContentType::Form)
             .body(encoded.as_bytes())
             .dispatch();
