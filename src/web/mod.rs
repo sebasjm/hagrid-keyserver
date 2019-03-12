@@ -586,6 +586,18 @@ pub mod tests {
         assert_eq!(response.content_type(), Some(ContentType::HTML));
         assert!(response.body_string().unwrap().contains("/vks/v1/by-keyid"));
 
+        // Check that we see the upload form.
+        let mut response = client.get("/publish").dispatch();
+        assert_eq!(response.status(), Status::Ok);
+        assert_eq!(response.content_type(), Some(ContentType::HTML));
+        assert!(response.body_string().unwrap().contains("upload"));
+
+        // Check that we see the deletion form.
+        let mut response = client.get("/delete").dispatch();
+        assert_eq!(response.status(), Status::Ok);
+        assert_eq!(response.content_type(), Some(ContentType::HTML));
+        assert!(response.body_string().unwrap().contains("email"));
+
         assert_consistency(client.rocket());
     }
 
