@@ -18,8 +18,6 @@ use web::State;
 
 use std::io::Read;
 
-use super::MyResponse;
-
 const UPLOAD_LIMIT: u64 = 1024 * 1024; // 1 MiB.
 
 mod template {
@@ -87,24 +85,14 @@ pub fn vks_publish_submit(
     db: rocket::State<Polymorphic>, cont_type: &ContentType, data: Data,
     mail_service: rocket::State<mail::Service>, state: rocket::State<State>,
 ) -> Flash<Redirect> {
-    match do_upload_hkp(db, cont_type, data, Some(mail_service), state) {
+    match handle_upload(db, cont_type, data, Some(mail_service), state) {
         Ok(ok) => ok,
         Err(err) => Flash::error(Redirect::to("/vks/v1/publish?err"), err.to_string()),
     }
 }
 
-#[post("/pks/add", data = "<data>")]
-pub fn pks_add(db: rocket::State<Polymorphic>, cont_type: &ContentType, data: Data,
-               state: rocket::State<State>)
-               -> MyResponse {
-    match do_upload_hkp(db, cont_type, data, None, state) {
-        Ok(_) => MyResponse::plain("Ok".into()),
-        Err(err) => MyResponse::ise(err),
-    }
-}
-
 // signature requires the request to have a `Content-Type`
-fn do_upload_hkp(
+pub fn handle_upload(
     db: rocket::State<Polymorphic>, cont_type: &ContentType, data: Data,
     mail_service: Option<rocket::State<mail::Service>>, state: rocket::State<State>,
 ) -> Result<Flash<Redirect>> {
