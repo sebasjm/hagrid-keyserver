@@ -15,14 +15,14 @@ mod context {
     #[derive(Serialize, Clone)]
     pub struct Verification {
         pub primary_fp: String,
-        pub token: String,
+        pub uri: String,
         pub userid: String,
         pub domain: String,
     }
 
     #[derive(Serialize, Clone)]
     pub struct Deletion {
-        pub token: String,
+        pub uri: String,
         pub domain: String,
     }
 }
@@ -64,7 +64,7 @@ impl Service {
                              -> Result<()> {
         let ctx = context::Verification {
             primary_fp: tpk.fingerprint().to_string(),
-            token: token.to_string(),
+            uri: format!("https://{}/publish/{}", domain, token),
             userid: userid.to_string(),
             domain: domain.to_string(),
         };
@@ -81,7 +81,7 @@ impl Service {
                              domain: &str)
                              -> Result<()> {
         let ctx = context::Deletion {
-            token: token.to_string(),
+            uri: format!("https://{}/delete/{}", domain, token),
             domain: domain.to_string(),
         };
 
