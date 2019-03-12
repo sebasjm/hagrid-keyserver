@@ -38,6 +38,8 @@ pub enum MyResponse {
     ServerError(Template),
     #[response(status = 404, content_type = "html")]
     NotFound(Template),
+    #[response(status = 400, content_type = "html")]
+    BadRequest(Template),
 }
 
 impl MyResponse {
@@ -94,6 +96,15 @@ impl MyResponse {
             commit: env!("VERGEN_SHA_SHORT").to_string(),
         };
         MyResponse::ServerError(Template::render("500", ctx))
+    }
+
+    pub fn bad_request(template: &'static str, e: failure::Error) -> Self {
+        let ctx = templates::General {
+            error: Some(format!("{}", e)),
+            version: env!("VERGEN_SEMVER").to_string(),
+            commit: env!("VERGEN_SHA_SHORT").to_string(),
+        };
+        MyResponse::BadRequest(Template::render(template, ctx))
     }
 
     pub fn not_found<M>(tmpl: Option<&'static str>, message: M)
@@ -262,7 +273,7 @@ fn vks_v1_by_fingerprint(state: rocket::State<State>,
                          fpr: String) -> MyResponse {
     let query = match Fingerprint::from_str(&fpr) {
         Ok(fpr) => Query::ByFingerprint(fpr),
-        Err(e) => return MyResponse::ise(e),
+        Err(e) => return MyResponse::bad_request("index", e),
     };
 
     key_to_response(state, db, fpr, query, true)
@@ -274,7 +285,7 @@ fn vks_v1_by_email(state: rocket::State<State>,
                    email: String) -> MyResponse {
     let query = match Email::from_str(&email) {
         Ok(email) => Query::ByEmail(email),
-        Err(e) => return MyResponse::ise(e),
+        Err(e) => return MyResponse::bad_request("index", e),
     };
 
     key_to_response(state, db, email, query, true)
@@ -286,7 +297,7 @@ fn vks_v1_by_keyid(state: rocket::State<State>,
                    kid: String) -> MyResponse {
     let query = match KeyID::from_str(&kid) {
         Ok(keyid) => Query::ByKeyID(keyid),
-        Err(e) => return MyResponse::ise(e),
+        Err(e) => return MyResponse::bad_request("index", e),
     };
 
     key_to_response(state, db, kid, query, true)
@@ -333,7 +344,7 @@ fn delete_post(state: rocket::State<State>,
 
     let query = match request.search_term.parse() {
         Ok(query) => query,
-        Err(e) => return MyResponse::ise(e),
+        Err(e) => return MyResponse::bad_request("delete", e),
     };
     let tpk = match db.lookup(&query) {
         Ok(Some(tpk)) => tpk,
