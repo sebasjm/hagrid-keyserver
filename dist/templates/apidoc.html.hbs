@@ -83,8 +83,9 @@
     Keys may be submitted using a POST request
     to <code>/pks/add</code>, the body of the request being
     a <code>application/x-www-form-urlencoded</code> query.
-    <code>keytext</code> must be the key to submit, either <em>ASCII
-      Armored</em> or not.
+    <code>keytext</code> must be the keys to submit, which must
+    be <em>ASCII Armored</em>.  More than one key may be submitted in
+    one request.</p>
   </p>
 
   <h4>Limitations</h4>

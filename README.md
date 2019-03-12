@@ -61,7 +61,8 @@ keys at all.
 
 Keys may be submitted using a POST request to `/pks/add`, the body of
 the request being a `application/x-www-form-urlencoded` query.
-`keytext` must be the key to submit, either *ASCII Armored* or not.
+`keytext` must be the keys to submit, which must be *ASCII Armored*.
+More than one key may be submitted in one request.
 
 #### Limitations
 
