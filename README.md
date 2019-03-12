@@ -102,6 +102,14 @@ Retrieves the key with the given *User ID*.  Only exact matches are
 accepted.  Lookup by *User ID* requires opt-in by the key's owner.
 The returned key is *ASCII Armored*.
 
+#### `POST /vks/v1/publish`
+
+Keys may be submitted using a POST request to `/vks/v1/publish`, the
+body of the request being a `multipart/form-data` query.  `keytext`
+must be the keys to submit, either *ASCII Armored* or not.  More than
+one key may be submitted in one request.  Hagrid will send
+verification emails to every non-expired *User ID*.
+
 Building
 --------
 

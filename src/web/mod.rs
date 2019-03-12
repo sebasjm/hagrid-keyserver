@@ -434,12 +434,12 @@ fn rocket_factory(rocket: rocket::Rocket) -> Result<rocket::Rocket> {
         vks_v1_by_email,
         vks_v1_by_fingerprint,
         vks_v1_by_keyid,
+        upload::vks_v1_publish_post,
         // User interaction.
         delete,
         delete_post,
         delete_confirm,
         upload::publish,
-        upload::publish_post,
         publish_verify,
         // HKP
         hkp::pks_lookup,
@@ -904,7 +904,7 @@ pub mod tests {
         body.extend_from_slice(header);
         body.extend_from_slice(data);
         body.extend_from_slice(footer);
-        let response = client.post("/publish")
+        let response = client.post("/vks/v1/publish")
             .header(ct)
             .body(&body[..])
             .dispatch();

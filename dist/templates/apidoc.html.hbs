@@ -37,6 +37,17 @@
     by the key's owner.  The returned key is <em>ASCII Armored</em>.
   </p>
 
+  <h4><code>POST /vks/v1/publish</code></h4>
+
+  <p>
+    Keys may be submitted using a POST request
+    to <code>/vks/v1/publish</code>, the body of the request being
+    a <code>multipart/form-data</code> query.  <code>keytext</code>
+    must be the keys to submit, either <em>ASCII Armored</em> or not.
+    More than one key may be submitted in one request.  Hagrid will
+    send verification emails to every non-expired <em>User ID</em>.
+  </p>
+
   <h3>HPK interface</h3>
   <p>
     Hagrid implements a subset of

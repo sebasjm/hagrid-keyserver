@@ -36,8 +36,8 @@ pub fn publish() -> MyResponse {
     MyResponse::ok("publish", context)
 }
 
-#[post("/publish", data = "<data>")]
-pub fn publish_post(
+#[post("/vks/v1/publish", data = "<data>")]
+pub fn vks_v1_publish_post(
     db: rocket::State<Polymorphic>, cont_type: &ContentType, data: Data,
     mail_service: rocket::State<mail::Service>, state: rocket::State<State>,
 ) -> MyResponse {

@@ -2,7 +2,7 @@
   <p>After uploading your key we will send a verification link to each email address we find inside. Clicking that link will make your key searchable by that email address.</p>
 
   <div class="row">
-    <form action="/publish" method="POST" enctype="multipart/form-data">
+    <form action="/vks/v1/publish" method="POST" enctype="multipart/form-data">
       <div class="upload">
         <input type="hidden" name="csrf" value="{{csrf}}" />
         <input type="file" id="keytext" name="keytext" autofocus class="fileUpload" placeholder="Your public key"/>
