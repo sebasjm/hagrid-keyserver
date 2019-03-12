@@ -22,19 +22,6 @@ const UPLOAD_LIMIT: u64 = 1024 * 1024; // 1 MiB.
 
 mod template {
     #[derive(Serialize)]
-    pub struct Upload {
-        pub commit: String,
-        pub version: String,
-    }
-
-    #[derive(Serialize)]
-    pub struct VerificationError {
-        pub error: String,
-        pub commit: String,
-        pub version: String,
-    }
-
-    #[derive(Serialize)]
     pub struct VerificationSent {
         pub emails: Vec<String>,
         pub commit: String,
@@ -61,7 +48,8 @@ pub fn publish(
             _ => show_error(flash.msg().to_owned())
         }
     } else {
-        let context = template::Upload {
+        let context = super::templates::General {
+            error: None,
             version: env!("VERGEN_SEMVER").to_string(),
             commit: env!("VERGEN_SHA_SHORT").to_string(),
         };
@@ -71,8 +59,8 @@ pub fn publish(
 }
 
 fn show_error(error: String) -> Template {
-    let context = template::VerificationError {
-        error,
+    let context = super::templates::General {
+        error: Some(error),
         version: env!("VERGEN_SEMVER").to_string(),
         commit: env!("VERGEN_SHA_SHORT").to_string(),
     };
