@@ -17,7 +17,6 @@ use mail;
 use database::{Database, Polymorphic, Query};
 use database::types::{Email, Fingerprint, KeyID};
 use Result;
-use Opt;
 
 use std::result;
 use std::str::FromStr;
@@ -627,51 +626,11 @@ fn apidoc() -> Template {
     Template::render("apidoc", templates::General::default())
 }
 
-pub fn serve(opt: &Opt, db: Polymorphic) -> Result<()> {
-    use rocket::config::{Config, Environment};
-    use std::str::FromStr;
-
-    let (addr, port) = match opt.listen.find(':') {
-        Some(p) => {
-            let addr = opt.listen[0..p].to_string();
-            let port = if p < opt.listen.len() - 1 {
-                u16::from_str(&opt.listen[p + 1..]).ok().unwrap_or(8080)
-            } else {
-                8080
-            };
-
-            (addr, port)
-        }
-        None => (opt.listen.to_string(), 8080),
-    };
-
-    let config = Config::build(Environment::Staging)
-        .address(addr)
-        .port(port)
-        .workers(2)
-        .root(opt.base.clone())
-        .extra(
-            "template_dir",
-            opt.base
-                .join("templates")
-                .to_str()
-                .ok_or(failure::err_msg("Template path invalid"))?,
-        )
-        .extra(
-            "state_dir",
-            opt.base.to_str()
-                .ok_or(failure::err_msg("Static path invalid"))?,
-        )
-        .extra("domain", opt.domain.clone())
-        .extra("from", opt.from.clone())
-        .extra("x-accel-redirect", opt.x_accel_redirect)
-        .finalize()?;
-
-    rocket_factory(rocket::custom(config), db).launch();
-    Ok(())
+pub fn serve() -> Result<()> {
+    Err(rocket_factory(rocket::ignite())?.launch().into())
 }
 
-fn rocket_factory(rocket: rocket::Rocket, db: Polymorphic) -> rocket::Rocket {
+fn rocket_factory(rocket: rocket::Rocket) -> Result<rocket::Rocket> {
     let routes = routes![
         // infra
         root,
@@ -695,7 +654,11 @@ fn rocket_factory(rocket: rocket::Rocket, db: Polymorphic) -> rocket::Rocket {
         apidoc,
     ];
 
-    rocket
+    use database::{Filesystem, Polymorphic};
+    let db = Polymorphic::Filesystem(
+        Filesystem::new(&PathBuf::from(rocket.config().get_str("state_dir")?))?
+    );
+    Ok(rocket
         .attach(Template::fairing())
         .attach(AdHoc::on_attach("state", |rocket| {
             let state_dir: PathBuf = rocket.config().get_str("state_dir")
@@ -748,7 +711,7 @@ fn rocket_factory(rocket: rocket::Rocket, db: Polymorphic) -> rocket::Rocket {
             }))
         }))
         .mount("/", routes)
-        .manage(db)
+        .manage(db))
 }
 
 #[cfg(test)]
@@ -819,10 +782,7 @@ mod tests {
     #[test]
     fn basics() {
         let (_tmpdir, config) = configuration().unwrap();
-
-        let db = Polymorphic::Filesystem(
-            Filesystem::new(config.root().unwrap().to_path_buf()).unwrap());
-        let rocket = rocket_factory(rocket::custom(config), db);
+        let rocket = rocket_factory(rocket::custom(config)).unwrap();
         let client = Client::new(rocket).expect("valid rocket instance");
 
         // Check that we see the landing page.
@@ -854,9 +814,7 @@ mod tests {
         // eprintln!("LEAKING: {:?}", tmpdir);
         // ::std::mem::forget(_tmpdir);
 
-        let db = Polymorphic::Filesystem(
-            Filesystem::new(config.root().unwrap().to_path_buf()).unwrap());
-        let rocket = rocket_factory(rocket::custom(config), db);
+        let rocket = rocket_factory(rocket::custom(config)).unwrap();
         let client = Client::new(rocket).expect("valid rocket instance");
 
         // Generate a key and upload it.
@@ -911,9 +869,7 @@ mod tests {
         let (tmpdir, config) = configuration().unwrap();
         let filemail_into = tmpdir.path().join("filemail");
 
-        let db = Polymorphic::Filesystem(
-            Filesystem::new(config.root().unwrap().to_path_buf()).unwrap());
-        let rocket = rocket_factory(rocket::custom(config), db);
+        let rocket = rocket_factory(rocket::custom(config)).unwrap();
         let client = Client::new(rocket).expect("valid rocket instance");
 
         // Generate two keys and upload them.
@@ -1086,9 +1042,7 @@ mod tests {
         // eprintln!("LEAKING: {:?}", tmpdir);
         // ::std::mem::forget(tmpdir);
 
-        let db = Polymorphic::Filesystem(
-            Filesystem::new(config.root().unwrap().to_path_buf()).unwrap());
-        let rocket = rocket_factory(rocket::custom(config), db);
+        let rocket = rocket_factory(rocket::custom(config)).unwrap();
         let client = Client::new(rocket).expect("valid rocket instance");
 
         // Generate a key and upload it.
@@ -1140,9 +1094,7 @@ mod tests {
         let (tmpdir, config) = configuration().unwrap();
         let filemail_into = tmpdir.path().join("filemail");
 
-        let db = Polymorphic::Filesystem(
-            Filesystem::new(config.root().unwrap().to_path_buf()).unwrap());
-        let rocket = rocket_factory(rocket::custom(config), db);
+        let rocket = rocket_factory(rocket::custom(config)).unwrap();
         let client = Client::new(rocket).expect("valid rocket instance");
 
         // Generate two keys and upload them.

@@ -16,13 +16,14 @@ keys, user IDs and tokens. To run it, supply the absolute path to where you
 want the database to live and the absolute path to the template directory.
 
 ```bash
-cargo run --bin hagrid -- dist
+cp Rocket.toml.dist Rocket.toml
+cargo run --bin hagrid
 ```
 
 This will spawn a web server listening on port 8080.
 
 Hagrid uses `sendmail` for mailing, so you also need a working local mailer
-setup. The FROM field of the mails can be configured with the `-F` switch.
+setup.
 
 Usage
 -----
@@ -125,20 +126,20 @@ After compilation a binary is placed in `target/release/` called
 cp target/release/hagrid /usr/local/bin
 ```
 
-To deploy the key server copy all
-directories under `public/` to a writable location. Then start the server with
-the _absolute_ path to the directory as argument:
+To deploy the key server copy all directories under `dist/` to a
+writable location, and create a suitable configuration file.
 
 ```bash
 mkdir /var/lib/hagrid
 cp -R dist/* /var/lib/hagrid
-hagrid /var/lib/hagrid
+cp Rocket.toml.dist /var/lib/hagrid/Rocket.toml
+$EDITOR /var/lib/hagrid/Rocket.toml
+/usr/bin/env --chdir=/var/lib/hagrid ROCKET_ENV=production hagrid
 ```
 
-This will spawn the server in foreground, listening on `0.0.0.0:8080`. The
-`--listen` argument can be used to change port and listen address. The server
-will put all keys and runtime data under the base folder (`/var/lib/hagrid`
-in the above example).
+This will spawn the server in foreground.  The server will put all
+keys and runtime data under the base folder (`/var/lib/hagrid` in the
+above example).
 
 Reverse Proxy
 -------------

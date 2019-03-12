@@ -1,4 +1,4 @@
-/node_modules
+/Rocket.toml
 /target
 **/*.rs.bk
 /dist/public/by-*
