@@ -590,14 +590,8 @@ pub mod tests {
 
     #[test]
     fn upload() {
-        let (tmpdir, config) = configuration().unwrap();
+        let (tmpdir, client) = client().unwrap();
         let filemail_into = tmpdir.path().join("filemail");
-
-        // eprintln!("LEAKING: {:?}", tmpdir);
-        // ::std::mem::forget(_tmpdir);
-
-        let rocket = rocket_factory(rocket::custom(config)).unwrap();
-        let client = Client::new(rocket).expect("valid rocket instance");
 
         // Generate a key and upload it.
         let (tpk, _) = TPKBuilder::autocrypt(
@@ -626,22 +620,7 @@ pub mod tests {
         check_mails_and_confirm(&client, filemail_into.as_path());
 
         // Now lookups using the mail address should work.
-        check_mr_response(
-            &client,
-            "/vks/v1/by-email/foo@invalid.example.com",
-            &tpk, 1);
-        check_mr_response(
-            &client,
-            "/vks/v1/by-email/foo%40invalid.example.com",
-            &tpk, 1);
-        check_mr_response(
-            &client,
-            "/pks/lookup?op=get&options=mr&search=foo@invalid.example.com",
-            &tpk, 1);
-        check_hr_response(
-            &client,
-            "/pks/lookup?op=get&search=foo@invalid.example.com",
-            &tpk);
+        check_responses_by_email(&client, "foo@invalid.example.com", &tpk);
 
         assert_consistency(client.rocket());
     }
@@ -689,14 +668,8 @@ pub mod tests {
         check_mails_and_confirm(&client, filemail_into.as_path());
 
         // Now lookups using the mail address should work.
-        check_mr_response(
-            &client,
-            "/vks/v1/by-email/foo@invalid.example.com",
-            &tpk_0, 1);
-        check_mr_response(
-            &client,
-            "/vks/v1/by-email/bar@invalid.example.com",
-            &tpk_1, 1);
+        check_responses_by_email(&client, "foo@invalid.example.com", &tpk_0);
+        check_responses_by_email(&client, "bar@invalid.example.com", &tpk_1);
 
         assert_consistency(client.rocket());
     }
@@ -707,7 +680,7 @@ pub mod tests {
         assert_eq!(response.status(), Status::NotFound);
     }
 
-    /// Asserts that lookups by the given address 404.
+    /// Asserts that lookups by the given email 404.
     pub fn check_null_responses_by_email(client: &Client, addr: &str) {
         check_null_response(
             &client, &format!("/vks/v1/by-email/{}", addr));
@@ -716,6 +689,26 @@ pub mod tests {
         check_null_response(
             &client, &format!("/pks/lookup?op=get&options=mr&search={}",
                               addr));
+    }
+
+    /// Asserts that lookups by the given email are successful.
+    pub fn check_responses_by_email(client: &Client, addr: &str, tpk: &TPK) {
+        check_mr_response(
+            &client,
+            &format!("/vks/v1/by-email/{}", addr),
+            &tpk, 1);
+        check_mr_response(
+            &client,
+            &format!("/vks/v1/by-email/{}", addr.replace("@", "%40")),
+            &tpk, 1);
+        check_mr_response(
+            &client,
+            &format!("/pks/lookup?op=get&options=mr&search={}", addr),
+            &tpk, 1);
+        check_hr_response(
+            &client,
+            &format!("/pks/lookup?op=get&search={}", addr),
+            &tpk);
     }
 
     /// Asserts that the given URI returns a TPK matching the given
