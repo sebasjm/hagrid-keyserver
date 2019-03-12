@@ -301,10 +301,10 @@ fn vks_v1_by_keyid(state: rocket::State<State>,
     key_to_response(state, db, kid, query, true)
 }
 
-#[get("/vks/v1/verify/<token>")]
-fn verify(state: rocket::State<State>,
-          db: rocket::State<Polymorphic>,
-          token: String) -> MyResponse {
+#[get("/publish/<token>")]
+fn publish_verify(state: rocket::State<State>,
+                  db: rocket::State<Polymorphic>,
+                  token: String) -> MyResponse {
     match db.verify_token(&token) {
         Ok(Some((userid, fpr))) => {
             let context = templates::Verify {
@@ -316,7 +316,7 @@ fn verify(state: rocket::State<State>,
                 commit: env!("VERGEN_SHA_SHORT").to_string(),
             };
 
-            MyResponse::ok("verify", context)
+            MyResponse::ok("publish-result", context)
         }
         Ok(None) => MyResponse::not_found(Some("generic-error"), None),
         Err(e) => MyResponse::ise(e),
@@ -436,9 +436,9 @@ fn rocket_factory(rocket: rocket::Rocket) -> Result<rocket::Rocket> {
         delete,
         delete_post,
         delete_confirm,
-        upload::vks_publish,
-        upload::vks_publish_submit,
-        verify,
+        upload::publish,
+        upload::publish_post,
+        publish_verify,
         // HKP
         hkp::pks_lookup,
         hkp::pks_add,
@@ -464,8 +464,8 @@ fn rocket_factory(rocket: rocket::Rocket) -> Result<rocket::Rocket> {
     let from = rocket.config().get_str("from")?.to_string();
     let confirm_html = template_dir.join("deletion-email-html.hbs");
     let confirm_txt = template_dir.join("deletion-email-txt.hbs");
-    let verify_html = template_dir.join("verify-email-html.hbs");
-    let verify_txt = template_dir.join("verify-email-txt.hbs");
+    let verify_html = template_dir.join("publish-email-html.hbs");
+    let verify_txt = template_dir.join("publish-email-txt.hbs");
 
     let mut handlebars = Handlebars::new();
     handlebars.register_template_file("confirm-html", confirm_html)?;
@@ -602,7 +602,7 @@ pub mod tests {
         let response = vks_publish_submit(&client, &tpk_serialized);
         assert_eq!(response.status(), Status::SeeOther);
         assert_eq!(response.headers().get_one("Location"),
-                   Some("/vks/v1/publish?ok"));
+                   Some("/publish?ok"));
 
         // Prior to email confirmation, we should not be able to look
         // it up by email address.
@@ -662,7 +662,7 @@ pub mod tests {
         let response = vks_publish_submit(&client, &tpk_serialized);
         assert_eq!(response.status(), Status::SeeOther);
         assert_eq!(response.headers().get_one("Location"),
-                   Some("/vks/v1/publish?ok"));
+                   Some("/publish?ok"));
 
         // Prior to email confirmation, we should not be able to look
         // them up by email address.
@@ -832,7 +832,7 @@ pub mod tests {
 
     fn check_mails_and_verify_email(client: &Client, filemail_path: &Path) {
         let confirm_re =
-            regex::bytes::Regex::new("https://domain(/vks/v1/verify[^ \t\n]*)")
+            regex::bytes::Regex::new("https://domain(/publish/[^ \t\n]*)")
             .unwrap();
         let confirm_mail = pop_mail(filemail_path).unwrap().unwrap();
         let confirm_bytes = confirm_mail.message();
@@ -897,7 +897,7 @@ pub mod tests {
         body.extend_from_slice(header);
         body.extend_from_slice(data);
         body.extend_from_slice(footer);
-        client.post("/vks/v1/publish/submit")
+        client.post("/publish")
             .header(ct)
             .body(&body[..])
             .dispatch()

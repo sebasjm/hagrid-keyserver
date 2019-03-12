@@ -42,8 +42,8 @@ mod template {
     }
 }
 
-#[get("/vks/v1/publish")]
-pub fn vks_publish(
+#[get("/publish")]
+pub fn publish(
     flash: Option<FlashMessage>
 ) -> Template {
     if let Some(flash) = flash {
@@ -56,7 +56,7 @@ pub fn vks_publish(
                     commit: env!("VERGEN_SHA_SHORT").to_string(),
                 };
 
-                Template::render("vks_publish_ok", context)
+                Template::render("publish_ok", context)
             }
             _ => show_error(flash.msg().to_owned())
         }
@@ -66,7 +66,7 @@ pub fn vks_publish(
             commit: env!("VERGEN_SHA_SHORT").to_string(),
         };
 
-        Template::render("vks_publish", context)
+        Template::render("publish", context)
     }
 }
 
@@ -77,17 +77,17 @@ fn show_error(error: String) -> Template {
         commit: env!("VERGEN_SHA_SHORT").to_string(),
     };
 
-    Template::render("vks_publish_err", context)
+    Template::render("publish_err", context)
 }
 
-#[post("/vks/v1/publish/submit", data = "<data>")]
-pub fn vks_publish_submit(
+#[post("/publish", data = "<data>")]
+pub fn publish_post(
     db: rocket::State<Polymorphic>, cont_type: &ContentType, data: Data,
     mail_service: rocket::State<mail::Service>, state: rocket::State<State>,
 ) -> Flash<Redirect> {
     match handle_upload(db, cont_type, data, Some(mail_service), state) {
         Ok(ok) => ok,
-        Err(err) => Flash::error(Redirect::to("/vks/v1/publish?err"), err.to_string()),
+        Err(err) => Flash::error(Redirect::to("/publish?err"), err.to_string()),
     }
 }
 
@@ -209,5 +209,5 @@ where
     }
 
     let json = serde_json::to_string(&results).unwrap();
-    Ok(Flash::success(Redirect::to("/vks/v1/publish?ok"), json))
+    Ok(Flash::success(Redirect::to("/publish?ok"), json))
 }
