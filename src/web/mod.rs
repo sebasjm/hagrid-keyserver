@@ -622,6 +622,22 @@ pub mod tests {
         // Now lookups using the mail address should work.
         check_responses_by_email(&client, "foo@invalid.example.com", &tpk);
 
+        // Request deletion of the binding.
+        vks_manage(&client, "foo@invalid.example.com");
+
+        // Confirm deletion.
+        check_mails_and_confirm_deletion(&client, filemail_into.as_path());
+
+        // Now, we should no longer be able to look it up by email
+        // address.
+        check_null_responses_by_email(&client, "foo@invalid.example.com");
+
+        // But lookup by fingerprint should still work.
+        check_mr_responses_by_fingerprint(&client, &tpk, 0);
+
+        // And check that we can see the human-readable result page.
+        check_hr_responses_by_fingerprint(&client, &tpk);
+
         assert_consistency(client.rocket());
     }
 
@@ -670,6 +686,27 @@ pub mod tests {
         // Now lookups using the mail address should work.
         check_responses_by_email(&client, "foo@invalid.example.com", &tpk_0);
         check_responses_by_email(&client, "bar@invalid.example.com", &tpk_1);
+
+        // Request deletion of the bindings.
+        vks_manage(&client, &tpk_0.fingerprint().to_string());
+        vks_manage(&client, &tpk_1.fingerprint().to_keyid().to_string());
+
+        // Confirm deletion.
+        check_mails_and_confirm_deletion(&client, filemail_into.as_path());
+        check_mails_and_confirm_deletion(&client, filemail_into.as_path());
+
+        // Now, we should no longer be able to look it up by email
+        // address.
+        check_null_responses_by_email(&client, "foo@invalid.example.com");
+        check_null_responses_by_email(&client, "bar@invalid.example.com");
+
+        // But lookup by fingerprint should still work.
+        check_mr_responses_by_fingerprint(&client, &tpk_0, 0);
+        check_mr_responses_by_fingerprint(&client, &tpk_1, 0);
+
+        // And check that we can see the human-readable result page.
+        check_hr_responses_by_fingerprint(&client, &tpk_0);
+        check_hr_responses_by_fingerprint(&client, &tpk_1);
 
         assert_consistency(client.rocket());
     }
@@ -809,6 +846,21 @@ pub mod tests {
         assert_eq!(response.status(), Status::Ok);
     }
 
+    fn check_mails_and_confirm_deletion(client: &Client, filemail_path: &Path) {
+        let confirm_re =
+            regex::bytes::Regex::new("https://domain(/vks/v1/confirm[^ \t\n]*)")
+            .unwrap();
+        let confirm_mail = pop_mail(filemail_path).unwrap().unwrap();
+        let confirm_bytes = confirm_mail.message();
+        // eprintln!("{}", String::from_utf8_lossy(&confirm_bytes));
+        let confirm_link =
+            confirm_re.captures(&confirm_bytes).unwrap()
+            .get(1).unwrap().as_bytes();
+        let confirm_uri = String::from_utf8_lossy(confirm_link).to_string();
+        let response = client.get(&confirm_uri).dispatch();
+        assert_eq!(response.status(), Status::Ok);
+    }
+
     /// Returns and removes the first mail it finds from the given
     /// directory.
     pub fn pop_mail(dir: &Path) -> Result<Option<SimpleSendableEmail>> {
@@ -850,5 +902,16 @@ pub mod tests {
             .header(ct)
             .body(&body[..])
             .dispatch()
+    }
+
+    fn vks_manage<'a>(client: &'a Client, search_term: &str) {
+        let encoded = ::url::form_urlencoded::Serializer::new(String::new())
+            .append_pair("search_term", search_term)
+            .finish();
+        let response = client.post("/vks/v1/manage")
+            .header(ContentType::Form)
+            .body(encoded.as_bytes())
+            .dispatch();
+        assert_eq!(response.status(), Status::Ok);
     }
 }
