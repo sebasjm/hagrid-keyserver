@@ -1,5 +1,4 @@
 use rocket;
-use rocket::fairing::AdHoc;
 use rocket::http::Header;
 use rocket::response::status::Custom;
 use rocket::response::NamedFile;
@@ -658,60 +657,45 @@ fn rocket_factory(rocket: rocket::Rocket) -> Result<rocket::Rocket> {
     let db = Polymorphic::Filesystem(
         Filesystem::new(&PathBuf::from(rocket.config().get_str("state_dir")?))?
     );
+
+    // State
+    let state_dir: PathBuf = rocket.config().get_str("state_dir")?.into();
+    let public_dir = state_dir.join("public");
+    let state = State {
+        state_dir: state_dir,
+        public_dir: public_dir,
+        domain: rocket.config().get_str("domain")?.to_string(),
+        x_accel_redirect: rocket.config().get_bool("x-accel-redirect")?,
+    };
+
+    // Mail service
+    let template_dir: PathBuf = rocket.config().get_str("template_dir")?.into();
+    let from = rocket.config().get_str("from")?.to_string();
+    let confirm_html = template_dir.join("confirm-email-html.hbs");
+    let confirm_txt = template_dir.join("confirm-email-txt.hbs");
+    let verify_html = template_dir.join("verify-email-html.hbs");
+    let verify_txt = template_dir.join("verify-email-txt.hbs");
+
+    let mut handlebars = Handlebars::new();
+    handlebars.register_template_file("confirm-html", confirm_html)?;
+    handlebars.register_template_file("confirm-txt", confirm_txt)?;
+    handlebars.register_template_file("verify-html", verify_html)?;
+    handlebars.register_template_file("verify-txt", verify_txt)?;
+
+    let filemail_into = rocket.config().get_str("filemail_into")
+        .ok().map(|p| PathBuf::from(p));
+    let mail_service = if let Some(path) = filemail_into {
+        mail::Service::filemail(from, handlebars, path)
+    } else {
+        mail::Service::sendmail(from, handlebars)
+    };
+
     Ok(rocket
-        .attach(Template::fairing())
-        .attach(AdHoc::on_attach("state", |rocket| {
-            let state_dir: PathBuf = rocket.config().get_str("state_dir")
-                .unwrap().into();
-            let public_dir = state_dir.join("public");
-            let domain = rocket.config().get_str("domain").unwrap().to_string();
-            let x_accel_redirect =
-                rocket.config().get_bool("x-accel-redirect").unwrap();
-            Ok(rocket.manage(State {
-                state_dir: state_dir,
-                public_dir: public_dir,
-                domain: domain,
-                x_accel_redirect: x_accel_redirect,
-            }))
-        }))
-        .attach(AdHoc::on_attach("mail-service", |rocket| {
-            let dir: PathBuf = rocket
-                .config()
-                .get_str("template_dir")
-                .unwrap()
-                .to_string()
-                .into();
-            let from = rocket.config().get_str("from").unwrap().to_string();
-
-            let confirm_html = dir.join("confirm-email-html.hbs");
-            let confirm_txt = dir.join("confirm-email-txt.hbs");
-            let verify_html = dir.join("verify-email-html.hbs");
-            let verify_txt = dir.join("verify-email-txt.hbs");
-            let mut handlebars = Handlebars::new();
-
-            handlebars
-                .register_template_file("confirm-html", confirm_html)
-                .unwrap();
-            handlebars
-                .register_template_file("confirm-txt", confirm_txt)
-                .unwrap();
-            handlebars
-                .register_template_file("verify-html", verify_html)
-                .unwrap();
-            handlebars
-                .register_template_file("verify-txt", verify_txt)
-                .unwrap();
-
-            let filemail_into = rocket.config().get_str("filemail_into")
-                .ok().map(|p| PathBuf::from(p));
-            Ok(rocket.manage(if let Some(path) = filemail_into {
-                mail::Service::filemail(from, handlebars, path)
-            } else {
-                mail::Service::sendmail(from, handlebars)
-            }))
-        }))
-        .mount("/", routes)
-        .manage(db))
+       .attach(Template::fairing())
+       .manage(state)
+       .manage(mail_service)
+       .mount("/", routes)
+       .manage(db))
 }
 
 #[cfg(test)]
