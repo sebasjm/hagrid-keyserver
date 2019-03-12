@@ -365,7 +365,7 @@ fn manage_post(state: rocket::State<State>,
                 return MyResponse::ise(e);
             }
 
-            MyResponse::ok("delete", context)
+            MyResponse::ok("deletion-requested", context)
         }
         Err(e) => MyResponse::ise(e),
     }
