@@ -616,8 +616,8 @@ pub mod tests {
         // And check that we can see the human-readable result page.
         check_hr_responses_by_fingerprint(&client, &tpk);
 
-        // Now check for the confirmation mail.
-        check_mails_and_confirm(&client, filemail_into.as_path());
+        // Now check for the verification mail.
+        check_mails_and_verify_email(&client, filemail_into.as_path());
 
         // Now lookups using the mail address should work.
         check_responses_by_email(&client, "foo@invalid.example.com", &tpk);
@@ -663,9 +663,9 @@ pub mod tests {
         check_hr_responses_by_fingerprint(&client, &tpk_0);
         check_hr_responses_by_fingerprint(&client, &tpk_1);
 
-        // Now check for the confirmation mails.
-        check_mails_and_confirm(&client, filemail_into.as_path());
-        check_mails_and_confirm(&client, filemail_into.as_path());
+        // Now check for the verification mails.
+        check_mails_and_verify_email(&client, filemail_into.as_path());
+        check_mails_and_verify_email(&client, filemail_into.as_path());
 
         // Now lookups using the mail address should work.
         check_responses_by_email(&client, "foo@invalid.example.com", &tpk_0);
@@ -794,7 +794,7 @@ pub mod tests {
             &tpk);
     }
 
-    fn check_mails_and_confirm(client: &Client, filemail_path: &Path) {
+    fn check_mails_and_verify_email(client: &Client, filemail_path: &Path) {
         let confirm_re =
             regex::bytes::Regex::new("https://domain(/vks/v1/verify[^ \t\n]*)")
             .unwrap();
