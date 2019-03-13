@@ -125,8 +125,6 @@ mod templates {
     pub struct Verify {
         pub verified: bool,
         pub userid: String,
-        pub fpr: String,
-        pub domain: String,
         pub commit: String,
         pub version: String,
     }
@@ -142,8 +140,8 @@ mod templates {
     pub struct Search {
         pub query: String,
         pub gpg_options: Option<&'static str>,
-        pub fpr: Option<String>,
-        pub domain: Option<String>,
+        pub fpr: String,
+        pub domain: String,
         pub commit: String,
         pub version: String,
     }
@@ -239,8 +237,8 @@ fn key_to_response<'a>(state: rocket::State<State>,
         } else {
             Some("--keyserver-options import-drop-uids ")
         },
-        domain: Some(state.domain.clone()),
-        fpr: fp.to_string().into(),
+        domain: state.domain.clone(),
+        fpr: fp.to_string(),
         version: env!("VERGEN_SEMVER").to_string(),
         commit: env!("VERGEN_SHA_SHORT").to_string(),
     };
@@ -304,16 +302,13 @@ fn vks_v1_by_keyid(state: rocket::State<State>,
 }
 
 #[get("/publish/<token>")]
-fn publish_verify(state: rocket::State<State>,
-                  db: rocket::State<Polymorphic>,
+fn publish_verify(db: rocket::State<Polymorphic>,
                   token: String) -> MyResponse {
     match db.verify_token(&token) {
-        Ok(Some((userid, fpr))) => {
+        Ok(Some((userid, _fpr))) => {
             let context = templates::Verify {
                 verified: true,
-                domain: state.domain.clone(),
                 userid: userid.to_string(),
-                fpr: fpr.to_string(),
                 version: env!("VERGEN_SEMVER").to_string(),
                 commit: env!("VERGEN_SHA_SHORT").to_string(),
             };
