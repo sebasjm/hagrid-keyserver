@@ -488,7 +488,6 @@ fn rocket_factory(rocket: rocket::Rocket) -> Result<rocket::Rocket> {
 
 #[cfg(test)]
 pub mod tests {
-    use fs_extra;
     use regex;
     use std::fs;
     use std::path::Path;
@@ -519,18 +518,14 @@ pub mod tests {
         use rocket::config::{Config, Environment};
 
         let root = tempdir()?;
-        fs_extra::copy_items(&vec!["dist/templates"], &root,
-                             &fs_extra::dir::CopyOptions::new())?;
         let filemail = root.path().join("filemail");
         ::std::fs::create_dir_all(&filemail)?;
 
         let config = Config::build(Environment::Staging)
             .root(root.path().to_path_buf())
-            .extra(
-                "template_dir",
-                root.path().join("templates").to_str()
-                    .ok_or(failure::err_msg("Template path invalid"))?,
-            )
+            .extra("template_dir",
+                   ::std::env::current_dir().unwrap().join("dist/templates")
+                   .to_str().unwrap())
             .extra(
                 "state_dir",
                 root.path().to_str()

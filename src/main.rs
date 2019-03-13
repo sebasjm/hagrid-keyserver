@@ -25,8 +25,6 @@ extern crate lettre_email;
 extern crate tempfile;
 
 #[cfg(test)]
-extern crate fs_extra;
-#[cfg(test)]
 extern crate regex;
 
 extern crate hagrid_database as database;
