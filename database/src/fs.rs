@@ -1,4 +1,3 @@
-use parking_lot::Mutex;
 use std::convert::{TryInto, TryFrom};
 use std::fs::{create_dir_all, read_link, remove_file, rename, File};
 use std::io::{Read, Write};
@@ -14,11 +13,11 @@ use pathdiff::diff_paths;
 
 use {Database, Delete, Verify, Query};
 use types::{Email, Fingerprint, KeyID};
-use sync::MutexGuard;
+use sync::{MutexGuard, FlockMutex};
 use Result;
 
 pub struct Filesystem {
-    update_lock: Mutex<()>,
+    update_lock: FlockMutex,
 
     base: PathBuf,
     base_by_keyid: PathBuf,
@@ -83,7 +82,7 @@ impl Filesystem {
 
         info!("Opened base dir '{}'", base.display());
         Ok(Filesystem {
-            update_lock: Mutex::new(()),
+            update_lock: FlockMutex::new(&base)?,
             base: base,
             base_by_keyid: base_by_keyid,
             base_by_fingerprint: base_by_fingerprint,
