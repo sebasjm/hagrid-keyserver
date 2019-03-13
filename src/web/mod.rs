@@ -622,13 +622,16 @@ pub mod tests {
         check_mr_responses_by_fingerprint(&client, &tpk, 0);
 
         // And check that we can see the human-readable result page.
-        check_hr_responses_by_fingerprint(&client, &tpk);
+        check_hr_responses_by_fingerprint(&client, &tpk, 0);
 
         // Now check for the verification mail.
         check_mails_and_verify_email(&client, filemail_into.as_path());
 
         // Now lookups using the mail address should work.
-        check_responses_by_email(&client, "foo@invalid.example.com", &tpk);
+        check_responses_by_email(&client, "foo@invalid.example.com", &tpk, 1);
+
+        // And check that we can see the human-readable result page.
+        check_hr_responses_by_fingerprint(&client, &tpk, 1);
 
         // Request deletion of the binding.
         vks_manage(&client, "foo@invalid.example.com");
@@ -644,7 +647,7 @@ pub mod tests {
         check_mr_responses_by_fingerprint(&client, &tpk, 0);
 
         // And check that we can see the human-readable result page.
-        check_hr_responses_by_fingerprint(&client, &tpk);
+        check_hr_responses_by_fingerprint(&client, &tpk, 0);
 
         assert_consistency(client.rocket());
     }
@@ -681,16 +684,16 @@ pub mod tests {
         check_mr_responses_by_fingerprint(&client, &tpk_1, 0);
 
         // And check that we can see the human-readable result page.
-        check_hr_responses_by_fingerprint(&client, &tpk_0);
-        check_hr_responses_by_fingerprint(&client, &tpk_1);
+        check_hr_responses_by_fingerprint(&client, &tpk_0, 0);
+        check_hr_responses_by_fingerprint(&client, &tpk_1, 0);
 
         // Now check for the verification mails.
         check_mails_and_verify_email(&client, filemail_into.as_path());
         check_mails_and_verify_email(&client, filemail_into.as_path());
 
         // Now lookups using the mail address should work.
-        check_responses_by_email(&client, "foo@invalid.example.com", &tpk_0);
-        check_responses_by_email(&client, "bar@invalid.example.com", &tpk_1);
+        check_responses_by_email(&client, "foo@invalid.example.com", &tpk_0, 1);
+        check_responses_by_email(&client, "bar@invalid.example.com", &tpk_1, 1);
 
         // Request deletion of the bindings.
         vks_manage(&client, &tpk_0.fingerprint().to_string());
@@ -710,8 +713,8 @@ pub mod tests {
         check_mr_responses_by_fingerprint(&client, &tpk_1, 0);
 
         // And check that we can see the human-readable result page.
-        check_hr_responses_by_fingerprint(&client, &tpk_0);
-        check_hr_responses_by_fingerprint(&client, &tpk_1);
+        check_hr_responses_by_fingerprint(&client, &tpk_0, 0);
+        check_hr_responses_by_fingerprint(&client, &tpk_1, 0);
 
         assert_consistency(client.rocket());
     }
@@ -734,23 +737,24 @@ pub mod tests {
     }
 
     /// Asserts that lookups by the given email are successful.
-    pub fn check_responses_by_email(client: &Client, addr: &str, tpk: &TPK) {
+    pub fn check_responses_by_email(client: &Client, addr: &str, tpk: &TPK,
+                                    nr_uids: usize) {
         check_mr_response(
             &client,
             &format!("/vks/v1/by-email/{}", addr),
-            &tpk, 1);
+            &tpk, nr_uids);
         check_mr_response(
             &client,
             &format!("/vks/v1/by-email/{}", addr.replace("@", "%40")),
-            &tpk, 1);
+            &tpk, nr_uids);
         check_mr_response(
             &client,
             &format!("/pks/lookup?op=get&options=mr&search={}", addr),
-            &tpk, 1);
+            &tpk, nr_uids);
         check_hr_response(
             &client,
             &format!("/pks/lookup?op=get&search={}", addr),
-            &tpk);
+            &tpk, nr_uids);
     }
 
     /// Asserts that the given URI returns a TPK matching the given
@@ -802,38 +806,51 @@ pub mod tests {
     }
 
     /// Asserts that the given URI returns human readable response
-    /// page.
-    pub fn check_hr_response(client: &Client, uri: &str, tpk: &TPK) {
+    /// page that contains a URI pointing to the TPK.
+    pub fn check_hr_response(client: &Client, uri: &str, tpk: &TPK,
+                             nr_uids: usize) {
         let mut response = client.get(uri).dispatch();
         assert_eq!(response.status(), Status::Ok);
         assert_eq!(response.content_type(), Some(ContentType::HTML));
         let body = response.body_string().unwrap();
         assert!(body.contains("found"));
         assert!(body.contains(&tpk.fingerprint().to_hex()));
+
+        // Extract the links.
+        let link_re = regex::Regex::new(
+            &format!("{}(/vks/[^ \t\n\"<]*)", BASE_URI)).unwrap();
+        let mut n = 0;
+        for link in link_re.captures_iter(&body) {
+            check_mr_response(client, link.get(1).unwrap().as_str(), tpk,
+                              nr_uids);
+            n += 1;
+        }
+        assert!(n > 0);
     }
 
     /// Asserts that we can get the given TPK back using the various
     /// by-fingerprint or by-keyid lookup mechanisms.
-    pub fn check_hr_responses_by_fingerprint(client: &Client, tpk: &TPK) {
+    pub fn check_hr_responses_by_fingerprint(client: &Client, tpk: &TPK,
+                                             nr_uids: usize) {
         let fp = tpk.fingerprint().to_hex();
         let keyid = tpk.fingerprint().to_keyid().to_hex();
 
         check_hr_response(
             &client,
             &format!("/pks/lookup?op=get&search={}", fp),
-            &tpk);
+            &tpk, nr_uids);
         check_hr_response(
             &client,
             &format!("/pks/lookup?op=get&search=0x{}", fp),
-            &tpk);
+            &tpk, nr_uids);
         check_hr_response(
             &client,
             &format!("/pks/lookup?op=get&search={}", keyid),
-            &tpk);
+            &tpk, nr_uids);
         check_hr_response(
             &client,
             &format!("/pks/lookup?op=get&search=0x{}", keyid),
-            &tpk);
+            &tpk, nr_uids);
     }
 
     fn check_mails_and_verify_email(client: &Client, filemail_path: &Path) {

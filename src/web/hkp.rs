@@ -283,7 +283,7 @@ mod tests {
         check_mr_responses_by_fingerprint(&client, &tpk, 0);
 
         // And check that we can see the human-readable result page.
-        check_hr_responses_by_fingerprint(&client, &tpk);
+        check_hr_responses_by_fingerprint(&client, &tpk, 0);
 
         assert_consistency(client.rocket());
     }
@@ -325,8 +325,8 @@ mod tests {
         assert!(confirm_mail.is_none());
         check_mr_responses_by_fingerprint(&client, &tpk_0, 0);
         check_mr_responses_by_fingerprint(&client, &tpk_1, 0);
-        check_hr_responses_by_fingerprint(&client, &tpk_0);
-        check_hr_responses_by_fingerprint(&client, &tpk_1);
+        check_hr_responses_by_fingerprint(&client, &tpk_0, 0);
+        check_hr_responses_by_fingerprint(&client, &tpk_1, 0);
 
         assert_consistency(client.rocket());
     }
