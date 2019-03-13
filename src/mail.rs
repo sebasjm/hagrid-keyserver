@@ -1,9 +1,10 @@
 use std::path::PathBuf;
 
+use failure;
 use handlebars::Handlebars;
 use lettre::{EmailTransport, SendmailTransport, FileEmailTransport};
 use lettre_email::EmailBuilder;
-
+use url;
 use serde::Serialize;
 
 use sequoia_openpgp as openpgp;
@@ -17,18 +18,21 @@ mod context {
         pub primary_fp: String,
         pub uri: String,
         pub userid: String,
+        pub base_uri: String,
         pub domain: String,
     }
 
     #[derive(Serialize, Clone)]
     pub struct Deletion {
         pub uri: String,
+        pub base_uri: String,
         pub domain: String,
     }
 }
 
 pub struct Service {
     from: String,
+    base_uri: String,
     domain: String,
     templates: Handlebars,
     transport: Transport,
@@ -41,26 +45,32 @@ enum Transport {
 
 impl Service {
     /// Sends mail via sendmail.
-    pub fn sendmail(from: String, domain: String, templates: Handlebars) -> Self {
-        Self {
-            from: from,
-            domain: domain,
-            templates: templates,
-            transport: Transport::Sendmail,
-        }
+    pub fn sendmail(from: String, base_uri: String, templates: Handlebars)
+                    -> Result<Self> {
+        Self::new(from, base_uri, templates, Transport::Sendmail)
     }
 
     /// Sends mail by storing it in the given directory.
-    pub fn filemail(from: String, domain: String, templates: Handlebars,
+    pub fn filemail(from: String, base_uri: String, templates: Handlebars,
                     path: PathBuf)
-                    -> Self
-    {
-        Self {
+                    -> Result<Self> {
+        Self::new(from, base_uri, templates, Transport::Filemail(path))
+    }
+
+    fn new(from: String, base_uri: String, templates: Handlebars,
+           transport: Transport)
+           -> Result<Self> {
+        let domain =
+            url::Url::parse(&base_uri)
+            ?.host_str().ok_or_else(|| failure::err_msg("No host in base-URI"))
+            ?.to_string();
+        Ok(Self {
             from: from,
+            base_uri: base_uri,
             domain: domain,
             templates: templates,
-            transport: Transport::Filemail(path),
-        }
+            transport: transport,
+        })
     }
 
     pub fn send_verification(&self, tpk: &openpgp::TPK, userid: &Email,
@@ -68,8 +78,9 @@ impl Service {
                              -> Result<()> {
         let ctx = context::Verification {
             primary_fp: tpk.fingerprint().to_string(),
-            uri: format!("https://{}/publish/{}", self.domain, token),
+            uri: format!("{}/publish/{}", self.base_uri, token),
             userid: userid.to_string(),
+            base_uri: self.base_uri.clone(),
             domain: self.domain.clone(),
         };
 
@@ -84,7 +95,8 @@ impl Service {
     pub fn send_confirmation(&self, userids: &[Email], token: &str)
                              -> Result<()> {
         let ctx = context::Deletion {
-            uri: format!("https://{}/delete/{}", self.domain, token),
+            uri: format!("{}/delete/{}", self.base_uri, token),
+            base_uri: self.base_uri.clone(),
             domain: self.domain.clone(),
         };
 

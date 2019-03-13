@@ -141,7 +141,7 @@ mod templates {
         pub query: String,
         pub gpg_options: Option<&'static str>,
         pub fpr: String,
-        pub domain: String,
+        pub base_uri: String,
         pub commit: String,
         pub version: String,
     }
@@ -194,7 +194,7 @@ pub struct State {
     public_dir: PathBuf,
 
     /// XXX
-    domain: String,
+    base_uri: String,
 
     /// Controls the use of NGINX'es XAccelRedirect feature.
     x_accel_redirect: bool,
@@ -237,7 +237,7 @@ fn key_to_response<'a>(state: rocket::State<State>,
         } else {
             Some("--keyserver-options import-drop-uids ")
         },
-        domain: state.domain.clone(),
+        base_uri: state.base_uri.clone(),
         fpr: fp.to_string(),
         version: env!("VERGEN_SEMVER").to_string(),
         commit: env!("VERGEN_SHA_SHORT").to_string(),
@@ -448,11 +448,11 @@ fn rocket_factory(rocket: rocket::Rocket) -> Result<rocket::Rocket> {
     // State
     let state_dir: PathBuf = rocket.config().get_str("state_dir")?.into();
     let public_dir = state_dir.join("public");
-    let domain = rocket.config().get_str("domain")?.to_string();
+    let base_uri = rocket.config().get_str("base-URI")?.to_string();
     let state = State {
         state_dir: state_dir,
         public_dir: public_dir,
-        domain: domain.clone(),
+        base_uri: base_uri.clone(),
         x_accel_redirect: rocket.config().get_bool("x-accel-redirect")?,
     };
 
@@ -473,9 +473,9 @@ fn rocket_factory(rocket: rocket::Rocket) -> Result<rocket::Rocket> {
     let filemail_into = rocket.config().get_str("filemail_into")
         .ok().map(|p| PathBuf::from(p));
     let mail_service = if let Some(path) = filemail_into {
-        mail::Service::filemail(from, domain, handlebars, path)
+        mail::Service::filemail(from, base_uri, handlebars, path)?
     } else {
-        mail::Service::sendmail(from, domain, handlebars)
+        mail::Service::sendmail(from, base_uri, handlebars)?
     };
 
     Ok(rocket
@@ -507,6 +507,9 @@ pub mod tests {
     use database::*;
     use super::*;
 
+    /// Fake base URI to use in tests.
+    const BASE_URI: &'static str = "http://local.connection";
+
     /// Creates a configuration and empty state dir for testing purposes.
     ///
     /// Note that you need to keep the returned TempDir alive for the
@@ -533,7 +536,7 @@ pub mod tests {
                 root.path().to_str()
                     .ok_or(failure::err_msg("Static path invalid"))?,
             )
-            .extra("domain", "domain")
+            .extra("base-URI", BASE_URI)
             .extra("from", "from")
             .extra("filemail_into", filemail.into_os_string().into_string()
                    .expect("path is valid UTF8"))
@@ -834,9 +837,8 @@ pub mod tests {
     }
 
     fn check_mails_and_verify_email(client: &Client, filemail_path: &Path) {
-        let confirm_re =
-            regex::bytes::Regex::new("https://domain(/publish/[^ \t\n]*)")
-            .unwrap();
+        let confirm_re = regex::bytes::Regex::new(
+            &format!("{}(/publish/[^ \t\n]*)", BASE_URI)).unwrap();
         let confirm_mail = pop_mail(filemail_path).unwrap().unwrap();
         let confirm_bytes = confirm_mail.message();
         // eprintln!("{}", String::from_utf8_lossy(&confirm_bytes));
@@ -849,9 +851,8 @@ pub mod tests {
     }
 
     fn check_mails_and_confirm_deletion(client: &Client, filemail_path: &Path) {
-        let confirm_re =
-            regex::bytes::Regex::new("https://domain(/delete/[^ \t\n]*)")
-            .unwrap();
+        let confirm_re = regex::bytes::Regex::new(
+            &format!("{}(/delete/[^ \t\n]*)", BASE_URI)).unwrap();
         let confirm_mail = pop_mail(filemail_path).unwrap().unwrap();
         let confirm_bytes = confirm_mail.message();
         // eprintln!("{}", String::from_utf8_lossy(&confirm_bytes));

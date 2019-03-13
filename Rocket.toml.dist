@@ -5,16 +5,16 @@ template_dir = "dist/templates"
 state_dir = "dist"
 
 [development]
-domain = "localhost"
+base-URI = "http://localhost:8080"
 from = "noreply@localhost"
 x-accel-redirect = false
 
 [staging]
-domain = "keys.openpgp.org"
+base-URI = "https://keys.openpgp.org"
 from = "noreply@keys.openpgp.org"
 x-accel-redirect = true
 
 [production]
-domain = "keys.openpgp.org"
+base-URI = "https://keys.openpgp.org"
 from = "noreply@keys.openpgp.org"
 x-accel-redirect = true
