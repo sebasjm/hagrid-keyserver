@@ -1,8 +1,9 @@
-use parking_lot::{Mutex, MutexGuard};
+use parking_lot::Mutex;
 use std::collections::HashMap;
 
 use {Database, Delete, Verify, Query};
 use types::{Email, Fingerprint, KeyID};
+use sync::MutexGuard;
 use Result;
 
 #[derive(Debug)]
@@ -34,7 +35,7 @@ impl Default for Memory {
 
 impl Database for Memory {
     fn lock(&self) -> MutexGuard<()> {
-        self.update_lock.lock()
+        self.update_lock.lock().into()
     }
 
     fn new_verify_token(&self, payload: Verify) -> Result<String> {

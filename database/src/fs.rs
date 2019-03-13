@@ -1,4 +1,4 @@
-use parking_lot::{Mutex, MutexGuard};
+use parking_lot::Mutex;
 use std::convert::{TryInto, TryFrom};
 use std::fs::{create_dir_all, read_link, remove_file, rename, File};
 use std::io::{Read, Write};
@@ -14,6 +14,7 @@ use pathdiff::diff_paths;
 
 use {Database, Delete, Verify, Query};
 use types::{Email, Fingerprint, KeyID};
+use sync::MutexGuard;
 use Result;
 
 pub struct Filesystem {
@@ -381,7 +382,7 @@ fn symlink(symlink_content: &Path, symlink_name: &Path) -> Result<()> {
 
 impl Database for Filesystem {
     fn lock(&self) -> MutexGuard<()> {
-        self.update_lock.lock()
+        self.update_lock.lock().into()
     }
 
     fn new_verify_token(&self, payload: Verify) -> Result<String> {

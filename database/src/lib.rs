@@ -15,7 +15,6 @@ use failure::Fallible as Result;
 extern crate idna;
 #[macro_use] extern crate log;
 extern crate parking_lot;
-use parking_lot::MutexGuard;
 extern crate pathdiff;
 extern crate rand;
 extern crate serde;
@@ -40,6 +39,9 @@ use serde::{Serialize, Deserialize, Deserializer, Serializer};
 
 pub mod types;
 use types::{Email, Fingerprint, KeyID};
+
+pub mod sync;
+use sync::MutexGuard;
 
 mod fs;
 pub use self::fs::Filesystem;
