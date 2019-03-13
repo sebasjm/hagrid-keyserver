@@ -107,10 +107,10 @@ impl<'a, 'r> FromRequest<'a, 'r> for Hkp {
 }
 
 #[post("/pks/add", data = "<data>")]
-pub fn pks_add(db: rocket::State<Polymorphic>, cont_type: &ContentType, data: Data,
-               state: rocket::State<State>)
+pub fn pks_add(db: rocket::State<Polymorphic>, cont_type: &ContentType,
+               data: Data)
                -> MyResponse {
-    match upload::handle_upload(db, cont_type, data, None, state) {
+    match upload::handle_upload(db, cont_type, data, None) {
         Ok(_) => MyResponse::plain("Ok".into()),
         Err(err) => MyResponse::ise(err),
     }

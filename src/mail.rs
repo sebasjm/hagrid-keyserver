@@ -29,6 +29,7 @@ mod context {
 
 pub struct Service {
     from: String,
+    domain: String,
     templates: Handlebars,
     transport: Transport,
 }
@@ -40,33 +41,36 @@ enum Transport {
 
 impl Service {
     /// Sends mail via sendmail.
-    pub fn sendmail(from: String, templates: Handlebars) -> Self {
+    pub fn sendmail(from: String, domain: String, templates: Handlebars) -> Self {
         Self {
             from: from,
+            domain: domain,
             templates: templates,
             transport: Transport::Sendmail,
         }
     }
 
     /// Sends mail by storing it in the given directory.
-    pub fn filemail(from: String, templates: Handlebars, path: PathBuf)
-                       -> Self
+    pub fn filemail(from: String, domain: String, templates: Handlebars,
+                    path: PathBuf)
+                    -> Self
     {
         Self {
             from: from,
+            domain: domain,
             templates: templates,
             transport: Transport::Filemail(path),
         }
     }
 
     pub fn send_verification(&self, tpk: &openpgp::TPK, userid: &Email,
-                             token: &str, domain: &str)
+                             token: &str)
                              -> Result<()> {
         let ctx = context::Verification {
             primary_fp: tpk.fingerprint().to_string(),
-            uri: format!("https://{}/publish/{}", domain, token),
+            uri: format!("https://{}/publish/{}", self.domain, token),
             userid: userid.to_string(),
-            domain: domain.to_string(),
+            domain: self.domain.clone(),
         };
 
         self.send(
@@ -77,12 +81,11 @@ impl Service {
         )
     }
 
-    pub fn send_confirmation(&self, userids: &[Email], token: &str,
-                             domain: &str)
+    pub fn send_confirmation(&self, userids: &[Email], token: &str)
                              -> Result<()> {
         let ctx = context::Deletion {
-            uri: format!("https://{}/delete/{}", domain, token),
-            domain: domain.to_string(),
+            uri: format!("https://{}/delete/{}", self.domain, token),
+            domain: self.domain.clone(),
         };
 
         self.send(

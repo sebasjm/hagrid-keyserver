@@ -336,8 +336,7 @@ struct ManageRequest {
 }
 
 #[post("/delete", data="<request>")]
-fn delete_post(state: rocket::State<State>,
-               db: rocket::State<Polymorphic>,
+fn delete_post(db: rocket::State<Polymorphic>,
                mail_service: rocket::State<mail::Service>,
                request: Form<ManageRequest>) -> MyResponse {
     use std::convert::TryInto;
@@ -363,7 +362,7 @@ fn delete_post(state: rocket::State<State>,
             };
 
             if let Err(e) = mail_service.send_confirmation(
-                &uids, &token, &state.domain) {
+                &uids, &token) {
                 return MyResponse::ise(e);
             }
 
@@ -454,10 +453,11 @@ fn rocket_factory(rocket: rocket::Rocket) -> Result<rocket::Rocket> {
     // State
     let state_dir: PathBuf = rocket.config().get_str("state_dir")?.into();
     let public_dir = state_dir.join("public");
+    let domain = rocket.config().get_str("domain")?.to_string();
     let state = State {
         state_dir: state_dir,
         public_dir: public_dir,
-        domain: rocket.config().get_str("domain")?.to_string(),
+        domain: domain.clone(),
         x_accel_redirect: rocket.config().get_bool("x-accel-redirect")?,
     };
 
@@ -478,9 +478,9 @@ fn rocket_factory(rocket: rocket::Rocket) -> Result<rocket::Rocket> {
     let filemail_into = rocket.config().get_str("filemail_into")
         .ok().map(|p| PathBuf::from(p));
     let mail_service = if let Some(path) = filemail_into {
-        mail::Service::filemail(from, handlebars, path)
+        mail::Service::filemail(from, domain, handlebars, path)
     } else {
-        mail::Service::sendmail(from, handlebars)
+        mail::Service::sendmail(from, domain, handlebars)
     };
 
     Ok(rocket

@@ -10,7 +10,7 @@ use rocket::Data;
 
 use database::{Database, Polymorphic};
 use mail;
-use web::{State, MyResponse};
+use web::MyResponse;
 
 use std::io::Read;
 
@@ -39,9 +39,9 @@ pub fn publish() -> MyResponse {
 #[post("/vks/v1/publish", data = "<data>")]
 pub fn vks_v1_publish_post(
     db: rocket::State<Polymorphic>, cont_type: &ContentType, data: Data,
-    mail_service: rocket::State<mail::Service>, state: rocket::State<State>,
+    mail_service: rocket::State<mail::Service>
 ) -> MyResponse {
-    match handle_upload(db, cont_type, data, Some(mail_service), state) {
+    match handle_upload(db, cont_type, data, Some(mail_service)) {
         Ok(ok) => ok,
         Err(err) => MyResponse::ise(err),
     }
@@ -50,7 +50,7 @@ pub fn vks_v1_publish_post(
 // signature requires the request to have a `Content-Type`
 pub fn handle_upload(
     db: rocket::State<Polymorphic>, cont_type: &ContentType, data: Data,
-    mail_service: Option<rocket::State<mail::Service>>, state: rocket::State<State>,
+    mail_service: Option<rocket::State<mail::Service>>
 ) -> Result<MyResponse> {
     if cont_type.is_form_data() {
         // multipart/form-data
@@ -63,7 +63,7 @@ pub fn handle_upload(
                                       boundary param not provided"))),
             };
 
-        process_upload(boundary, data, db.inner(), mail_service, &state.domain)
+        process_upload(boundary, data, db.inner(), mail_service)
     } else if cont_type.is_form() {
         use rocket::request::FormItems;
         use std::io::Cursor;
@@ -87,7 +87,6 @@ pub fn handle_upload(
                         Cursor::new(decoded_value.as_bytes()),
                         &db,
                         mail_service,
-                        &state.domain,
                     );
                 }
                 _ => { /* skip */ }
@@ -105,29 +104,28 @@ pub fn handle_upload(
 fn process_upload(
     boundary: &str, data: Data, db: &Polymorphic,
     mail_service: Option<rocket::State<mail::Service>>,
-    domain: &str,
 ) -> Result<MyResponse> {
     // saves all fields, any field longer than 10kB goes to a temporary directory
     // Entries could implement FromData though that would give zero control over
     // how the files are saved; Multipart would be a good impl candidate though
     match Multipart::with_body(data.open().take(UPLOAD_LIMIT), boundary).save().temp() {
         Full(entries) => {
-            process_multipart(entries, db, mail_service, domain)
+            process_multipart(entries, db, mail_service)
         }
         Partial(partial, _) => {
-            process_multipart(partial.entries, db, mail_service, domain)
+            process_multipart(partial.entries, db, mail_service)
         }
         Error(err) => Err(err.into())
     }
 }
 
 fn process_multipart(entries: Entries, db: &Polymorphic,
-                     mail_service: Option<rocket::State<mail::Service>>,
-                     domain: &str) -> Result<MyResponse> {
+                     mail_service: Option<rocket::State<mail::Service>>)
+                     -> Result<MyResponse> {
     match entries.fields.get("keytext") {
         Some(ent) if ent.len() == 1 => {
             let reader = ent[0].data.readable()?;
-            process_key(reader, db, mail_service, domain)
+            process_key(reader, db, mail_service)
         }
         Some(_) =>
             Ok(MyResponse::bad_request(
@@ -140,7 +138,6 @@ fn process_multipart(entries: Entries, db: &Polymorphic,
 
 fn process_key<R>(
     reader: R, db: &Polymorphic, mail_service: Option<rocket::State<mail::Service>>,
-    domain: &str,
 ) -> Result<MyResponse>
 where
     R: Read,
@@ -171,7 +168,6 @@ where
                     &tpk,
                     &email,
                     &token,
-                    domain,
                 )?;
                 results.push(email.to_string());
             }
