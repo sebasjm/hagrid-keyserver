@@ -158,6 +158,12 @@ where
         });
     }
 
+    if tpks.is_empty() {
+        return Ok(MyResponse::bad_request(
+            "publish",
+            failure::err_msg("No key submitted")));
+    }
+
     let mut results: Vec<String> = vec!();
     for tpk in tpks {
         let tokens = db.merge_or_publish(&tpk)?;

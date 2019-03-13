@@ -494,7 +494,7 @@ pub mod tests {
     use std::path::Path;
     use tempfile::{tempdir, TempDir};
     use super::rocket;
-    use rocket::local::Client;
+    use rocket::local::{Client, LocalResponse};
     use rocket::http::Status;
     use rocket::http::ContentType;
     use lettre::{SendableEmail, SimpleSendableEmail};
@@ -719,6 +719,13 @@ pub mod tests {
         assert_consistency(client.rocket());
     }
 
+    #[test]
+    fn upload_no_key() {
+        let (_tmpdir, client) = client().unwrap();
+        let response = vks_publish_submit_response(&client, b"");
+        assert_eq!(response.status(), Status::BadRequest);
+    }
+
     /// Asserts that the given URI 404s.
     pub fn check_null_response(client: &Client, uri: &str) {
         let response = client.get(uri).dispatch();
@@ -898,6 +905,12 @@ pub mod tests {
     }
 
     fn vks_publish_submit<'a>(client: &'a Client, data: &[u8]) {
+        let response = vks_publish_submit_response(client, data);
+        assert_eq!(response.status(), Status::Ok);
+    }
+
+    fn vks_publish_submit_response<'a>(client: &'a Client, data: &[u8]) ->
+            LocalResponse<'a> {
         let ct = ContentType::with_params(
             "multipart", "form-data",
             ("boundary", "---------------------------14733842173518794281682249499"));
@@ -917,11 +930,10 @@ pub mod tests {
         body.extend_from_slice(header);
         body.extend_from_slice(data);
         body.extend_from_slice(footer);
-        let response = client.post("/vks/v1/publish")
+        client.post("/vks/v1/publish")
             .header(ct)
             .body(&body[..])
-            .dispatch();
-        assert_eq!(response.status(), Status::Ok);
+            .dispatch()
     }
 
     fn vks_manage<'a>(client: &'a Client, search_term: &str) {
