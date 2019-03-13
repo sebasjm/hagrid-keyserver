@@ -132,6 +132,31 @@ impl Filesystem {
             .ok()
     }
 
+    /// Returns the Fingerprint the given path is pointing to.
+    ///
+    /// This function must be used when converting links connecting
+    /// subkey fingerprints to the TPK.
+    ///
+    /// Here, a complication arises if both fingerprints share the
+    /// same two nibble prefix, because they end up in the same
+    /// subdirectory.
+    fn path_to_fingerprint_base(&self, base: &Path, path: &Path)
+                                -> Option<Fingerprint> {
+        use std::str::FromStr;
+
+        let rest = path.file_name()?;
+        let prefix =
+            if path.to_str().unwrap().len() == 38 {
+                base.file_name()?
+            } else {
+                path.parent().unwrap().file_name()?
+            };
+
+        Fingerprint::from_str(&format!("{}{}", prefix.to_str()?, rest.to_str()?))
+            .ok()
+    }
+
+
     /// Returns the Email the given path is pointing to.
     fn path_to_email(&self, path: &Path) -> Option<Email> {
         use std::str::FromStr;
@@ -208,7 +233,8 @@ impl Filesystem {
                     _ if typ.is_file() =>
                         fp.clone(),
                     _ if typ.is_symlink() =>
-                        self.path_to_fingerprint(&path.read_link()?)
+                        self.path_to_fingerprint_base(path.parent().unwrap(),
+                                                      &path.read_link()?)
                             .ok_or_else(
                                 || format_err!("Malformed path: {:?}",
                                               path.read_link().unwrap()))?,
@@ -445,7 +471,9 @@ impl Database for Filesystem {
                     Some(fp.clone())
                 } else if typ.is_symlink() {
                     path.read_link().ok()
-                        .and_then(|path| self.path_to_fingerprint(&path))
+                        .and_then(|link_path|
+                                  self.path_to_fingerprint_base(
+                                      path.parent().unwrap(), &link_path))
                 } else {
                     // Neither file nor symlink.  Freak value.
                     None
@@ -810,6 +838,14 @@ mod tests {
             "CBCD8F030588653EEDD7E2659B7DD433F254904A".parse().unwrap();
 
         assert_eq!(db.path_to_fingerprint(&db.fingerprint_to_path(&fp)),
-                   Some(fp));
+                   Some(fp.clone()));
+
+        // Special case: Relative symlink to a fingerprint with the
+        // same two nibble prefix.
+        assert_eq!(
+            db.path_to_fingerprint_base(
+                &db.base_by_fingerprint.join("CB"),
+                &PathBuf::from("CD8F030588653EEDD7E2659B7DD433F254904A")),
+            Some(fp));
     }
 }
