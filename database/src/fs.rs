@@ -318,7 +318,7 @@ impl Filesystem {
                                        path, primary_fp))?;
 
                 let mut found = false;
-                for (_, _, key) in tpk.keys() {
+                for (_, _, key) in tpk.keys_all() {
                     if KeyID::try_from(key.fingerprint()).unwrap() == id
                     {
                         found = true;
