@@ -814,6 +814,13 @@ mod tests {
     }
 
     #[test]
+    fn uid_unlinking() {
+        let tmpdir = TempDir::new().unwrap();
+        let mut db = Filesystem::new(tmpdir.path()).unwrap();
+        test::test_unlink_uid(&mut db);
+    }
+
+    #[test]
     fn same_email_1() {
         let tmpdir = TempDir::new().unwrap();
         let mut db = Filesystem::new(tmpdir.path()).unwrap();

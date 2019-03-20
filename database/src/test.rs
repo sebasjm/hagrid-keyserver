@@ -283,7 +283,8 @@ pub fn test_uid_replacement<D: Database>(db: &mut D) {
     // replace
     let tokens = db.merge_or_publish(&tpk2).unwrap();
 
-    assert!(db.by_email(&email).is_none());
+    // Before tokens are verified, the first binding is still valid.
+    assert!(db.by_email(&email).is_some());
     assert!(db.verify_token(&tokens[0].1).unwrap().is_some());
     assert_eq!(
         TPK::from_bytes(&db.by_email(&email).unwrap().as_bytes()).unwrap().fingerprint(),
@@ -555,13 +556,51 @@ pub fn test_steal_uid<D: Database>(db: &mut D) {
     let tokens = db.merge_or_publish(&tpk2).unwrap();
 
     assert_eq!(tokens.len(), 1);
-    assert!(db.by_email(&email1).is_none());
+    // Before tokens are verified, the first binding is still valid.
+    assert!(db.by_email(&email1).is_some());
     assert!(db.verify_token(&tokens[0].1).unwrap().is_some());
 
     assert_eq!(
         TPK::from_bytes(&db.by_email(&email1).unwrap().as_bytes()).unwrap().fingerprint(),
         tpk2.fingerprint()
     );
+}
+
+pub fn test_unlink_uid<D: Database>(db: &mut D) {
+    let uid = "Test A <test_a@example.com>";
+    let email = Email::from_str(uid).unwrap();
+
+    // Upload key and verify it.
+    let tpk = TPKBuilder::default().add_userid(uid).generate().unwrap().0;
+    let tokens = db.merge_or_publish(&tpk).unwrap();
+    assert!(db.verify_token(&tokens[0].1).unwrap().is_some());
+    assert!(db.by_email(&email).is_some());
+
+    // Create a 2nd key with same uid, and revoke the uid.
+    let tpk_evil = TPKBuilder::default().add_userid(uid).generate().unwrap().0;
+    let sig = {
+        let uid = tpk_evil.userids()
+            .find(|b| b.userid().userid() == uid.as_bytes()).unwrap();
+        assert_eq!(RevocationStatus::NotAsFarAsWeKnow, uid.revoked(None));
+
+        let mut keypair = tpk_evil.primary().clone().into_keypair().unwrap();
+        uid.revoke(
+            &mut keypair,
+            ReasonForRevocation::UIDRetired,
+            b"I just had to quit, I couldn't bear it any longer",
+        )
+        .unwrap()
+    };
+    assert_eq!(sig.sigtype(), SignatureType::CertificateRevocation);
+    let tpk_evil = tpk_evil.merge_packets(vec![sig.into()]).unwrap();
+    let tokens = db.merge_or_publish(&tpk_evil).unwrap();
+    assert_eq!(tokens.len(), 0);
+
+    // Check that when looking up by email, we still get the former
+    // TPK.
+    assert_eq!(
+        db.lookup(&Query::ByEmail(email)).unwrap().unwrap().fingerprint(),
+        tpk.fingerprint());
 }
 
 pub fn get_userids(armored: &str) -> Vec<UserID> {

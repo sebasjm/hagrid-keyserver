@@ -328,7 +328,7 @@ pub trait Database: Sync + Send {
     }
 
     fn merge_or_publish(&self, tpk: &TPK) -> Result<Vec<(Email, String)>> {
-        use std::collections::HashMap;
+        use std::collections::{HashMap, HashSet};
         use openpgp::RevocationStatus;
 
         if let RevocationStatus::Revoked(_) = tpk.revoked(None) {
@@ -338,9 +338,9 @@ pub trait Database: Sync + Send {
         }
 
         let fpr = Fingerprint::try_from(tpk.primary().fingerprint())?;
-        let mut all_uids = Vec::default();
+        let mut revoked_uids = HashSet::new();
         let mut unverified_uids: HashMap<Email, Verify> = HashMap::new();
-        let mut verified_uids = Vec::default();
+        let mut verified_uids = HashSet::new();
 
         let _ = self.lock();
 
@@ -354,32 +354,25 @@ pub trait Database: Sync + Send {
             };
 
             match uid.revoked(None) {
-                // XXX: This looks wrong.  It means that anyone can
-                // unlink email addresses by uploading TPK with a
-                // revoked userid matching the target address.
-                RevocationStatus::CouldBe(_) | RevocationStatus::Revoked(_) => {
-                    match self.lookup(&Query::ByEmail(email.clone())) {
-                        Ok(None) => (),
-                        Ok(Some(other_tpk)) =>
-                            all_uids.push((email, other_tpk.fingerprint())),
-                        Err(_) => (),
-                    };
-                }
+                RevocationStatus::CouldBe(_) => {
+                    // XXX: Check the revocation, if it checks out,
+                    // "fall through".
+                },
+                RevocationStatus::Revoked(_) => {
+                    revoked_uids.insert(email);
+                },
                 RevocationStatus::NotAsFarAsWeKnow => {
                     let add_to_verified =
                         match self.lookup(&Query::ByEmail(email.clone()))
                     {
                         Ok(None) => false,
-                        Ok(Some(other_tpk)) => {
-                            all_uids.push((email.clone(),
-                                           other_tpk.fingerprint()));
-                            other_tpk.fingerprint() == tpk.fingerprint()
-                        },
+                        Ok(Some(other_tpk)) =>
+                            other_tpk.fingerprint() == tpk.fingerprint(),
                         Err(_) => false,
                     };
 
                     if add_to_verified {
-                        verified_uids.push(email.clone());
+                        verified_uids.insert(email);
                     } else {
                         // Hackaround mutable borrow in else.
                         let updated =
@@ -405,8 +398,8 @@ pub trait Database: Sync + Send {
 
         let tpk = filter_userids(&tpk, |_| false)?;
 
-        for (email, fpr) in all_uids {
-            self.unlink_email(&email, &Fingerprint::try_from(fpr).unwrap())?;
+        for email in revoked_uids.difference(&verified_uids) {
+            self.unlink_email(&email, &fpr)?;
         }
 
         // merge or update key db
@@ -417,9 +410,6 @@ pub trait Database: Sync + Send {
         self.update_tpk(&fpr, Some(tpk))?;
 
         self.link_subkeys(&fpr, subkeys)?;
-        for email in verified_uids {
-            self.link_email(&email, &fpr)?;
-        }
 
         let mut tokens = Vec::new();
         for (fp, verify) in unverified_uids.into_iter() {
