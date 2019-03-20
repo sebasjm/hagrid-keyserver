@@ -35,12 +35,8 @@ pub fn test_uid_verification<D: Database>(db: &mut D) {
         .generate()
         .unwrap()
         .0;
-    let mut uid1 = UserID::new();
-    let mut uid2 = UserID::new();
-
-    uid1.set_userid_from_bytes(str_uid1.as_bytes());
-    uid2.set_userid_from_bytes(str_uid2.as_bytes());
-
+    let uid1 = UserID::from(str_uid1);
+    let uid2 = UserID::from(str_uid2);
     let email1 = Email::from_str(str_uid1).unwrap();
     let email2 = Email::from_str(str_uid2).unwrap();
 
@@ -201,8 +197,7 @@ pub fn test_uid_verification<D: Database>(db: &mut D) {
             })
             .collect::<Vec<_>>();
         let str_uid3 = "Test C <test_c@example.com>";
-        let mut uid3 = UserID::new();
-        uid3.set_userid_from_bytes(str_uid3.as_bytes());
+        let uid3 = UserID::from(str_uid3);
 
         let email3 = Email::from_str(str_uid3).unwrap();
         let key = tpk.primary();
@@ -249,12 +244,6 @@ pub fn test_reupload<D: Database>(db: &mut D) {
         .generate()
         .unwrap()
         .0;
-    let mut uid1 = UserID::new();
-    let mut uid2 = UserID::new();
-
-    uid1.set_userid_from_bytes(str_uid1.as_bytes());
-    uid2.set_userid_from_bytes(str_uid2.as_bytes());
-
     let email1 = Email::from_str(str_uid1).unwrap();
     let email2 = Email::from_str(str_uid2).unwrap();
 
@@ -313,13 +302,7 @@ pub fn test_uid_deletion<D: Database>(db: &mut D) {
         .generate()
         .unwrap()
         .0;
-    let mut uid1 = UserID::new();
-    let mut uid2 = UserID::new();
     let n_subkeys = tpk.subkeys().count();
-
-    uid1.set_userid_from_bytes(str_uid1.as_bytes());
-    uid2.set_userid_from_bytes(str_uid2.as_bytes());
-
     let email1 = Email::from_str(str_uid1).unwrap();
     let email2 = Email::from_str(str_uid2).unwrap();
 
@@ -372,12 +355,8 @@ pub fn test_uid_deletion_request<D: Database>(db: &mut D) {
         .generate()
         .unwrap()
         .0;
-    let mut uid1 = UserID::new();
-    let mut uid2 = UserID::new();
-
-    uid1.set_userid_from_bytes(str_uid1.as_bytes());
-    uid2.set_userid_from_bytes(str_uid2.as_bytes());
-
+    let uid1 = UserID::from(str_uid1);
+    let uid2 = UserID::from(str_uid2);
     let email1 = Email::from_str(str_uid1).unwrap();
     let email2 = Email::from_str(str_uid2).unwrap();
 
@@ -517,12 +496,7 @@ pub fn test_uid_revocation<D: Database>(db: &mut D) {
         .generate()
         .unwrap()
         .0;
-    let mut uid1 = UserID::new();
-    let mut uid2 = UserID::new();
-
-    uid1.set_userid_from_bytes(str_uid1.as_bytes());
-    uid2.set_userid_from_bytes(str_uid2.as_bytes());
-
+    let uid2 = UserID::from(str_uid2);
     let email1 = Email::from_str(str_uid1).unwrap();
     let email2 = Email::from_str(str_uid2).unwrap();
 
@@ -558,7 +532,7 @@ pub fn test_uid_revocation<D: Database>(db: &mut D) {
     let tokens = db.merge_or_publish(&tpk).unwrap();
     assert_eq!(tokens.len(), 0);
 
-    // fail to fetch by one uid, fail by another
+    // Fail to fetch by the revoked uid, ok by the non-revoked one.
     assert!(db.by_email(&email1).is_some());
     assert!(db.by_email(&email2).is_none());
 }
@@ -567,9 +541,6 @@ pub fn test_steal_uid<D: Database>(db: &mut D) {
     let str_uid1 = "Test A <test_a@example.com>";
     let tpk1 = TPKBuilder::default().add_userid(str_uid1).generate().unwrap().0;
     let tpk2 = TPKBuilder::default().add_userid(str_uid1).generate().unwrap().0;
-    let mut uid1 = UserID::new();
-
-    uid1.set_userid_from_bytes(str_uid1.as_bytes());
 
     let email1 = Email::from_str(str_uid1).unwrap();
 
@@ -607,8 +578,7 @@ pub fn test_same_email_1<D: Database>(db: &mut D) {
         .generate()
         .unwrap()
         .0;
-    let mut uid1 = UserID::new();
-    uid1.set_userid_from_bytes(str_uid1.as_bytes());
+    let uid1 = UserID::from(str_uid1);
     let email1 = Email::from_str(str_uid1).unwrap();
 
     let str_uid2 = "B <test@example.com>";
@@ -617,8 +587,7 @@ pub fn test_same_email_1<D: Database>(db: &mut D) {
         .generate()
         .unwrap()
         .0;
-    let mut uid2 = UserID::new();
-    uid2.set_userid_from_bytes(str_uid2.as_bytes());
+    let uid2 = UserID::from(str_uid2);
     let email2 = Email::from_str(str_uid2).unwrap();
 
     // upload keys.
@@ -682,12 +651,8 @@ pub fn test_same_email_2<D: Database>(db: &mut D) {
         .generate()
         .unwrap()
         .0;
-    let mut uid1 = UserID::new();
-    let mut uid2 = UserID::new();
-
-    uid1.set_userid_from_bytes(str_uid1.as_bytes());
-    uid2.set_userid_from_bytes(str_uid2.as_bytes());
-
+    let uid1 = UserID::from(str_uid1);
+    let uid2 = UserID::from(str_uid2);
     let email1 = Email::from_str(str_uid1).unwrap();
     let email2 = Email::from_str(str_uid2).unwrap();
 
