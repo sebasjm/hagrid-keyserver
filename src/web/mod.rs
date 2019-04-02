@@ -12,6 +12,7 @@ use std::path::PathBuf;
 
 pub mod upload;
 use mail;
+use tokens;
 
 use database::{Database, Polymorphic, Query};
 use database::types::{Email, Fingerprint, KeyID};
@@ -418,6 +419,8 @@ pub fn serve() -> Result<()> {
 }
 
 fn rocket_factory(rocket: rocket::Rocket) -> Result<rocket::Rocket> {
+    use std::convert::TryFrom;
+
     let routes = routes![
         // infra
         root,
@@ -478,10 +481,16 @@ fn rocket_factory(rocket: rocket::Rocket) -> Result<rocket::Rocket> {
         mail::Service::sendmail(from, base_uri, handlebars)?
     };
 
+    let secret = rocket.config().get_str("token_secret")?.to_string();
+    let validity = rocket.config().get_int("token_validity")?;
+    let validity = u64::try_from(validity)?;
+    let token_service = tokens::Service::init(&secret, validity);
+
     Ok(rocket
        .attach(Template::fairing())
        .manage(state)
        .manage(mail_service)
+       .manage(token_service)
        .mount("/", routes)
        .manage(db))
 }
@@ -533,6 +542,8 @@ pub mod tests {
             )
             .extra("base-URI", BASE_URI)
             .extra("from", "from")
+            .extra("token_secret", "hagrid")
+            .extra("token_validity", 3600)
             .extra("filemail_into", filemail.into_os_string().into_string()
                    .expect("path is valid UTF8"))
             .extra("x-accel-redirect", false)

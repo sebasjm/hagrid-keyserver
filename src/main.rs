@@ -27,9 +27,13 @@ extern crate tempfile;
 #[cfg(test)]
 extern crate regex;
 
+extern crate ring;
+
 extern crate hagrid_database as database;
 mod mail;
 mod web;
+mod tokens;
+mod sealed_state;
 
 fn main() {
     if let Err(e) = web::serve() {

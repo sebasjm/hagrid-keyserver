@@ -27,6 +27,8 @@ url = "1.6"
 lettre_email = "0.8"
 handlebars = "1.1.0"
 num_cpus = "1.0"
+ring = "0.13"
+base64 = "0.10"
 
 [dependencies.lettre]
 version = "0.8"
