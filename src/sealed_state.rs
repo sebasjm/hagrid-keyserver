@@ -1,6 +1,7 @@
 use ring::aead::{seal_in_place, open_in_place, Algorithm, AES_256_GCM};
 use ring::aead::{OpeningKey, SealingKey};
 use ring::rand::{SecureRandom, SystemRandom};
+use ring::hmac;
 use ring::digest;
 
 // Keep these in sync, and keep the key len synced with the `private` docs as
@@ -15,9 +16,9 @@ pub struct SealedState {
 
 impl SealedState  {
     pub fn new(secret: &str) -> Self {
-        // TODO use KDF
-        let salted_secret = "hagrid".to_owned() + secret;
-        let key = digest::digest(&digest::SHA256, salted_secret.as_bytes());
+        let salt = hmac::SigningKey::new(&digest::SHA256, b"hagrid");
+        let mut key = vec![0; 32];
+        ring::hkdf::extract_and_expand(&salt, secret.as_bytes(), b"", &mut key);
 
         let sealing_key = SealingKey::new(ALGO, key.as_ref()).expect("sealing key creation");
         let opening_key = OpeningKey::new(ALGO, key.as_ref()).expect("sealing key creation");

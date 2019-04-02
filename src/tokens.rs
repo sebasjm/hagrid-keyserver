@@ -85,7 +85,7 @@ mod tests {
     fn test_ok() {
         // {"f":"D4AB192964F76A7F8F8A9B357BD18320DEADFA11","c":12345658,"r":1}
         let fpr = "D4AB192964F76A7F8F8A9B357BD18320DEADFA11".parse().unwrap();
-        let token = "Gpi5wq4ALZSAQ7KaKmCzpgbWP2a7BImNC6H49ztqAD1Tl7qwJdbTIlyFWMEhkMcU-FIbvPkWUkBAP2EB6pP7-pWsIPmUT6sD_NNChwYaiDEMqMIFpcnb0xEPYKBpqZc";
+        let token = "KkhDt1quo1I1l3OPazSXKAmuNL6LLluhnRR6eQPsLruJ4URo-AKp4YGMsVlkDvj3NLvALt6Omp7vLzMbdv_DCus6oL3X-CSyQs9AFO6f5QMaseyAPtafKMDtDW2c1_Q";
         let mt = Service::init("secret", 60);
 
         let check_result = mt.check(token);
@@ -96,7 +96,7 @@ mod tests {
     #[test]
     fn test_expired() {
         // {"f":"D4AB192964F76A7F8F8A9B357BD18320DEADFA11","c":12345078,"r":1}
-        let token = "KfbQMVE-U3thjmwrfAo1sdel9ixwd05fALaPfJ-6p_6AhN2_U0DaLUwAEFwLah-R6zTsQ_LNjMf8cu1z-pJnyB1DoSRYdy380HFT8sx6BnEFFXFyaU02bNM0wlv3Uzk";
+        let token = "tqDOpM5mdNSTCDzyyy6El_Chpj1k-ozzw4AHy-3KJhxkXs8A17GJYVq7CHbgsYMc7n5irdzOJ-IvForV_HiVSnZYpnS_BiORWN6FISVmnwlMxDBIGUqa1XDiBLD7UW8";
         let mt = Service::init("secret", 60);
 
         let check_result = mt.check(token);
