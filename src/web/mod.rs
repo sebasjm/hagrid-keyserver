@@ -1,9 +1,7 @@
 use rocket;
 use rocket::http::Header;
-use rocket::response::status::Custom;
 use rocket::response::NamedFile;
 use rocket_contrib::templates::Template;
-use rocket::request::Form;
 
 use serde::Serialize;
 use handlebars::Handlebars;
@@ -18,7 +16,6 @@ use database::{Database, Polymorphic, Query};
 use database::types::{Email, Fingerprint, KeyID};
 use Result;
 
-use std::result;
 use std::str::FromStr;
 
 mod hkp;
@@ -131,25 +128,11 @@ mod templates {
     }
 
     #[derive(Serialize)]
-    pub struct Delete {
-        pub fpr: String,
-        pub commit: String,
-        pub version: String,
-    }
-
-    #[derive(Serialize)]
     pub struct Search {
         pub query: String,
         pub gpg_options: Option<&'static str>,
         pub fpr: String,
         pub base_uri: String,
-        pub commit: String,
-        pub version: String,
-    }
-
-    #[derive(Serialize)]
-    pub struct Confirm {
-        pub deleted: bool,
         pub commit: String,
         pub version: String,
     }
@@ -321,79 +304,6 @@ fn publish_verify(db: rocket::State<Polymorphic>,
     }
 }
 
-#[get("/delete")]
-fn delete() -> result::Result<Template, Custom<String>> {
-    Ok(Template::render("delete", templates::General::default()))
-}
-
-#[derive(FromForm)]
-struct ManageRequest {
-    search_term: String,
-}
-
-#[post("/delete", data="<request>")]
-fn delete_post(db: rocket::State<Polymorphic>,
-               mail_service: rocket::State<mail::Service>,
-               request: Form<ManageRequest>) -> MyResponse {
-    use std::convert::TryInto;
-
-    let query = match request.search_term.parse() {
-        Ok(query) => query,
-        Err(e) => return MyResponse::bad_request("delete", e),
-    };
-    let tpk = match db.lookup(&query) {
-        Ok(Some(tpk)) => tpk,
-        Ok(None) => return MyResponse::not_found(
-            Some("delete"),
-            Some(format!("No such key found for {:?}", request.search_term))),
-        Err(e) => return MyResponse::ise(e),
-    };
-
-    match db.request_deletion(tpk.fingerprint().try_into().unwrap()) {
-        Ok((token, uids)) => {
-            let context = templates::Delete {
-                fpr: tpk.fingerprint().to_string(),
-                version: env!("VERGEN_SEMVER").to_string(),
-                commit: env!("VERGEN_SHA_SHORT").to_string(),
-            };
-
-            if let Err(e) = mail_service.send_confirmation(
-                &uids, &token) {
-                return MyResponse::ise(e);
-            }
-
-            MyResponse::ok("deletion-requested", context)
-        }
-        Err(e) => MyResponse::ise(e),
-    }
-}
-
-#[get("/delete/<token>")]
-fn delete_confirm(
-    db: rocket::State<Polymorphic>, token: String,
-) -> result::Result<Template, Custom<String>> {
-    match db.confirm_deletion(&token) {
-        Ok(true) => {
-            let context = templates::Confirm {
-                deleted: true,
-                version: env!("VERGEN_SEMVER").to_string(),
-                commit: env!("VERGEN_SHA_SHORT").to_string(),
-            };
-
-            Ok(Template::render("deletion-result", context))
-        }
-        Ok(false) | Err(_) => {
-            let context = templates::Confirm {
-                deleted: false,
-                version: env!("VERGEN_SEMVER").to_string(),
-                commit: env!("VERGEN_SHA_SHORT").to_string(),
-            };
-
-            Ok(Template::render("deletion-result", context))
-        }
-    }
-}
-
 #[get("/assets/<file..>")]
 fn files(file: PathBuf, state: rocket::State<State>) -> Option<NamedFile> {
     NamedFile::open(state.public_dir.join("assets").join(file)).ok()
@@ -439,9 +349,6 @@ fn rocket_factory(rocket: rocket::Rocket) -> Result<rocket::Rocket> {
         vks_v1_by_keyid,
         upload::vks_v1_publish_post,
         // User interaction.
-        delete,
-        delete_post,
-        delete_confirm,
         upload::publish,
         publish_verify,
         // HKP
@@ -468,14 +375,10 @@ fn rocket_factory(rocket: rocket::Rocket) -> Result<rocket::Rocket> {
     // Mail service
     let template_dir: PathBuf = rocket.config().get_str("template_dir")?.into();
     let from = rocket.config().get_str("from")?.to_string();
-    let confirm_html = template_dir.join("deletion-email-html.hbs");
-    let confirm_txt = template_dir.join("deletion-email-txt.hbs");
     let verify_html = template_dir.join("publish-email-html.hbs");
     let verify_txt = template_dir.join("publish-email-txt.hbs");
 
     let mut handlebars = Handlebars::new();
-    handlebars.register_template_file("confirm-html", confirm_html)?;
-    handlebars.register_template_file("confirm-txt", confirm_txt)?;
     handlebars.register_template_file("verify-html", verify_html)?;
     handlebars.register_template_file("verify-txt", verify_txt)?;
 

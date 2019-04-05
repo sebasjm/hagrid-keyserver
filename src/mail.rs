@@ -92,22 +92,6 @@ impl Service {
         )
     }
 
-    pub fn send_confirmation(&self, userids: &[Email], token: &str)
-                             -> Result<()> {
-        let ctx = context::Deletion {
-            uri: format!("{}/delete/{}", self.base_uri, token),
-            base_uri: self.base_uri.clone(),
-            domain: self.domain.clone(),
-        };
-
-        self.send(
-            userids,
-            "Please confirm deletion of your key",
-            "confirm",
-            ctx,
-        )
-    }
-
     fn send<T>(&self, to: &[Email], subject: &str, template: &str, ctx: T)
                -> Result<()>
         where T: Serialize + Clone,
