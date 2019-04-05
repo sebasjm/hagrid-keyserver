@@ -125,6 +125,13 @@ impl Service {
             }
         };
 
+        if cfg!(debug_assertions) {
+            for recipient in to.iter() {
+                println!("To: {}", recipient.to_string());
+            }
+            println!("{}", txt.as_ref().unwrap().to_string());
+        }
+
         let mut email = EmailBuilder::new()
             .from(self.from.clone())
             .subject(subject)
