@@ -19,6 +19,7 @@ use Result;
 use std::str::FromStr;
 
 mod hkp;
+mod manage;
 
 use rocket::http::hyper::header::ContentDisposition;
 
@@ -354,6 +355,11 @@ fn rocket_factory(rocket: rocket::Rocket) -> Result<rocket::Rocket> {
         // HKP
         hkp::pks_lookup,
         hkp::pks_add,
+        // EManage
+        manage::vks_manage,
+        manage::vks_manage_key,
+        manage::vks_manage_post,
+        manage::vks_manage_unpublish,
     ];
 
     use database::{Filesystem, Polymorphic};
@@ -375,12 +381,16 @@ fn rocket_factory(rocket: rocket::Rocket) -> Result<rocket::Rocket> {
     // Mail service
     let template_dir: PathBuf = rocket.config().get_str("template_dir")?.into();
     let from = rocket.config().get_str("from")?.to_string();
-    let verify_html = template_dir.join("publish-email-html.hbs");
-    let verify_txt = template_dir.join("publish-email-txt.hbs");
+    let verify_html = template_dir.join("email/publish-html.hbs");
+    let verify_txt = template_dir.join("email/publish-txt.hbs");
+    let manage_html = template_dir.join("email/manage-html.hbs");
+    let manage_txt = template_dir.join("email/manage-txt.hbs");
 
     let mut handlebars = Handlebars::new();
     handlebars.register_template_file("verify-html", verify_html)?;
     handlebars.register_template_file("verify-txt", verify_txt)?;
+    handlebars.register_template_file("manage-html", manage_html)?;
+    handlebars.register_template_file("manage-txt", manage_txt)?;
 
     let filemail_into = rocket.config().get_str("filemail_into")
         .ok().map(|p| PathBuf::from(p));

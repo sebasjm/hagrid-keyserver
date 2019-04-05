@@ -2,6 +2,7 @@ use sealed_state::SealedState;
 
 use database::types::{Fingerprint};
 use serde_json;
+use Result;
 
 const REVISION: u8 = 1;
 
@@ -36,15 +37,17 @@ impl Service {
         base64::encode_config(&token_sealed, base64::URL_SAFE_NO_PAD)
     }
 
-    pub fn check(&self, token_encoded: &str) -> Result<Fingerprint, String> {
-        let token_sealed = base64::decode_config(&token_encoded, base64::URL_SAFE_NO_PAD).map_err(|_| "invalid b64")?;
-        let token_str = self.sealed_state.unseal(token_sealed)?;
+    pub fn check(&self, token_encoded: &str) -> Result<Fingerprint> {
+        let token_sealed = base64::decode_config(&token_encoded, base64::URL_SAFE_NO_PAD)
+            .map_err(|_| failure::err_msg("invalid b64"))?;
+        let token_str = self.sealed_state.unseal(token_sealed)
+            .map_err(|_| failure::err_msg("failed to validate"))?;
         let token: Token = serde_json::from_str(&token_str)
-            .map_err(|_| "failed to deserialize")?;
+            .map_err(|_| failure::err_msg("failed to deserialize"))?;
 
         let elapsed = current_time() - token.creation;
         if elapsed > self.validity {
-            Err("Token has expired!")?;
+            Err(failure::err_msg("Token has expired!"))?;
         }
 
         Ok(token.fpr)

@@ -23,7 +23,7 @@ mod context {
     }
 
     #[derive(Serialize, Clone)]
-    pub struct Deletion {
+    pub struct Manage {
         pub uri: String,
         pub base_uri: String,
         pub domain: String,
@@ -88,6 +88,22 @@ impl Service {
             &vec![userid.clone()],
             "Please verify your email address",
             "verify",
+            ctx,
+        )
+    }
+
+    pub fn send_manage_token(&self, recipients: &[Email], uri: &str)
+                             -> Result<()> {
+        let ctx = context::Manage {
+            uri: uri.to_string(),
+            base_uri: self.base_uri.clone(),
+            domain: self.domain.clone(),
+        };
+
+        self.send(
+            recipients,
+            &format!("{}: Manage your key", &self.domain),
+            "manage",
             ctx,
         )
     }

@@ -16,7 +16,7 @@ use {Error, Result};
 ///  - Lower-case the whole thing using the empty locale
 ///
 /// See https://autocrypt.org/level1.html#e-mail-address-canonicalization
-#[derive(Serialize, Deserialize, Clone, Debug, Hash, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Email(String);
 
 impl Email {

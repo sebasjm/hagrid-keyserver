@@ -1,0 +1,28 @@
+{{#> layout }}
+  <div class="row">
+    <div>
+      {{#if uid_unpublished}}
+        <div class="flash">Unpublished address: <tt>{{uid_unpublished}}</tt></div>
+      {{/if}}
+      <div style="width: 80%; margin-left: auto; margin-right: auto; text-align: left;">
+      {{#each uid_status}}
+        <div>
+          <div style="float: right;">
+            <form action="/vks/manage/unpublish" method="post">
+              <input type="hidden" name="token" value="{{../token}}" />
+              <input type="hidden" name="address" value="{{address}}" />
+              <i class="fa fa-eye-slash"></i>&nbsp;<input type="submit" class="link" value="Unpublish">
+            </form>
+          </div>
+          <p>
+            {{#if published}}
+            <i class="fa fa-envelope"></i> <tt>{{address}}</tt>
+            {{else}}
+             <tt>{{address}}</tt>
+            {{/if}}
+        </div>
+      {{/each}}
+      </div>
+    </div>
+  </div>
+{{/layout}}
