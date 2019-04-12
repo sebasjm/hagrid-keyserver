@@ -597,11 +597,12 @@ fn filter_userids<F>(tpk: &TPK, filter: F) -> Result<TPK>
         // Only include userids matching filter...
         if filter(uidb.userid()) {
             acc.push(uidb.userid().clone().into());
-            for s in uidb.selfsigs()          { acc.push(s.clone().into()) }
-            for s in uidb.certifications()    { acc.push(s.clone().into()) }
         }
 
-        // ... but always keep revocations.
+        // ... but always all signatures.  This way, clients who have
+        // the UserID packet can enjoy all the updates.
+        for s in uidb.selfsigs()          { acc.push(s.clone().into()) }
+        for s in uidb.certifications()    { acc.push(s.clone().into()) }
         for s in uidb.self_revocations()  { acc.push(s.clone().into()) }
         for s in uidb.other_revocations() { acc.push(s.clone().into()) }
     }
