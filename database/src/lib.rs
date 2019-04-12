@@ -155,25 +155,25 @@ impl FromStr for Query {
 }
 
 pub trait Database: Sync + Send {
-    // Lock the DB for a complex update.
-    //
-    // All basic write operations are atomic so we don't need to lock
-    // read operations to ensure that we return something sane.
+    /// Lock the DB for a complex update.
+    ///
+    /// All basic write operations are atomic so we don't need to lock
+    /// read operations to ensure that we return something sane.
     fn lock(&self) -> MutexGuard<()>;
 
     fn new_verify_token(&self, payload: Verify) -> Result<String>;
     fn new_delete_token(&self, payload: Delete) -> Result<String>;
 
-    // Update the data associated with `fpr` with the data in new.
-    //
-    // If new is None, this removes any associated data.
-    //
-    // This function updates the data atomically.  That is, readers
-    // can continue to read from the associated file and they will
-    // either have the old version or the new version, but never an
-    // inconsistent mix or a partial version.
-    //
-    // Note: it is up to the caller to serialize writes.
+    /// Update the data associated with `fpr` with the data in new.
+    ///
+    /// If new is None, this removes any associated data.
+    ///
+    /// This function updates the data atomically.  That is, readers
+    /// can continue to read from the associated file and they will
+    /// either have the old version or the new version, but never an
+    /// inconsistent mix or a partial version.
+    ///
+    /// Note: it is up to the caller to serialize writes.
     fn update(
         &self, fpr: &Fingerprint, new: Option<String>,
     ) -> Result<()>;
