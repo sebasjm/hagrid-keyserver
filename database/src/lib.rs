@@ -516,12 +516,17 @@ pub trait Database: Sync + Send {
                     return Ok(false);
                 }
 
-                self.filter_userids(&fpr, |_| false)?;
+                self.delete_userids(&fpr)?;
                 Ok(true)
             }
 
             None => Ok(false),
         }
+    }
+
+    /// Deletes all UserID packets and unlinks all email addresses.
+    fn delete_userids(&self, fpr: &Fingerprint) -> Result <()> {
+        self.filter_userids(fpr, |_| false)
     }
 
     /// Deletes all user ids NOT matching fulfilling `filter`.
