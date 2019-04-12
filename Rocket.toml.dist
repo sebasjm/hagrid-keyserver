@@ -8,6 +8,8 @@ state_dir = "dist"
 base-URI = "http://localhost:8080"
 from = "noreply@localhost"
 x-accel-redirect = false
+token_secret = "hagrid"
+token_validity = 3600
 
 [staging]
 base-URI = "https://keys.openpgp.org"
