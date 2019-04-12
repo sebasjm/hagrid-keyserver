@@ -191,7 +191,7 @@ fn key_to_hkp_index<'a>(db: rocket::State<Polymorphic>, query: Query)
 
     for uid in tpk.userids() {
         let u =
-            url::form_urlencoded::byte_serialize(uid.userid().userid())
+            url::form_urlencoded::byte_serialize(uid.userid().value())
             .fold(String::default(), |acc, x| acc + x);
         let ctime = uid
             .binding_signature()

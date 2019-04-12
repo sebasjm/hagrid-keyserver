@@ -76,7 +76,7 @@ pub fn test_uid_verification<D: Database>(db: &mut D) {
 
         assert!((uid == uid1) ^ (uid == uid2));
         let email =
-            Email::from_str(&String::from_utf8(uid.userid().to_vec()).unwrap())
+            Email::from_str(&String::from_utf8(uid.value().to_vec()).unwrap())
                 .unwrap();
         assert_eq!(db.by_email(&email).unwrap(), raw);
 
@@ -105,7 +105,7 @@ pub fn test_uid_verification<D: Database>(db: &mut D) {
 
         assert!((uid == uid1) ^ (uid == uid2));
         let email =
-            Email::from_str(&String::from_utf8(uid.userid().to_vec()).unwrap())
+            Email::from_str(&String::from_utf8(uid.value().to_vec()).unwrap())
                 .unwrap();
         assert_eq!(db.by_email(&email).unwrap(), raw);
 
@@ -580,7 +580,7 @@ pub fn test_unlink_uid<D: Database>(db: &mut D) {
     let tpk_evil = TPKBuilder::default().add_userid(uid).generate().unwrap().0;
     let sig = {
         let uid = tpk_evil.userids()
-            .find(|b| b.userid().userid() == uid.as_bytes()).unwrap();
+            .find(|b| b.userid().value() == uid.as_bytes()).unwrap();
         assert_eq!(RevocationStatus::NotAsFarAsWeKnow, uid.revoked(None));
 
         let mut keypair = tpk_evil.primary().clone().into_keypair().unwrap();
