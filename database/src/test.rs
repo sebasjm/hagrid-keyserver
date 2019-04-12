@@ -323,9 +323,7 @@ pub fn test_uid_deletion<D: Database>(db: &mut D) {
     let fpr = Fingerprint::try_from(tpk.fingerprint()).unwrap();
 
     // Delete second UID.
-    db.filter_userids(
-        &fpr, |u| Email::try_from(u).map(|e| e != email2).unwrap_or(true))
-        .unwrap();
+    db.delete_userids_matching(&fpr, &email2).unwrap();
 
     // Check that the second is still there, and that the TPK is
     // otherwise intact.
@@ -334,9 +332,7 @@ pub fn test_uid_deletion<D: Database>(db: &mut D) {
     assert_eq!(tpk.subkeys().count(), n_subkeys);
 
     // Delete first UID.
-    db.filter_userids(
-        &fpr, |u| Email::try_from(u).map(|e| e != email1).unwrap_or(true))
-        .unwrap();
+    db.delete_userids_matching(&fpr, &email1).unwrap();
 
     // Check that the second is still there, and that the TPK is
     // otherwise intact.

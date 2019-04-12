@@ -529,6 +529,24 @@ pub trait Database: Sync + Send {
         self.filter_userids(fpr, |_| false)
     }
 
+    /// Deletes all UserID packets matching `addr` (see [RFC2822
+    /// name-addr] and unlinks the email addresses.
+    ///
+    /// [RFC2822 name-addr]: https://tools.ietf.org/html/rfc2822#section-3.4
+    fn delete_userids_matching(&self, fpr: &Fingerprint, addr: &Email)
+                               -> Result <()> {
+        self.filter_userids(fpr, |uid| {
+            match Email::try_from(uid) {
+                // Keep those not matching `addr`.
+                Ok(a) => a != *addr,
+                // This should not happen, because all TPKs in the
+                // database should only have UserIDs with well-formed
+                // values.  Be conservative and keep the component.
+                Err(_) => true,
+            }
+        })
+    }
+
     /// Deletes all user ids NOT matching fulfilling `filter`.
     ///
     /// I.e. we retain fulfilling `filter`.
