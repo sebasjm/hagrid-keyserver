@@ -29,7 +29,33 @@ impl TryFrom<&UserID> for Email {
     type Error = Error;
 
     fn try_from(uid: &UserID) -> Result<Self> {
-        Self::from_str(&String::from_utf8(uid.userid().into())?)
+        if let Some(address) = uid.address()? {
+            let mut iter = address.split('@');
+            let localpart = iter.next().expect("Invalid email address");
+            let domain = iter.next().expect("Invalid email address");
+            assert!(iter.next().is_none(), "Invalid email address");
+
+            // Normalize Unicode in domains.
+            let domain = idna::domain_to_ascii(domain)
+                .map_err(|e| failure::format_err!(
+                    "punycode conversion failed: {:?}", e))?;
+
+            // Join.
+            let address = format!("{}@{}", localpart, domain);
+
+            // Convert to lowercase without tailoring, i.e. without taking
+            // any locale into account.  See:
+            //
+            //  - https://www.w3.org/International/wiki/Case_folding
+            //  - https://doc.rust-lang.org/std/primitive.str.html#method.to_lowercase
+            //  - http://www.unicode.org/versions/Unicode7.0.0/ch03.pdf#G33992
+            let address = address.to_lowercase();
+
+            Ok(Email(address))
+        } else {
+            Err(failure::err_msg(
+                format!("malformed email address: '{:?}'", uid.value())))
+        }
     }
 }
 
@@ -39,47 +65,11 @@ impl fmt::Display for Email {
     }
 }
 
-/// Placeholder parser.
-///
-/// See https://gitlab.com/sequoia-pgp/hagrid/issues/58
-fn parse2822address(s: &str) -> Result<(&str, &str)> {
-    let segs = s.split(|c| c == '<' || c == '>').collect::<Vec<_>>();
-    let addr = match segs.len() {
-        3 => segs[1],
-        1 => s,
-        _ => return Err(failure::err_msg("malformed")),
-    };
-
-    match addr.split(|c| c == '@').collect::<Vec<_>>() {
-        ref parts if parts.len() == 2 =>
-            Ok((parts[0], parts[1])),
-        _ => Err(failure::err_msg("malformed")),
-    }
-}
-
 impl FromStr for Email {
     type Err = Error;
 
     fn from_str(s: &str) -> Result<Email> {
-        let (localpart, domain) = parse2822address(s)?;
-
-        // Normalize Unicode in domains.
-        let domain = idna::domain_to_ascii(domain)
-            .map_err(|e| failure::format_err!(
-                "punycode conversion failed: {:?}", e))?;
-
-        // Join.
-        let address = format!("{}@{}", localpart, domain);
-
-        // Convert to lowercase without tailoring, i.e. without taking
-        // any locale into account.  See:
-        //
-        //  - https://www.w3.org/International/wiki/Case_folding
-        //  - https://doc.rust-lang.org/std/primitive.str.html#method.to_lowercase
-        //  - http://www.unicode.org/versions/Unicode7.0.0/ch03.pdf#G33992
-        let address = address.to_lowercase();
-
-        Ok(Email(address))
+        Email::try_from(&UserID::from(s))
     }
 }
 
