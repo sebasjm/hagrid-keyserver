@@ -642,27 +642,11 @@ impl Database for Filesystem {
         use std::fs;
 
         let path = self.email_to_path(&email);
-
-        fs::canonicalize(path)
-            .ok()
-            .and_then(
-                |p| {
-                    if p.starts_with(&self.base) {
-                        Some(p)
-                    } else {
-                        None
-                    }
-                },
-            )
-            .and_then(|p| File::open(p).ok())
-            .and_then(|mut fd| {
-                let mut buf = String::new();
-                if fd.read_to_string(&mut buf).is_ok() {
-                    Some(buf)
-                } else {
-                    None
-                }
-            })
+        if path.exists() {
+            fs::read_to_string(path).ok()
+        } else {
+            None
+        }
     }
 
     // XXX: slow
@@ -670,27 +654,11 @@ impl Database for Filesystem {
         use std::fs;
 
         let path = self.keyid_to_path(kid);
-
-        fs::canonicalize(path)
-            .ok()
-            .and_then(
-                |p| {
-                    if p.starts_with(&self.base) {
-                        Some(p)
-                    } else {
-                        None
-                    }
-                },
-            )
-            .and_then(|p| File::open(p).ok())
-            .and_then(|mut fd| {
-                let mut buf = String::new();
-                if fd.read_to_string(&mut buf).is_ok() {
-                    Some(buf)
-                } else {
-                    None
-                }
-            })
+        if path.exists() {
+            fs::read_to_string(path).ok()
+        } else {
+            None
+        }
     }
 }
 
