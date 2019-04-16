@@ -114,6 +114,17 @@ impl Filesystem {
         }
     }
 
+    fn read_from_path(&self, path: &Path) -> Option<String> {
+        use std::fs;
+
+        // TODO check that we're within our bounds! never read from outside
+        if path.exists() {
+            fs::read_to_string(path).ok()
+        } else {
+            None
+        }
+    }
+
     /// Returns the KeyID the given path is pointing to.
     fn path_to_keyid(&self, path: &Path) -> Option<KeyID> {
         use std::str::FromStr;
@@ -611,40 +622,20 @@ impl Database for Filesystem {
 
     // XXX: slow
     fn by_fpr(&self, fpr: &Fingerprint) -> Option<String> {
-        let target = self.fingerprint_to_path(fpr);
-
-        File::open(target).ok().and_then(|mut fd| {
-            let mut buf = String::new();
-            if fd.read_to_string(&mut buf).is_ok() {
-                Some(buf)
-            } else {
-                None
-            }
-        })
+        let path = self.fingerprint_to_path(fpr);
+        self.read_from_path(&path)
     }
 
     // XXX: slow
     fn by_email(&self, email: &Email) -> Option<String> {
-        use std::fs;
-
         let path = self.email_to_path(&email);
-        if path.exists() {
-            fs::read_to_string(path).ok()
-        } else {
-            None
-        }
+        self.read_from_path(&path)
     }
 
     // XXX: slow
     fn by_kid(&self, kid: &KeyID) -> Option<String> {
-        use std::fs;
-
         let path = self.keyid_to_path(kid);
-        if path.exists() {
-            fs::read_to_string(path).ok()
-        } else {
-            None
-        }
+        self.read_from_path(&path)
     }
 }
 
