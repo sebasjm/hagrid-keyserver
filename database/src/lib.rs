@@ -116,18 +116,6 @@ impl Verify {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct Delete {
-    created: i64,
-    fpr: Fingerprint,
-}
-
-impl Delete {
-    pub fn new(fpr: Fingerprint) -> Self {
-        Delete { created: time::now().to_timespec().sec, fpr: fpr }
-    }
-}
-
 /// Represents a search query.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Query {
@@ -162,7 +150,6 @@ pub trait Database: Sync + Send {
     fn lock(&self) -> MutexGuard<()>;
 
     fn new_verify_token(&self, payload: Verify) -> Result<String>;
-    fn new_delete_token(&self, payload: Delete) -> Result<String>;
 
     /// Update the data associated with `fpr` with the data in new.
     ///
@@ -239,8 +226,6 @@ pub trait Database: Sync + Send {
 
     // (verified uid, fpr)
     fn pop_verify_token(&self, token: &str) -> Option<Verify>;
-    // fpr
-    fn pop_delete_token(&self, token: &str) -> Option<Delete>;
 
     fn by_fpr(&self, fpr: &Fingerprint) -> Option<String>;
     fn by_kid(&self, kid: &KeyID) -> Option<String>;
@@ -466,61 +451,6 @@ pub trait Database: Sync + Send {
                 }
             }
             None => Err(failure::err_msg("No such token")),
-        }
-    }
-
-    fn request_deletion(
-        &self, fpr: Fingerprint,
-    ) -> Result<(String, Vec<Email>)> {
-        let _ = self.lock();
-
-        match self.by_fpr(&fpr) {
-            Some(tpk) => {
-                let payload = Delete::new(fpr);
-                let tok = self.new_delete_token(payload)?;
-                let tpk = match TPK::from_bytes(tpk.as_bytes()) {
-                    Ok(tpk) => tpk,
-                    Err(e) => {
-                        return Err(
-                            failure::format_err!("Failed to parse TPK: {:?}", e)
-                        );
-                    }
-                };
-                let emails = tpk
-                    .userids()
-                    .filter_map(|uid| {
-                        Email::try_from(uid.userid()).ok()
-                    })
-                    .collect::<Vec<_>>();
-
-                Ok((tok, emails))
-            }
-
-            None => Err(failure::err_msg("Unknown key")),
-        }
-    }
-
-    /// Deletes (address, key)-mappings.
-    ///
-    /// Given a valid deletion token, this function unlinks all email
-    /// addresses and strips all UserIDs from the stored TPK.
-    ///
-    /// Returns true if the token was valid.
-    fn confirm_deletion(&self, token: &str) -> Result<bool> {
-        let _ = self.lock();
-
-        match self.pop_delete_token(token) {
-            Some(Delete { created, fpr }) => {
-                let now = time::now().to_timespec().sec;
-                if created > now || now - created > 3 * 3600 {
-                    return Ok(false);
-                }
-
-                self.delete_userids(&fpr)?;
-                Ok(true)
-            }
-
-            None => Ok(false),
         }
     }
 

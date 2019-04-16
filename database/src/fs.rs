@@ -11,7 +11,7 @@ use pathdiff::diff_paths;
 
 //use sequoia_openpgp::armor::{Writer, Kind};
 
-use {Database, Delete, Verify, Query};
+use {Database, Verify, Query};
 use types::{Email, Fingerprint, KeyID};
 use sync::{MutexGuard, FlockMutex};
 use Result;
@@ -417,13 +417,6 @@ impl Database for Filesystem {
         Ok(name)
     }
 
-    fn new_delete_token(&self, payload: Delete) -> Result<String> {
-        let (mut fd, name) = self.new_token("deletion_tokens")?;
-        fd.write_all(serde_json::to_string(&payload)?.as_bytes())?;
-
-        Ok(name)
-    }
-
     fn update(
         &self, fpr: &Fingerprint, new: Option<String>,
     ) -> Result<()> {
@@ -616,13 +609,6 @@ impl Database for Filesystem {
             })
     }
 
-    fn pop_delete_token(&self, token: &str) -> Option<Delete> {
-        self.pop_token("deletion_tokens", token)
-            .ok()
-            .and_then(|raw| str::from_utf8(&raw).ok().map(|s| s.to_string()))
-            .and_then(|s| serde_json::from_str(&s).ok())
-    }
-
     // XXX: slow
     fn by_fpr(&self, fpr: &Fingerprint) -> Option<String> {
         let target = self.fingerprint_to_path(fpr);
@@ -716,15 +702,6 @@ mod tests {
 
         test::test_uid_deletion(&mut db);
     }
-
-    #[test]
-    fn uid_deletion_request() {
-        let tmpdir = TempDir::new().unwrap();
-        let mut db = Filesystem::new(tmpdir.path()).unwrap();
-
-        test::test_uid_deletion_request(&mut db);
-    }
-
 
     #[test]
     fn subkey_lookup() {

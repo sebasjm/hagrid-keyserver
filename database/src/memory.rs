@@ -1,7 +1,7 @@
 use parking_lot::Mutex;
 use std::collections::HashMap;
 
-use {Database, Delete, Verify, Query};
+use {Database, Verify, Query};
 use types::{Email, Fingerprint, KeyID};
 use sync::MutexGuard;
 use Result;
@@ -16,7 +16,6 @@ pub struct Memory {
     email: Mutex<HashMap<Email, Fingerprint>>,
     kid: Mutex<HashMap<KeyID, Fingerprint>>,
     verify_token: Mutex<HashMap<String, Verify>>,
-    delete_token: Mutex<HashMap<String, Delete>>,
 }
 
 impl Default for Memory {
@@ -28,7 +27,6 @@ impl Default for Memory {
             kid: Mutex::new(HashMap::default()),
             email: Mutex::new(HashMap::default()),
             verify_token: Mutex::new(HashMap::default()),
-            delete_token: Mutex::new(HashMap::default()),
         }
     }
 }
@@ -42,13 +40,6 @@ impl Database for Memory {
         let token = Self::new_token();
 
         self.verify_token.lock().insert(token.clone(), payload);
-        Ok(token)
-    }
-
-    fn new_delete_token(&self, payload: Delete) -> Result<String> {
-        let token = Self::new_token();
-
-        self.delete_token.lock().insert(token.clone(), payload);
         Ok(token)
     }
 
@@ -115,11 +106,6 @@ impl Database for Memory {
     // (verified uid, fpr)
     fn pop_verify_token(&self, token: &str) -> Option<Verify> {
         self.verify_token.lock().remove(token)
-    }
-
-    // fpr
-    fn pop_delete_token(&self, token: &str) -> Option<Delete> {
-        self.delete_token.lock().remove(token)
     }
 
     fn by_fpr(&self, fpr: &Fingerprint) -> Option<String> {

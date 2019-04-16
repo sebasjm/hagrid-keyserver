@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use {Database, Delete, Filesystem, Memory, Verify, Query};
+use {Database, Filesystem, Memory, Verify, Query};
 use Result;
 use types::{Email, Fingerprint, KeyID};
 use sync::MutexGuard;
@@ -22,13 +22,6 @@ impl Database for Polymorphic {
         match self {
             &Polymorphic::Memory(ref db) => db.new_verify_token(payload),
             &Polymorphic::Filesystem(ref db) => db.new_verify_token(payload),
-        }
-    }
-
-    fn new_delete_token(&self, payload: Delete) -> Result<String> {
-        match self {
-            &Polymorphic::Memory(ref db) => db.new_delete_token(payload),
-            &Polymorphic::Filesystem(ref db) => db.new_delete_token(payload),
         }
     }
 
@@ -110,13 +103,6 @@ impl Database for Polymorphic {
         match self {
             &Polymorphic::Memory(ref db) => db.pop_verify_token(token),
             &Polymorphic::Filesystem(ref db) => db.pop_verify_token(token),
-        }
-    }
-
-    fn pop_delete_token(&self, token: &str) -> Option<Delete> {
-        match self {
-            &Polymorphic::Memory(ref db) => db.pop_delete_token(token),
-            &Polymorphic::Filesystem(ref db) => db.pop_delete_token(token),
         }
     }
 

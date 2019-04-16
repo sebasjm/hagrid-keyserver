@@ -343,68 +343,6 @@ pub fn test_uid_deletion<D: Database>(db: &mut D) {
     assert_eq!(tpk.subkeys().count(), n_subkeys);
 }
 
-pub fn test_uid_deletion_request<D: Database>(db: &mut D) {
-    let str_uid1 = "Test A <test_a@example.com>";
-    let str_uid2 = "Test B <test_b@example.com>";
-    let tpk = TPKBuilder::default()
-        .add_userid(str_uid1)
-        .add_userid(str_uid2)
-        .generate()
-        .unwrap()
-        .0;
-    let uid1 = UserID::from(str_uid1);
-    let uid2 = UserID::from(str_uid2);
-    let email1 = Email::from_str(str_uid1).unwrap();
-    let email2 = Email::from_str(str_uid2).unwrap();
-
-    // upload key and verify uids
-    let tokens = db.merge_or_publish(&tpk).unwrap();
-
-    assert_eq!(tokens.len(), 2);
-    assert!(db.verify_token(&tokens[0].1).unwrap().is_some());
-    assert!(db.verify_token(&tokens[1].1).unwrap().is_some());
-
-    let fpr = Fingerprint::try_from(tpk.fingerprint()).unwrap();
-
-    // req. deletion
-    let del = db.request_deletion(fpr.clone()).unwrap().0;
-
-    // check it's still there
-    {
-        // fetch by fpr
-        let raw = db.by_fpr(&fpr).unwrap();
-        let key = TPK::from_bytes(raw.as_bytes()).unwrap();
-
-        assert_eq!(key.userids().len(), 2);
-        assert!(key.user_attributes().next().is_none());
-        assert!(key.subkeys().next().is_none());
-
-        let myuid1 = key.userids().next().unwrap().userid().clone();
-        let myuid2 = key.userids().skip(1).next().unwrap().userid().clone();
-
-        assert_eq!(db.by_email(&email1).unwrap(), raw);
-        assert_eq!(db.by_email(&email2).unwrap(), raw);
-        assert!(
-            ((myuid1 == uid1) & (myuid2 == uid2))
-                ^ ((myuid1 == uid2) & (myuid2 == uid1))
-        );
-    }
-
-    // confirm deletion
-    assert!(db.confirm_deletion(&del).unwrap());
-
-    // check it's gone
-    assert!(db.by_email(&email1).is_none());
-    assert!(db.by_email(&email2).is_none());
-
-    // confirm deletion again
-    assert!(!db.confirm_deletion(&del).unwrap());
-
-    // check it's still gone
-    assert!(db.by_email(&email1).is_none());
-    assert!(db.by_email(&email2).is_none());
-}
-
 pub fn test_subkey_lookup<D: Database>(db: &mut D) {
     let tpk = TPKBuilder::default()
         .add_userid("Testy <test@example.com>")
