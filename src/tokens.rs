@@ -1,7 +1,5 @@
 use sealed_state::SealedState;
 
-use std::time::SystemTime;
-
 use database::types::{Fingerprint};
 use serde_json;
 
@@ -56,6 +54,7 @@ impl Service {
 
 #[cfg(not(test))]
 fn current_time() -> u64 {
+    use std::time::SystemTime;
     SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs()
 }
 
@@ -78,19 +77,19 @@ mod tests {
 
         let check_result = mt.check(&token);
 
-        assert_eq!(Ok(fpr), check_result);
+        assert_eq!(fpr, check_result.unwrap());
     }
 
     #[test]
     fn test_ok() {
         // {"f":"D4AB192964F76A7F8F8A9B357BD18320DEADFA11","c":12345658,"r":1}
-        let fpr = "D4AB192964F76A7F8F8A9B357BD18320DEADFA11".parse().unwrap();
+        let fpr = "D4AB192964F76A7F8F8A9B357BD18320DEADFA11".parse::<Fingerprint>().unwrap();
         let token = "KkhDt1quo1I1l3OPazSXKAmuNL6LLluhnRR6eQPsLruJ4URo-AKp4YGMsVlkDvj3NLvALt6Omp7vLzMbdv_DCus6oL3X-CSyQs9AFO6f5QMaseyAPtafKMDtDW2c1_Q";
         let mt = Service::init("secret", 60);
 
         let check_result = mt.check(token);
 
-        assert_eq!(Ok(fpr), check_result);
+        assert_eq!(fpr, check_result.unwrap());
     }
 
     #[test]
@@ -101,6 +100,6 @@ mod tests {
 
         let check_result = mt.check(token);
 
-        assert_eq!(Err("Token has expired!".to_owned()), check_result);
+        assert!(check_result.is_err());
     }
 }
