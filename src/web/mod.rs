@@ -522,7 +522,7 @@ pub mod tests {
         assert!(response.body_string().unwrap().contains("upload"));
 
         // Check that we see the deletion form.
-        let mut response = client.get("/delete").dispatch();
+        let mut response = client.get("/vks/manage").dispatch();
         assert_eq!(response.status(), Status::Ok);
         assert_eq!(response.content_type(), Some(ContentType::HTML));
         assert!(response.body_string().unwrap().contains("email"));
@@ -531,7 +531,7 @@ pub mod tests {
     }
 
     #[test]
-    fn upload() {
+    fn upload_single() {
         let (tmpdir, client) = client().unwrap();
         let filemail_into = tmpdir.path().join("filemail");
 
@@ -568,7 +568,7 @@ pub mod tests {
         vks_manage(&client, "foo@invalid.example.com");
 
         // Confirm deletion.
-        check_mails_and_confirm_deletion(&client, filemail_into.as_path());
+        check_mails_and_confirm_deletion(&client, filemail_into.as_path(), "foo@invalid.example.com");
 
         // Now, we should no longer be able to look it up by email
         // address.
@@ -619,20 +619,18 @@ pub mod tests {
         check_hr_responses_by_fingerprint(&client, &tpk_1, 0);
 
         // Now check for the verification mails.
-        check_mails_and_verify_email(&client, filemail_into.as_path());
-        check_mails_and_verify_email(&client, filemail_into.as_path());
+        check_mails_and_verify_email(&client, &filemail_into);
+        check_mails_and_verify_email(&client, &filemail_into);
 
         // Now lookups using the mail address should work.
         check_responses_by_email(&client, "foo@invalid.example.com", &tpk_0, 1);
         check_responses_by_email(&client, "bar@invalid.example.com", &tpk_1, 1);
 
         // Request deletion of the bindings.
-        vks_manage(&client, &tpk_0.fingerprint().to_string());
-        vks_manage(&client, &tpk_1.fingerprint().to_keyid().to_string());
-
-        // Confirm deletion.
-        check_mails_and_confirm_deletion(&client, filemail_into.as_path());
-        check_mails_and_confirm_deletion(&client, filemail_into.as_path());
+        vks_manage(&client, "foo@invalid.example.com");
+        check_mails_and_confirm_deletion(&client, &filemail_into, "foo@invalid.example.com");
+        vks_manage(&client, "bar@invalid.example.com");
+        check_mails_and_confirm_deletion(&client, &filemail_into, "bar@invalid.example.com");
 
         // Now, we should no longer be able to look it up by email
         // address.
@@ -792,31 +790,27 @@ pub mod tests {
     }
 
     fn check_mails_and_verify_email(client: &Client, filemail_path: &Path) {
-        let confirm_re = regex::bytes::Regex::new(
-            &format!("{}(/publish/[^ \t\n]*)", BASE_URI)).unwrap();
-        let confirm_mail = pop_mail(filemail_path).unwrap().unwrap();
-        let confirm_bytes = confirm_mail.message();
-        // eprintln!("{}", String::from_utf8_lossy(&confirm_bytes));
-        let confirm_link =
-            confirm_re.captures(&confirm_bytes).unwrap()
-            .get(1).unwrap().as_bytes();
-        let confirm_uri = String::from_utf8_lossy(confirm_link).to_string();
+        let pattern = format!("{}(/publish/[^ \t\n]*)", BASE_URI);
+        let confirm_uri = pop_mail_capture_pattern(filemail_path, &pattern);
+
         let response = client.get(&confirm_uri).dispatch();
         assert_eq!(response.status(), Status::Ok);
     }
 
-    fn check_mails_and_confirm_deletion(client: &Client, filemail_path: &Path) {
-        let confirm_re = regex::bytes::Regex::new(
-            &format!("{}(/delete/[^ \t\n]*)", BASE_URI)).unwrap();
-        let confirm_mail = pop_mail(filemail_path).unwrap().unwrap();
-        let confirm_bytes = confirm_mail.message();
-        // eprintln!("{}", String::from_utf8_lossy(&confirm_bytes));
-        let confirm_link =
-            confirm_re.captures(&confirm_bytes).unwrap()
+    fn check_mails_and_confirm_deletion(client: &Client, filemail_path: &Path, address: &str) {
+        let pattern = format!("{}/vks/manage/([^ \t\n]*)", BASE_URI);
+        let token = pop_mail_capture_pattern(filemail_path, &pattern);
+        vks_manage_delete(client, &token, address);
+    }
+
+    fn pop_mail_capture_pattern(filemail_path: &Path, pattern: &str) -> String {
+        let mail_message = pop_mail(filemail_path).unwrap().unwrap();
+        let mail_content = mail_message.message();
+
+        let capture_re = regex::bytes::Regex::new(pattern).unwrap();
+        let capture_content = capture_re .captures(&mail_content).unwrap()
             .get(1).unwrap().as_bytes();
-        let confirm_uri = String::from_utf8_lossy(confirm_link).to_string();
-        let response = client.get(&confirm_uri).dispatch();
-        assert_eq!(response.status(), Status::Ok);
+        String::from_utf8_lossy(capture_content).to_string()
     }
 
     /// Returns and removes the first mail it finds from the given
@@ -871,7 +865,19 @@ pub mod tests {
         let encoded = ::url::form_urlencoded::Serializer::new(String::new())
             .append_pair("search_term", search_term)
             .finish();
-        let response = client.post("/delete")
+        let response = client.post("/vks/manage")
+            .header(ContentType::Form)
+            .body(encoded.as_bytes())
+            .dispatch();
+        assert_eq!(response.status(), Status::Ok);
+    }
+
+    fn vks_manage_delete(client: &Client, token: &str, address: &str) {
+        let encoded = ::url::form_urlencoded::Serializer::new(String::new())
+            .append_pair("token", token)
+            .append_pair("address", address)
+            .finish();
+        let response = client.post("/vks/manage/unpublish")
             .header(ContentType::Form)
             .body(encoded.as_bytes())
             .dispatch();
