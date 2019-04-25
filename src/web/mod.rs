@@ -588,10 +588,16 @@ pub mod tests {
         let mut response = client.get("/about").dispatch();
         assert_eq!(response.status(), Status::Ok);
         assert_eq!(response.content_type(), Some(ContentType::HTML));
+        assert!(response.body_string().unwrap().contains("distribution and discovery"));
+
+        // Check that we see the privacy policy.
+        let mut response = client.get("/about/privacy").dispatch();
+        assert_eq!(response.status(), Status::Ok);
+        assert_eq!(response.content_type(), Some(ContentType::HTML));
         assert!(response.body_string().unwrap().contains("Public Key Data"));
 
         // Check that we see the API docs.
-        let mut response = client.get("/apidoc").dispatch();
+        let mut response = client.get("/about/api").dispatch();
         assert_eq!(response.status(), Status::Ok);
         assert_eq!(response.content_type(), Some(ContentType::HTML));
         assert!(response.body_string().unwrap().contains("/vks/v1/by-keyid"));
