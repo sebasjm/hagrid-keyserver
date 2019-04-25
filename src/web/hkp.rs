@@ -4,6 +4,7 @@ use rocket::Data;
 use rocket::Outcome;
 use rocket::http::{ContentType, Status};
 use rocket::request::{self, Request, FromRequest};
+use rocket::http::uri::Uri;
 
 use database::{Database, Query, Polymorphic};
 use database::types::{Email, Fingerprint, KeyID};
@@ -190,9 +191,8 @@ fn key_to_hkp_index<'a>(db: rocket::State<Polymorphic>, query: Query)
     ));
 
     for uid in tpk.userids() {
-        let u =
-            url::form_urlencoded::byte_serialize(uid.userid().value())
-            .fold(String::default(), |acc, x| acc + x);
+        let uidstr = uid.userid().to_string();
+        let u = Uri::percent_encode(&uidstr);
         let ctime = uid
             .binding_signature()
             .and_then(|x| x.signature_creation_time())
