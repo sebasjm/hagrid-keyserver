@@ -38,6 +38,10 @@ body {
   color: #050505;
 }
 
+tt {
+  font-size: large;
+}
+
 h1 {
   padding-bottom: 1em;
 }
@@ -47,7 +51,7 @@ p {
 }
 
 a, a:visited {
-  color: #00e;
+  color: #0057B3;
 }
 
 code {
@@ -83,7 +87,7 @@ a.brand {
 
 .search, .upload, .manage {
   display: flex;
-  padding: 0 10%;
+  padding: 0 15%;
 }
 
 .manageEmail, .searchTerm, .fileUpload {
