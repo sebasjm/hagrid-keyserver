@@ -8,7 +8,7 @@
       {{#each uid_status}}
         <div>
           <div style="float: right;">
-            <form action="/vks/manage/unpublish" method="post">
+            <form action="/manage/unpublish" method="post">
               <input type="hidden" name="token" value="{{../token}}" />
               <input type="hidden" name="address" value="{{address}}" />
               <i class="fa fa-eye-slash"></i>&nbsp;<input type="submit" class="link" value="Unpublish">

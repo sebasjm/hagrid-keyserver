@@ -45,12 +45,12 @@ pub mod forms {
     }
 }
 
-#[get("/vks/manage")]
+#[get("/manage")]
 pub fn vks_manage() -> Result<MyResponse> {
     Ok(MyResponse::ok("manage/manage", General::default()))
 }
 
-#[get("/vks/manage/<token>")]
+#[get("/manage/<token>")]
 pub fn vks_manage_key(
    db: State<Polymorphic>,
    token: String,
@@ -89,7 +89,7 @@ pub fn vks_manage_key(
     }
 }
 
-#[post("/vks/manage", data="<request>")]
+#[post("/manage", data="<request>")]
 pub fn vks_manage_post(
     db: State<Polymorphic>,
     request: Form<forms::ManageRequest>,
@@ -136,7 +136,7 @@ pub fn vks_manage_post(
     MyResponse::ok("manage/manage_link_sent", ctx)
 }
 
-#[post("/vks/manage/unpublish", data="<request>")]
+#[post("/manage/unpublish", data="<request>")]
 pub fn vks_manage_unpublish(
     db: rocket::State<Polymorphic>,
     token_service: rocket::State<tokens::Service>,

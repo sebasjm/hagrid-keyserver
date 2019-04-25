@@ -522,7 +522,7 @@ pub mod tests {
         assert!(response.body_string().unwrap().contains("upload"));
 
         // Check that we see the deletion form.
-        let mut response = client.get("/vks/manage").dispatch();
+        let mut response = client.get("/manage").dispatch();
         assert_eq!(response.status(), Status::Ok);
         assert_eq!(response.content_type(), Some(ContentType::HTML));
         assert!(response.body_string().unwrap().contains("email"));
@@ -798,7 +798,7 @@ pub mod tests {
     }
 
     fn check_mails_and_confirm_deletion(client: &Client, filemail_path: &Path, address: &str) {
-        let pattern = format!("{}/vks/manage/([^ \t\n]*)", BASE_URI);
+        let pattern = format!("{}/manage/([^ \t\n]*)", BASE_URI);
         let token = pop_mail_capture_pattern(filemail_path, &pattern);
         vks_manage_delete(client, &token, address);
     }
@@ -865,7 +865,7 @@ pub mod tests {
         let encoded = ::url::form_urlencoded::Serializer::new(String::new())
             .append_pair("search_term", search_term)
             .finish();
-        let response = client.post("/vks/manage")
+        let response = client.post("/manage")
             .header(ContentType::Form)
             .body(encoded.as_bytes())
             .dispatch();
@@ -877,7 +877,7 @@ pub mod tests {
             .append_pair("token", token)
             .append_pair("address", address)
             .finish();
-        let response = client.post("/vks/manage/unpublish")
+        let response = client.post("/manage/unpublish")
             .header(ContentType::Form)
             .body(encoded.as_bytes())
             .dispatch();
