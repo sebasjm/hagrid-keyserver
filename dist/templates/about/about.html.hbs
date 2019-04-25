@@ -9,9 +9,12 @@
     </p>
 
     <p>
-        As a user, this means <tt>hkps://keys.openpgp.org</tt> can be used as
-        a drop-in replacement for other keyservers, where it should offer better
-        response times.
+        As a user, <tt>hkps://keys.openpgp.org</tt> can be used as a drop-in
+        replacement for other keyservers, offering fast and reliable response
+        times. All typical workflows for key updates and discovery by e-mail
+        address are supported. Keys which are discoverable by e-mail must be
+        verified by their owner, and can also be deleted by them. See below for
+        details.
     </p>
 
     <p>
@@ -70,7 +73,7 @@
                         <a href="https://eclips.is" target="_blank">eclips.is</a>,
                         a hosting provider specifically created to host and
                         support Internet Freedom efforts. No Cloudflare
-                    involved.</li>
+                        involved.</li>
                     <li>We keep no detailed access logs, only basic operational
                         usage statistics.</li>
                     <li>The service can be accessed as a TOR hidden service
@@ -105,7 +108,15 @@
                 in the future, that avoid this issue.
             </p>
         </li>
-        <li><b>We are not a de-facto certification authority</b>
+        <li><b>Not part of the "synchronizing keyserver" (SKS) pool</b>
+            <p>The federation model of the SKS pool led to various problems in
+                practice, which are incompatible with the goals stated above.
+            </p>
+            <p>We are not opposed to exploring other options for federation in
+                the future, but it is not a high priority goal for now.
+            </p>
+        </li>
+        <li><b>Not a de-facto certification authority</b>
             <p>While <tt>keys.openpgp.org</tt> can be used to discover keys
                 for given e-mail addresses <i>reliably</i>, that does not mean
                 they are <i>trustworthy</i> in a cryptographic sense.
