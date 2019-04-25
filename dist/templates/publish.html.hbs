@@ -1,5 +1,11 @@
 {{#> layout }}
-  <p>After uploading your key we will send a verification link to each email address we find inside. Clicking that link will make your key searchable by that email address.</p>
+<div class="spacer2">
+  <center><h2>Upload</h2></center>
+
+  <p>After uploading your key we will send a verification link to each email
+    address we find inside.
+    Clicking that link will make your key searchable by that email address.
+  </p>
 
   <div class="row">
     <form action="/vks/v1/publish" method="POST" enctype="multipart/form-data">
@@ -13,14 +19,28 @@
     </form>
   </div>
 
+  {{#if show_help}}
   <div class="row">
-    <p>If you're using GnuPG you can use the following snippet to export your public key. This will create a file called mykey.pgp that you can upload here.</p>
-    <pre><code class="snippet">gpg --export your_address@example.org &gt; mykey.pgp</code></pre>
+    <p>
+      You can delete an uploaded key <a href="/manage">here</a>.
+    </p>
   </div>
 
   <div class="row">
-    <p>You can delete an uploaded key <a href="/manage">here</a>.</p>
+    <p>If you're using GnuPG you can use the following snippet to export your
+      public key.<br />
+      This will create a file called mykey.pgp that you can upload here.
+    </p>
+    <center><pre><code class="snippet">gpg --export your_address@example.org &gt; mykey.pgp</code></pre></center>
   </div>
+  {{else}}
+  <div class="row">
+    <p>
+      You can delete an uploaded key <a href="/manage">here</a>.
+      Need help <a href="/publish?guide=true">exporting your key to a file</a>?
+    </p>
+  </div>
+  {{/if}}
 
   <script>
     var body = document.getElementsByTagName("body")[0];
@@ -38,4 +58,5 @@
         }
     }, false);
   </script>
+</div>
 {{/layout}}

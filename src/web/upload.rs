@@ -18,6 +18,13 @@ const UPLOAD_LIMIT: u64 = 1024 * 1024; // 1 MiB.
 
 mod template {
     #[derive(Serialize)]
+    pub struct Publish {
+        pub commit: String,
+        pub version: String,
+        pub show_help: bool,
+    }
+
+    #[derive(Serialize)]
     pub struct VerificationSent {
         pub emails: Vec<String>,
         pub commit: String,
@@ -25,12 +32,12 @@ mod template {
     }
 }
 
-#[get("/publish")]
-pub fn publish() -> MyResponse {
-    let context = super::templates::General {
-        error: None,
+#[get("/publish?<guide>")]
+pub fn publish(guide: bool) -> MyResponse {
+    let context = template::Publish {
         version: env!("VERGEN_SEMVER").to_string(),
         commit: env!("VERGEN_SHA_SHORT").to_string(),
+        show_help: guide,
     };
 
     MyResponse::ok("publish", context)
