@@ -72,6 +72,10 @@ abbr {
   color: #444;
 }
 
+a {
+  text-decoration: none;
+}
+
 a.brand {
   text-decoration: none;
   color: #050505;

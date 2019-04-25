@@ -1,54 +1,119 @@
 {{#> layout }}
 <div class="spacer">
-  <h2>Privacy Policy</h2>
-	<p style="text-align: left;">
-	The public keyserver running on keys.openpgp.org processes, stores and
-	distributes OpenPGP key data. The specific way in which data is processed
-	differs by type as follows:
-	<ul>
-		<li><i class="fa fa-key"></i> <b>Public Key Data</b>
-			<p>The cryptographic content of OpenPGP keys is not considered personally
-				identifiable information. This includes specifically <abbr
-					title="Packet Tags 6 and 14">public key material</abbr>,
-				<abbr title="Packet Tag 2">self-signatures</abbr>, and <abbr
-					title="Packet Tag 2">revocation signatures</abbr>.
-			<p>This OpenPGP keys
-			<p>This data is not usually collectively available, but may be handed
-				upon request to third parties for purposes of development or research.
-		<li><i class="fa fa-envelope"></i> <b>E-Mail Addresses</b>
-			<p>E-Mail addresses contained in <abbr title="Packet Tag 13">User
-					IDs</abbr> are personally identifiable information. Special care is
-				taken to make sure they are used only with consent:
-				<ul>
-					<li>Publishing requires <a target="_blank"
-							href="https://en.wikipedia.org/wiki/Opt-in_email#Confirmed_opt-in_(COI)_/_Double_opt-in_(DOI)">double
-							opt-in</a> validation, to prove ownership of the address.
-					<li>Addresses are searchable by exact E-Mail address, but not by
-						associated name.
-					<li>Enumeration of addresses is not possible.
-					<li>Deletion of addresses is possible via simple proof of ownership in
-						an automated fashion, similar to publication. To unlist an address
-						where this isn't possible, write to support at keys dot openpgp dot
-						org.
-				</ul>
+    <center><h2>About | <a href="/privacy">Privacy Policy</a> | <a href="/apidoc">API Docs</a></h2></center>
 
-				<p>This data is never handed to third parties.
-		<li><i class="fa fa-user"></i> <b>Other User ID data</b>
-			<p>Personal data types other than E-Mail addresses, such as <abbr
-					title="Packet Tag 2">User IDs</abbr> that do not contain E-Mail
-				addresses, or <abbr title="Packet Tag 17">image attributes</abbr>, are
-				stripped during upload, and never stored or further processed in any
-				way.
-			<p>OpenPGP packet types that were not specifically mentioned above are
-				stripped during upload, and never stored or further processed in any
-				way.
-	</ul>
-	<p style="text-align: left">Data is never relayed to third parties outside of
-		what is available from the <a href="/apidoc">public API interfaces</a>, and what is described in
-		this policy.
+    <p>
+        The <tt>keys.openpgp.org</tt> website is a public service for the
+        distribution and discovery of OpenPGP-compatible keys, commonly
+        referred to as a "keyserver".
+    </p>
 
-	<p>
-		<strong><a href="/">&laquo; Back</a></strong>
-	</p>
+    <p>
+        As a user, this means <tt>hkps://keys.openpgp.org</tt> can be used as
+        a drop-in replacement for other keyservers, where it should offer better
+        response times.
+    </p>
+
+    <p>
+        This service is run as a community effort. You can talk to us in #hagrid
+        on Freenode IRC, also reachable as #hagrid:stratum0.org on Matrix. The
+        folks who made this come from various projects in the OpenPGP ecosystem
+        including Sequoia-PGP, OpenKeychain, and Enigmail.
+    </p>
+
+    <p>
+        Technically, <tt>keys.openpgp.org</tt> runs on the
+        <a href="https://gitlab.com/sequoia-pgp/hagrid" target="_blank">Hagrid</a>
+        keyserver software, which is based on
+        <a href="https://sequoia-pgp.org">Sequoia-PGP</a>.  We are hosted on the
+        <a href="https://eclips.is" target="_blank">eclips.is</a> platform,
+        a hosting provider focused on Internet Freedom projects, run by
+        <a href="https://greenhost.net/" target="_blank">Greenhost</a>.
+    </p>
+
+    <center><h3>Goals</h3></center>
+
+    <ul>
+        <li><b>Fast and reliable key distribution</b>
+            <p>The primary function of <tt>keys.openpgp.org</tt> is the
+                distribution of updates for OpenPGP public keys. Keys can be
+                uploaded by anyone, and can then be retrieved by fingerprint.
+                This allows OpenPGP clients to update keys they already know, in
+                particular revocations and new subkeys.
+            </p>
+            <p>Keys can also be discovered by e-mail, if published by their
+                owner (see below).</p>
+            <p>We make it a priority to keep the service fast and reliable.</p>
+        </li>
+
+        <li><b>Key discovery by e-mail address</b>
+            <p>Users can choose to make a key discoverable for a specific e-mail
+                address. In order to protect the privacy of our users and
+                improve the usefulness of the service, some limitations apply:
+            </p>
+            <ol>
+                <li>Only the owner of an e-mail address can make its key discoverable.</li>
+                <li>Only a single key can be associated with an e-mail address at any one time.</li>
+                <li>Search is only possible by exact e-mail addresses, not by name or a partial address.</li>
+            </ol>
+            <p>Making a key discoverable for an e-mail address requires simple
+                validation, to prove ownership of the e-mail address.  A key
+                published in this way can be <a href="/vks/manage">deleted</a>
+                by the owner at any time.
+            </p>
+        </li>
+
+        <li><b>Preserve user privacy</b>
+            <p>One of our top priorities is user privacy:
+                <ul>
+                    <li>We are hosted on
+                        <a href="https://eclips.is" target="_blank">eclips.is</a>,
+                        a hosting provider specifically created to host and
+                        support Internet Freedom efforts. No Cloudflare
+                    involved.</li>
+                    <li>We keep no detailed access logs, only basic operational
+                        usage statistics.</li>
+                    <li>The service can be accessed as a TOR hidden service
+                        (coming SOON).</li>
+                    <li>In the future, we hope to use this platform to
+                        experiment with new mechanisms that improve user
+                        privacy in the OpenPGP ecosystem.</li>
+                </ul>
+            </p>
+            <p>See our <a href="/privacy">Privacy Policy</a> for more details on
+                how we store and distribute data.</p>
+        </li>
+    </ul>
+
+    <center><h3>Non-Goals</h3></center>
+
+    <ul>
+        <li><b>Do not distribute spam</b>
+            <p>Unlike traditional keyservers, <tt>keys.openpgp.org</tt> will
+                never distribute key material that isn't cryptographically
+                verified. This protects keys from unwanted spam, and helps
+                protect the service itself against "denial of service" attacks.
+            </p>
+            <p>We also do not distribute "third-party" signatures on keys. These
+                kinds of signatures were typically used to "sign" the keys of
+                others, in order to support a "Web of Trust" trust model. This
+                model as implemented proved ineffective in practice for various
+                reasons, in particular it allowed attaching arbitrary spam to
+                any key.
+            </p>
+            <p>We are open to alternative approaches that might be implemented
+                in the future, that avoid this issue.
+            </p>
+        </li>
+        <li><b>We are not a de-facto certification authority</b>
+            <p>While <tt>keys.openpgp.org</tt> can be used to discover keys
+                for given e-mail addresses <i>reliably</i>, that does not mean
+                they are <i>trustworthy</i> in a cryptographic sense.
+            </p>
+            <p>That said, we will do what we can to make sure this service is as
+                reliable and as trustworthy as possible.
+            </p>
+        </li>
+    </ul>
 </div>
 {{/layout}}

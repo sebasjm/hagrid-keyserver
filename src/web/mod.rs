@@ -409,6 +409,11 @@ fn about() -> Template {
     Template::render("about", templates::General::default())
 }
 
+#[get("/privacy")]
+fn privacy() -> Template {
+    Template::render("privacy", templates::General::default())
+}
+
 #[get("/apidoc")]
 fn apidoc() -> Template {
     Template::render("apidoc", templates::General::default())
@@ -425,6 +430,7 @@ fn rocket_factory(rocket: rocket::Rocket) -> Result<rocket::Rocket> {
         // infra
         root,
         about,
+        privacy,
         apidoc,
         files,
         // VKSv1
