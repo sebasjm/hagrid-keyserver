@@ -406,17 +406,17 @@ fn root() -> Template {
 
 #[get("/about")]
 fn about() -> Template {
-    Template::render("about", templates::General::default())
+    Template::render("about/about", templates::General::default())
 }
 
-#[get("/privacy")]
+#[get("/about/privacy")]
 fn privacy() -> Template {
-    Template::render("privacy", templates::General::default())
+    Template::render("about/privacy", templates::General::default())
 }
 
-#[get("/apidoc")]
+#[get("/about/api")]
 fn apidoc() -> Template {
-    Template::render("apidoc", templates::General::default())
+    Template::render("about/api", templates::General::default())
 }
 
 pub fn serve() -> Result<()> {
