@@ -1,10 +1,16 @@
 {{#> layout }}
   <div class="row">
     <p class="found-key">
-    We found an entry for <em>{{ query }}</em>.
+    We found an entry for <span class="email">{{ query }}</span>:
     </p>
 
-    <p>You can get it with GnuPG using the following snippet:</p>
-    <pre><code class="snippet">gpg {{ gpg_options }}--fetch-keys <a href="{{base_uri}}/vks/v1/by-fingerprint/{{ fpr }}">{{base_uri}}/vks/v1/by-fingerprint/{{ fpr }}</a></code></pre>
+    <p>
+      <a href="{{base_uri}}/vks/v1/by-fingerprint/{{ fpr }}">{{base_uri}}/vks/v1/by-fingerprint/{{ fpr }}</a>
+    </p>
+
+    <p>
+      For more convenience, you should use <tt>keys.openpgp.org</tt> as
+      keyserver <a href="/about/guide">in your OpenPGP software</a>.
+    </p>
   </div>
 {{/layout}}

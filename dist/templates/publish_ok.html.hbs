@@ -1,10 +1,10 @@
 {{#> layout }}
-<h2>Email verification required</h2>
+<h2>Email verification</h2>
 <p>
   We have sent verification emails to the following addresses:
   <ul>
     {{#each emails}}
-    <li>{{this}}</li>
+      <li><span class="email">{{this}}</span></li>
     {{/each}}
   </ul>
   To make the keys available when searching by address, you need to

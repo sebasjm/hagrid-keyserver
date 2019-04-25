@@ -1,7 +1,7 @@
 {{#> layout}}
   <div class="row">
     {{#if verified }}
-    Key for <tt>{{ userid }}</tt> published.
+    Key for <span class="email">{{ userid }}</span> published.
     {{else}}
     Verification failed! You can <a href="/upload">try uploading again</a>.
     {{/if}}

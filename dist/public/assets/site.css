@@ -165,6 +165,11 @@ a.brand {
   margin-right: auto;
 }
 
+span.email {
+  font-family: monospace;
+  font-size: large;
+}
+
 .attribution {
   position: fixed;
   z-index: -1;
