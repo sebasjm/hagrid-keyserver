@@ -1,5 +1,4 @@
 {{#> layout }}
-<div class="spacer2">
   <center><h2>Upload</h2></center>
 
   <p>After uploading your key we will send a verification link to each email
@@ -7,39 +6,31 @@
     Clicking that link will make your key searchable by that email address.
   </p>
 
-  <div class="row">
-    <form action="/vks/v1/publish" method="POST" enctype="multipart/form-data">
-      <div class="upload">
-        <input type="hidden" name="csrf" value="{{csrf}}" />
-        <input type="file" id="keytext" name="keytext" autofocus class="fileUpload" placeholder="Your public key"/>
-        <button type="submit" class="uploadButton button smallButton">
-          <i class="fa fa-upload"></i>
-        </button>
-      </div>
-    </form>
-  </div>
+  <form action="/vks/v1/publish" method="POST" enctype="multipart/form-data">
+    <div class="upload">
+      <input type="hidden" name="csrf" value="{{csrf}}" />
+      <input type="file" id="keytext" name="keytext" autofocus class="fileUpload" placeholder="Your public key"/>
+      <button type="submit" class="uploadButton button smallButton">
+        <i class="fa fa-upload"></i>
+      </button>
+    </div>
+  </form>
 
   {{#if show_help}}
-  <div class="row">
-    <p>
-      You can delete an uploaded key <a href="/manage">here</a>.
-    </p>
-  </div>
+  <p>
+    You can delete an uploaded key <a href="/manage">here</a>.
+  </p>
 
-  <div class="row">
-    <p>If you're using GnuPG you can use the following snippet to export your
-      public key.<br />
-      This will create a file called mykey.pgp that you can upload here.
-    </p>
-    <center><pre><code class="snippet">gpg --export your_address@example.org &gt; mykey.pgp</code></pre></center>
-  </div>
+  <p>If you're using GnuPG you can use the following snippet to export your
+    public key.<br />
+    This will create a file called mykey.pgp that you can upload here.
+  </p>
+  <center><pre><code class="snippet">gpg --export your_address@example.org &gt; mykey.pgp</code></pre></center>
   {{else}}
-  <div class="row">
-    <p>
-      You can delete an uploaded key <a href="/manage">here</a>.
-      Need help <a href="/publish?guide=true">exporting your key to a file</a>?
-    </p>
-  </div>
+  <p>
+    You can delete an uploaded key <a href="/manage">here</a>.
+    Need help <a href="/publish?guide=true">exporting your key to a file</a>?
+  </p>
   {{/if}}
 
   <script>
@@ -58,5 +49,4 @@
         }
     }, false);
   </script>
-</div>
 {{/layout}}

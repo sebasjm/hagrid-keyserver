@@ -10,8 +10,8 @@ use database::{Database, Query, Polymorphic};
 use database::types::{Email, Fingerprint, KeyID};
 
 use web::{
+    HagridState,
     MyResponse,
-    State,
     key_to_response,
     upload,
 };
@@ -118,7 +118,7 @@ pub fn pks_add(db: rocket::State<Polymorphic>, cont_type: &ContentType,
 }
 
 #[get("/pks/lookup")]
-pub fn pks_lookup(state: rocket::State<State>,
+pub fn pks_lookup(state: rocket::State<HagridState>,
                   db: rocket::State<Polymorphic>,
                   key: Hkp) -> MyResponse {
     let query_string = key.to_string();

@@ -4,16 +4,16 @@ use rocket::request::Form;
 
 use failure::Fallible as Result;
 
-use web::{MyResponse,templates::General};
-use database::{Database, Polymorphic};
-use database::types::Email;
+use web::{HagridState, MyResponse, templates::General};
+use database::{Database, Polymorphic, types::Email};
 use mail;
 use tokens;
 
 mod templates {
     #[derive(Serialize)]
     pub struct ManageKey {
-        // pub uid_unpublished: Option<String>,
+        pub fpr: String,
+        pub base_uri: String,
         pub uid_status: Vec<ManageKeyUidStatus>,
         pub token: String,
         pub commit: String,
@@ -52,13 +52,17 @@ pub fn vks_manage() -> Result<MyResponse> {
 
 #[get("/manage/<token>")]
 pub fn vks_manage_key(
+   state: rocket::State<HagridState>,
    db: State<Polymorphic>,
    token: String,
    token_service: rocket::State<tokens::Service>,
 ) -> MyResponse {
+    use database::types::Fingerprint;
+    use std::convert::TryFrom;
     if let Ok(fingerprint) = token_service.check(&token) {
         match db.lookup(&database::Query::ByFingerprint(fingerprint)) {
             Ok(Some(tpk)) => {
+                let fp = Fingerprint::try_from(tpk.fingerprint()).unwrap();
                 let mut emails: Vec<Email> = tpk.userids()
                     .map(|u| u.userid().to_string().parse::<Email>())
                     .flatten()
@@ -72,8 +76,10 @@ pub fn vks_manage_key(
                     }
                 ).collect();
                 let context = templates::ManageKey {
+                    fpr: fp.to_string(),
                     uid_status,
                     token,
+                    base_uri: state.base_uri.clone(),
                     version: env!("VERGEN_SEMVER").to_string(),
                     commit: env!("VERGEN_SHA_SHORT").to_string(),
                 };
@@ -138,17 +144,19 @@ pub fn vks_manage_post(
 
 #[post("/manage/unpublish", data="<request>")]
 pub fn vks_manage_unpublish(
+    state: rocket::State<HagridState>,
     db: rocket::State<Polymorphic>,
     token_service: rocket::State<tokens::Service>,
     request: Form<forms::ManageDelete>,
 ) -> MyResponse {
-    match vks_manage_unpublish_or_fail(db, token_service, request) {
+    match vks_manage_unpublish_or_fail(state, db, token_service, request) {
         Ok(response) => response,
         Err(e) => MyResponse::ise(e),
     }
 }
 
 pub fn vks_manage_unpublish_or_fail(
+    state: rocket::State<HagridState>,
     db: rocket::State<Polymorphic>,
     token_service: rocket::State<tokens::Service>,
     request: Form<forms::ManageDelete>,
@@ -156,5 +164,5 @@ pub fn vks_manage_unpublish_or_fail(
     let fpr = token_service.check(&request.token)?;
     let email = request.address.parse::<Email>()?;
     db.delete_userids_matching(&fpr, &email)?;
-    Ok(vks_manage_key(db, request.token.to_owned(), token_service))
+    Ok(vks_manage_key(state, db, request.token.to_owned(), token_service))
 }

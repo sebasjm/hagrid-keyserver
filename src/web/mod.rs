@@ -169,7 +169,7 @@ mod templates {
     }
 }
 
-pub struct State {
+pub struct HagridState {
     /// The base directory.
     state_dir: PathBuf,
 
@@ -185,7 +185,7 @@ pub struct State {
     x_accel_redirect: bool,
 }
 
-fn key_to_response<'a>(state: rocket::State<State>,
+fn key_to_response<'a>(state: rocket::State<HagridState>,
                        db: rocket::State<Polymorphic>,
                        query_string: String,
                        query: Query,
@@ -231,7 +231,7 @@ fn key_to_response<'a>(state: rocket::State<State>,
     MyResponse::ok("found", context)
 }
 
-fn key_has_uids(state: &State, db: &Polymorphic, query: &Query)
+fn key_has_uids(state: &HagridState, db: &Polymorphic, query: &Query)
                 -> Result<bool> {
     use sequoia_openpgp::Packet;
     use sequoia_openpgp::parse::{Parse, PacketParser, PacketParserResult};
@@ -251,7 +251,7 @@ fn key_has_uids(state: &State, db: &Polymorphic, query: &Query)
 }
 
 #[get("/vks/v1/by-fingerprint/<fpr>")]
-fn vks_v1_by_fingerprint(state: rocket::State<State>,
+fn vks_v1_by_fingerprint(state: rocket::State<HagridState>,
                          db: rocket::State<Polymorphic>,
                          fpr: String) -> MyResponse {
     let query = match Fingerprint::from_str(&fpr) {
@@ -263,7 +263,7 @@ fn vks_v1_by_fingerprint(state: rocket::State<State>,
 }
 
 #[get("/vks/v1/by-email/<email>")]
-fn vks_v1_by_email(state: rocket::State<State>,
+fn vks_v1_by_email(state: rocket::State<HagridState>,
                    db: rocket::State<Polymorphic>,
                    email: String) -> MyResponse {
     let query = match Email::from_str(&email) {
@@ -275,7 +275,7 @@ fn vks_v1_by_email(state: rocket::State<State>,
 }
 
 #[get("/vks/v1/by-keyid/<kid>")]
-fn vks_v1_by_keyid(state: rocket::State<State>,
+fn vks_v1_by_keyid(state: rocket::State<HagridState>,
                    db: rocket::State<Polymorphic>,
                    kid: String) -> MyResponse {
     let query = match KeyID::from_str(&kid) {
@@ -306,7 +306,7 @@ fn publish_verify(db: rocket::State<Polymorphic>,
 }
 
 #[get("/assets/<file..>")]
-fn files(file: PathBuf, state: rocket::State<State>) -> Option<NamedFile> {
+fn files(file: PathBuf, state: rocket::State<HagridState>) -> Option<NamedFile> {
     NamedFile::open(state.public_dir.join("assets").join(file)).ok()
 }
 
@@ -371,7 +371,7 @@ fn rocket_factory(rocket: rocket::Rocket) -> Result<rocket::Rocket> {
     let state_dir: PathBuf = rocket.config().get_str("state_dir")?.into();
     let public_dir = state_dir.join("public");
     let base_uri = rocket.config().get_str("base-URI")?.to_string();
-    let state = State {
+    let state = HagridState {
         state_dir: state_dir,
         public_dir: public_dir,
         base_uri: base_uri.clone(),
@@ -525,7 +525,7 @@ pub mod tests {
         let mut response = client.get("/manage").dispatch();
         assert_eq!(response.status(), Status::Ok);
         assert_eq!(response.content_type(), Some(ContentType::HTML));
-        assert!(response.body_string().unwrap().contains("email"));
+        assert!(response.body_string().unwrap().contains("verification link"));
 
         assert_consistency(client.rocket());
     }

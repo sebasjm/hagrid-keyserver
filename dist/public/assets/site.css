@@ -113,6 +113,16 @@ a.brand {
   width: 40px;
 }
 
+.publishedUid {
+  margin-left: auto;
+  margin-right: auto;
+  max-width: 80%;
+  text-align: left;
+}
+.publishedUid div {
+  float: right;
+}
+
 .button {
   height: 36px;
   border: 1px solid;
@@ -147,22 +157,14 @@ a.brand {
   background-color: #fff;
   border-top: 5px solid #4aa3ff;
   box-shadow: 0 2px 6px hsla(0, 0%, 0%, 0.2);
-}
-
-/* This is used to enlarge the card, but is also used to constrain the
-   flow of text in /about.  */
-.card > .spacer {
-  text-align: left;
   width: 80vw;
   max-width: 800px;
 }
 
-.card > .spacer2 {
+/* This is used to enlarge the card, but is also used to constrain the
+   flow of text in /about.  */
+.card > .about {
   text-align: left;
-  width: 80vw;
-  max-width: 700px;
-  margin-left: auto;
-  margin-right: auto;
 }
 
 span.email {

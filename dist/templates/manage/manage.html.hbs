@@ -1,21 +1,22 @@
 {{#> layout }}
-  <div class="row">
-    <form action="/manage" method="POST">
-      <div class="manage">
-        <input type="text" name="search_term" class="manageEmail" autofocus
-	       placeholder="Email address">
-        <button type="submit" class="manageButton button">
-          Manage
-        </button>
-      </div>
-    </form>
-  </div>
+  <center><h2>Delete</h2></center>
 
-  <div class="row">
-    <p>Please enter one of your email addesses.</p>
-  </div>
+  <p>
+    Enter the address you want to delete. We will send you an e-mail with
+    a verification link.
+  </p>
 
-  <div class="row" style="text-align: left;">
-    <strong><a href="/">&laquo; Back</a></strong>
-  </div>
+  <form action="/manage" method="POST">
+    <div class="manage">
+      <input type="text" name="search_term" class="manageEmail" autofocus
+              placeholder="Email address">
+      <button type="submit" class="manageButton button">
+        Send
+      </button>
+    </div>
+  </form>
+
+  <p>
+    <strong>Note:</strong> You can also use any other address published for the same key.
+  </p>
 {{/layout}}
