@@ -8,7 +8,7 @@ use multipart::server::Multipart;
 use rocket::http::ContentType;
 use rocket::Data;
 
-use database::{Database, Polymorphic, StatefulTokens};
+use database::{Database, KeyDatabase, StatefulTokens};
 use mail;
 use web::MyResponse;
 
@@ -45,7 +45,7 @@ pub fn publish(guide: bool) -> MyResponse {
 
 #[post("/vks/v1/publish", data = "<data>")]
 pub fn vks_v1_publish_post(
-    db: rocket::State<Polymorphic>,
+    db: rocket::State<KeyDatabase>,
     mail_service: rocket::State<mail::Service>,
     token_service: rocket::State<StatefulTokens>,
     cont_type: &ContentType,
@@ -57,7 +57,7 @@ pub fn vks_v1_publish_post(
     }
 }
 pub fn handle_upload_without_verify(
-    db: rocket::State<Polymorphic>,
+    db: rocket::State<KeyDatabase>,
     cont_type: &ContentType,
     data: Data,
 ) -> Result<MyResponse> {
@@ -66,7 +66,7 @@ pub fn handle_upload_without_verify(
 
 // signature requires the request to have a `Content-Type`
 pub fn handle_upload(
-    db: rocket::State<Polymorphic>, cont_type: &ContentType, data: Data,
+    db: rocket::State<KeyDatabase>, cont_type: &ContentType, data: Data,
     services: Option<(rocket::State<mail::Service>, rocket::State<StatefulTokens>)>,
 ) -> Result<MyResponse> {
     if cont_type.is_form_data() {
@@ -119,7 +119,7 @@ pub fn handle_upload(
 }
 
 fn process_upload(
-    boundary: &str, data: Data, db: &Polymorphic,
+    boundary: &str, data: Data, db: &KeyDatabase,
     services: Option<(rocket::State<mail::Service>, rocket::State<StatefulTokens>)>,
 ) -> Result<MyResponse> {
     // saves all fields, any field longer than 10kB goes to a temporary directory
@@ -137,7 +137,7 @@ fn process_upload(
 }
 
 fn process_multipart(
-    entries: Entries, db: &Polymorphic,
+    entries: Entries, db: &KeyDatabase,
     services: Option<(rocket::State<mail::Service>, rocket::State<StatefulTokens>)>,
 ) -> Result<MyResponse> {
     match entries.fields.get("keytext") {
@@ -156,7 +156,7 @@ fn process_multipart(
 
 fn process_key<R>(
     reader: R,
-    db: &Polymorphic,
+    db: &KeyDatabase,
     services: Option<(rocket::State<mail::Service>, rocket::State<StatefulTokens>)>,
 ) -> Result<MyResponse>
 where

@@ -45,11 +45,7 @@ pub mod sync;
 use sync::MutexGuard;
 
 mod fs;
-pub use self::fs::Filesystem;
-mod memory;
-pub use self::memory::Memory;
-mod poly;
-pub use self::poly::Polymorphic;
+pub use self::fs::Filesystem as KeyDatabase;
 
 mod stateful_tokens;
 pub use stateful_tokens::StatefulTokens;

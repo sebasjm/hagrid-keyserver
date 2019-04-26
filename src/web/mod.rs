@@ -13,7 +13,7 @@ pub mod upload;
 use mail;
 use tokens;
 
-use database::{Database, Polymorphic, Query, StatefulTokens};
+use database::{Database, KeyDatabase, Query, StatefulTokens};
 use database::types::{Email, Fingerprint, KeyID};
 use Result;
 
@@ -179,7 +179,7 @@ pub struct HagridState {
 }
 
 fn key_to_response<'a>(state: rocket::State<HagridState>,
-                       db: rocket::State<Polymorphic>,
+                       db: rocket::State<KeyDatabase>,
                        query_string: String,
                        query: Query,
                        machine_readable: bool)
@@ -225,7 +225,7 @@ fn key_to_response<'a>(state: rocket::State<HagridState>,
     MyResponse::ok("found", context)
 }
 
-fn key_has_uids(state: &HagridState, db: &Polymorphic, query: &Query)
+fn key_has_uids(state: &HagridState, db: &KeyDatabase, query: &Query)
                 -> Result<bool> {
     use sequoia_openpgp::Packet;
     use sequoia_openpgp::parse::{Parse, PacketParser, PacketParserResult};
@@ -250,7 +250,7 @@ pub fn get_link_by_fingerprint(fpr: &Fingerprint) -> String {
 
 #[get("/vks/v1/by-fingerprint/<fpr>")]
 fn vks_v1_by_fingerprint(state: rocket::State<HagridState>,
-                         db: rocket::State<Polymorphic>,
+                         db: rocket::State<KeyDatabase>,
                          fpr: String) -> MyResponse {
     let query = match Fingerprint::from_str(&fpr) {
         Ok(fpr) => Query::ByFingerprint(fpr),
@@ -262,7 +262,7 @@ fn vks_v1_by_fingerprint(state: rocket::State<HagridState>,
 
 #[get("/vks/v1/by-email/<email>")]
 fn vks_v1_by_email(state: rocket::State<HagridState>,
-                   db: rocket::State<Polymorphic>,
+                   db: rocket::State<KeyDatabase>,
                    email: String) -> MyResponse {
     let query = match Email::from_str(&email) {
         Ok(email) => Query::ByEmail(email),
@@ -274,7 +274,7 @@ fn vks_v1_by_email(state: rocket::State<HagridState>,
 
 #[get("/vks/v1/by-keyid/<kid>")]
 fn vks_v1_by_keyid(state: rocket::State<HagridState>,
-                   db: rocket::State<Polymorphic>,
+                   db: rocket::State<KeyDatabase>,
                    kid: String) -> MyResponse {
     let query = match KeyID::from_str(&kid) {
         Ok(keyid) => Query::ByKeyID(keyid),
@@ -286,7 +286,7 @@ fn vks_v1_by_keyid(state: rocket::State<HagridState>,
 
 #[get("/publish/<token>")]
 fn publish_verify(
-    db: rocket::State<Polymorphic>,
+    db: rocket::State<KeyDatabase>,
     token_service: rocket::State<StatefulTokens>,
     token: String,
 ) -> MyResponse {
@@ -297,7 +297,7 @@ fn publish_verify(
 }
 
 fn publish_verify_or_fail(
-    db: rocket::State<Polymorphic>,
+    db: rocket::State<KeyDatabase>,
     token_service: rocket::State<StatefulTokens>,
     token: String,
 ) -> Result<MyResponse> {
@@ -391,14 +391,12 @@ fn rocket_factory(rocket: rocket::Rocket) -> Result<rocket::Rocket> {
       )
 }
 
-fn configure_db_service(config: &Config) -> Result<Polymorphic> {
-    use database::{Filesystem, Polymorphic};
-
+fn configure_db_service(config: &Config) -> Result<KeyDatabase> {
     let keys_dir: PathBuf = config.get_str("keys_dir")?.into();
     let tmp_dir: PathBuf = config.get_str("tmp_dir")?.into();
 
-    let fs_db = Filesystem::new(keys_dir, tmp_dir)?;
-    Ok(Polymorphic::Filesystem(fs_db))
+    let fs_db = KeyDatabase::new(keys_dir, tmp_dir)?;
+    Ok(fs_db)
 }
 
 fn configure_hagrid_state(config: &Config) -> Result<HagridState> {
@@ -521,12 +519,8 @@ pub mod tests {
     }
 
     pub fn assert_consistency(rocket: &rocket::Rocket) {
-        let db = rocket.state::<Polymorphic>().unwrap();
-        if let Polymorphic::Filesystem(fs) = db {
-            fs.check_consistency().unwrap();
-        } else {
-            unreachable!();
-        }
+        let db = rocket.state::<KeyDatabase>().unwrap();
+        db.check_consistency().unwrap();
     }
 
     #[test]

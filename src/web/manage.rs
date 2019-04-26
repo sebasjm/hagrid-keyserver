@@ -5,7 +5,7 @@ use rocket::request::Form;
 use failure::Fallible as Result;
 
 use web::{HagridState, MyResponse, templates::General};
-use database::{Database, Polymorphic, types::Email};
+use database::{Database, KeyDatabase, types::Email};
 use mail;
 use tokens;
 
@@ -54,7 +54,7 @@ pub fn vks_manage() -> Result<MyResponse> {
 #[get("/manage/<token>")]
 pub fn vks_manage_key(
    state: rocket::State<HagridState>,
-   db: State<Polymorphic>,
+   db: State<KeyDatabase>,
    token: String,
    token_service: rocket::State<tokens::Service>,
 ) -> MyResponse {
@@ -100,7 +100,7 @@ pub fn vks_manage_key(
 
 #[post("/manage", data="<request>")]
 pub fn vks_manage_post(
-    db: State<Polymorphic>,
+    db: State<KeyDatabase>,
     request: Form<forms::ManageRequest>,
     token_service: rocket::State<tokens::Service>,
     mail_service: Option<rocket::State<mail::Service>>,
@@ -148,7 +148,7 @@ pub fn vks_manage_post(
 #[post("/manage/unpublish", data="<request>")]
 pub fn vks_manage_unpublish(
     state: rocket::State<HagridState>,
-    db: rocket::State<Polymorphic>,
+    db: rocket::State<KeyDatabase>,
     token_service: rocket::State<tokens::Service>,
     request: Form<forms::ManageDelete>,
 ) -> MyResponse {
@@ -160,7 +160,7 @@ pub fn vks_manage_unpublish(
 
 pub fn vks_manage_unpublish_or_fail(
     state: rocket::State<HagridState>,
-    db: rocket::State<Polymorphic>,
+    db: rocket::State<KeyDatabase>,
     token_service: rocket::State<tokens::Service>,
     request: Form<forms::ManageDelete>,
 ) -> Result<MyResponse> {

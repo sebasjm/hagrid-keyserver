@@ -6,7 +6,7 @@ use rocket::http::{ContentType, Status};
 use rocket::request::{self, Request, FromRequest};
 use rocket::http::uri::Uri;
 
-use database::{Database, Query, Polymorphic};
+use database::{Database, Query, KeyDatabase};
 use database::types::{Email, Fingerprint, KeyID};
 
 use web::{
@@ -109,7 +109,7 @@ impl<'a, 'r> FromRequest<'a, 'r> for Hkp {
 
 #[post("/pks/add", data = "<data>")]
 pub fn pks_add(
-    db: rocket::State<Polymorphic>,
+    db: rocket::State<KeyDatabase>,
     cont_type: &ContentType,
     data: Data,
 ) -> MyResponse {
@@ -121,7 +121,7 @@ pub fn pks_add(
 
 #[get("/pks/lookup")]
 pub fn pks_lookup(state: rocket::State<HagridState>,
-                  db: rocket::State<Polymorphic>,
+                  db: rocket::State<KeyDatabase>,
                   key: Hkp) -> MyResponse {
     let query_string = key.to_string();
     let (query, index, machine_readable) = match key {
@@ -144,7 +144,7 @@ pub fn pks_lookup(state: rocket::State<HagridState>,
     }
 }
 
-fn key_to_hkp_index<'a>(db: rocket::State<Polymorphic>, query: Query)
+fn key_to_hkp_index<'a>(db: rocket::State<KeyDatabase>, query: Query)
                         -> MyResponse {
     use sequoia_openpgp::RevocationStatus;
 

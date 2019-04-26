@@ -11,7 +11,7 @@ extern crate structopt;
 use structopt::StructOpt;
 
 extern crate hagrid_database as database;
-use database::{Query, Database, Filesystem};
+use database::{Query, Database, KeyDatabase};
 
 #[derive(Debug, StructOpt)]
 #[structopt(
@@ -51,11 +51,11 @@ fn main() {
 
 fn real_main() -> Result<()> {
     let opt = Opt::from_args();
-    let db = Filesystem::new_from_base(opt.base.canonicalize()?)?;
+    let db = KeyDatabase::new_from_base(opt.base.canonicalize()?)?;
     delete(&db, &opt.query.parse()?, opt.all_bindings, opt.all)
 }
 
-fn delete(db: &Filesystem, query: &Query, all_bindings: bool, mut all: bool)
+fn delete(db: &KeyDatabase, query: &Query, all_bindings: bool, mut all: bool)
           -> Result<()> {
     match query {
         Query::ByFingerprint(_) | Query::ByKeyID(_) => {
