@@ -1,7 +1,7 @@
 use parking_lot::Mutex;
 use std::collections::HashMap;
 
-use {Database, Verify, Query};
+use {Database, Query};
 use types::{Email, Fingerprint, KeyID};
 use sync::MutexGuard;
 use Result;
@@ -15,7 +15,6 @@ pub struct Memory {
     fpr_links: Mutex<HashMap<Fingerprint, Fingerprint>>,
     email: Mutex<HashMap<Email, Fingerprint>>,
     kid: Mutex<HashMap<KeyID, Fingerprint>>,
-    verify_token: Mutex<HashMap<String, Verify>>,
 }
 
 impl Default for Memory {
@@ -26,7 +25,6 @@ impl Default for Memory {
             fpr_links: Mutex::new(HashMap::default()),
             kid: Mutex::new(HashMap::default()),
             email: Mutex::new(HashMap::default()),
-            verify_token: Mutex::new(HashMap::default()),
         }
     }
 }
@@ -34,13 +32,6 @@ impl Default for Memory {
 impl Database for Memory {
     fn lock(&self) -> MutexGuard<()> {
         self.update_lock.lock().into()
-    }
-
-    fn new_verify_token(&self, payload: Verify) -> Result<String> {
-        let token = Self::new_token();
-
-        self.verify_token.lock().insert(token.clone(), payload);
-        Ok(token)
     }
 
     fn update(
@@ -101,11 +92,6 @@ impl Database for Memory {
     fn unlink_kid(&self, kid: &KeyID, _: &Fingerprint) -> Result<()> {
         self.kid.lock().remove(kid);
         Ok(())
-    }
-
-    // (verified uid, fpr)
-    fn pop_verify_token(&self, token: &str) -> Option<Verify> {
-        self.verify_token.lock().remove(token)
     }
 
     fn by_fpr(&self, fpr: &Fingerprint) -> Option<String> {

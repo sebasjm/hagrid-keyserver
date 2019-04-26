@@ -1,17 +1,15 @@
 use std::convert::{TryInto, TryFrom};
-use std::fs::{create_dir_all, read_link, remove_file, rename, File};
-use std::io::{Read, Write};
+use std::fs::{create_dir_all, read_link, remove_file, rename};
+use std::io::Write;
 use std::path::{Path, PathBuf};
-use std::str;
 
-use serde_json;
 use tempfile;
 use url;
 use pathdiff::diff_paths;
 
 //use sequoia_openpgp::armor::{Writer, Kind};
 
-use {Database, Verify, Query};
+use {Database, Query};
 use types::{Email, Fingerprint, KeyID};
 use sync::{MutexGuard, FlockMutex};
 use Result;
@@ -19,9 +17,9 @@ use Result;
 pub struct Filesystem {
     update_lock: FlockMutex,
 
-    state_dir: PathBuf,
     tmp_dir: PathBuf,
 
+    keys_dir: PathBuf,
     keys_dir_by_keyid: PathBuf,
     keys_dir_by_fingerprint: PathBuf,
     keys_dir_by_email: PathBuf,
@@ -43,22 +41,19 @@ impl Filesystem {
         let base_dir: PathBuf = base_dir.into();
 
         let keys_dir = base_dir.join("keys");
-        let state_dir = base_dir.join("hagrid_state");
         let tmp_dir = base_dir.join("tmp");
 
-        Self::new(keys_dir, state_dir, tmp_dir)
+        Self::new(keys_dir, tmp_dir)
     }
 
     pub fn new(
         keys_dir: impl Into<PathBuf>,
-        state_dir: impl Into<PathBuf>,
         tmp_dir: impl Into<PathBuf>,
     ) -> Result<Self> {
-        use std::fs;
 
-        let state_dir = state_dir.into();
-
-        if fs::create_dir(&state_dir).is_err() {
+        /*
+         use std::fs;
+         if fs::create_dir(&state_dir).is_err() {
             let meta = fs::metadata(&state_dir);
 
             match meta {
@@ -82,13 +77,10 @@ impl Filesystem {
                         state_dir.display(), e));
                 }
             }
-        }
+        }*/
 
         let tmp_dir = tmp_dir.into();
         create_dir_all(&tmp_dir)?;
-
-        let token_dir = state_dir.join("verification_tokens");
-        create_dir_all(token_dir)?;
 
         let keys_dir: PathBuf = keys_dir.into();
         let keys_dir_by_keyid = keys_dir.join("by-keyid");
@@ -100,11 +92,10 @@ impl Filesystem {
 
         info!("Opened filesystem database.");
         info!("keys_dir: '{}'", keys_dir.display());
-        info!("state_dir: '{}'", state_dir.display());
         info!("tmp_dir: '{}'", tmp_dir.display());
         Ok(Filesystem {
-            update_lock: FlockMutex::new(&state_dir)?,
-            state_dir: state_dir,
+            update_lock: FlockMutex::new(&keys_dir)?,
+            keys_dir: keys_dir,
             tmp_dir: tmp_dir,
             keys_dir_by_keyid: keys_dir_by_keyid,
             keys_dir_by_fingerprint: keys_dir_by_fingerprint,
@@ -199,36 +190,6 @@ impl Filesystem {
         let decoded = url::form_urlencoded::parse(joined.as_bytes())
             .next()?.0;
         Email::from_str(&decoded).ok()
-    }
-
-    fn new_token<'a>(&self, token_type: &'a str) -> Result<(File, String)> {
-        use rand::distributions::Alphanumeric;
-        use rand::{thread_rng, Rng};
-
-        let mut rng = thread_rng();
-        // samples from [a-zA-Z0-9]
-        // 43 chars ~ 256 bit
-        let name: String = rng.sample_iter(&Alphanumeric).take(43).collect();
-        let dir = self.state_dir.join(token_type);
-        let fd = File::create(dir.join(&name))?;
-
-        Ok((fd, name))
-    }
-
-    fn pop_token<'a>(
-        &self, token_type: &'a str, token: &'a str,
-    ) -> Result<Box<[u8]>> {
-        let path = self.state_dir.join(token_type).join(token);
-        let buf = {
-            let mut fd = File::open(&path)?;
-            let mut buf = Vec::default();
-
-            fd.read_to_end(&mut buf)?;
-            buf.into_boxed_slice()
-        };
-
-        remove_file(path)?;
-        Ok(buf)
     }
 
     /// Checks the database for consistency.
@@ -443,13 +404,6 @@ impl Database for Filesystem {
         self.update_lock.lock().into()
     }
 
-    fn new_verify_token(&self, payload: Verify) -> Result<String> {
-        let (mut fd, name) = self.new_token("verification_tokens")?;
-        fd.write_all(serde_json::to_string(&payload)?.as_bytes())?;
-
-        Ok(name)
-    }
-
     fn update(
         &self, fpr: &Fingerprint, new: Option<String>,
     ) -> Result<()> {
@@ -527,8 +481,11 @@ impl Database for Filesystem {
         };
 
         if path.exists() {
-            Some(diff_paths(&path, &self.state_dir).expect("related paths"))
+            let x = diff_paths(&path, &self.keys_dir).expect("related paths");
+            println!("YEAP: {:?}", &x);
+            Some(x)
         } else {
+            println!("NOPE");
             None
         }
     }
@@ -631,16 +588,6 @@ impl Database for Filesystem {
         Ok(())
     }
 
-    fn pop_verify_token(&self, token: &str) -> Option<Verify> {
-        self.pop_token("verification_tokens", token)
-            .ok()
-            .and_then(|raw| str::from_utf8(&raw).ok().map(|s| s.to_string()))
-            .and_then(|s| {
-                let s = serde_json::from_str(&s);
-                s.ok()
-            })
-    }
-
     // XXX: slow
     fn by_fpr(&self, fpr: &Fingerprint) -> Option<String> {
         let path = self.fingerprint_to_path(fpr);
@@ -677,13 +624,13 @@ mod tests {
     #[test]
     fn init() {
         let tmpdir = TempDir::new().unwrap();
-        let _ = Filesystem::new(tmpdir.path()).unwrap();
+        let _ = Filesystem::new_from_base(tmpdir.path()).unwrap();
     }
 
     #[test]
     fn new() {
         let tmpdir = TempDir::new().unwrap();
-        let db = Filesystem::new(tmpdir.path()).unwrap();
+        let db = Filesystem::new_from_base(tmpdir.path()).unwrap();
         let k1 = TPKBuilder::default().add_userid("a@invalid.example.org")
             .generate().unwrap().0;
         let k2 = TPKBuilder::default().add_userid("b@invalid.example.org")
@@ -702,7 +649,7 @@ mod tests {
     #[test]
     fn uid_verification() {
         let tmpdir = TempDir::new().unwrap();
-        let mut db = Filesystem::new(tmpdir.path()).unwrap();
+        let mut db = Filesystem::new_from_base(tmpdir.path()).unwrap();
 
         test::test_uid_verification(&mut db);
     }
@@ -710,7 +657,7 @@ mod tests {
     #[test]
     fn uid_deletion() {
         let tmpdir = TempDir::new().unwrap();
-        let mut db = Filesystem::new(tmpdir.path()).unwrap();
+        let mut db = Filesystem::new_from_base(tmpdir.path()).unwrap();
 
         test::test_uid_deletion(&mut db);
     }
@@ -718,7 +665,7 @@ mod tests {
     #[test]
     fn subkey_lookup() {
         let tmpdir = TempDir::new().unwrap();
-        let mut db = Filesystem::new(tmpdir.path()).unwrap();
+        let mut db = Filesystem::new_from_base(tmpdir.path()).unwrap();
 
         test::test_subkey_lookup(&mut db);
     }
@@ -726,7 +673,7 @@ mod tests {
     #[test]
     fn kid_lookup() {
         let tmpdir = TempDir::new().unwrap();
-        let mut db = Filesystem::new(tmpdir.path()).unwrap();
+        let mut db = Filesystem::new_from_base(tmpdir.path()).unwrap();
 
         test::test_kid_lookup(&mut db);
     }
@@ -734,14 +681,14 @@ mod tests {
     #[test]
     fn upload_revoked_tpk() {
         let tmpdir = TempDir::new().unwrap();
-        let mut db = Filesystem::new(tmpdir.path()).unwrap();
+        let mut db = Filesystem::new_from_base(tmpdir.path()).unwrap();
         test::test_upload_revoked_tpk(&mut db);
     }
 
     #[test]
     fn uid_revocation() {
         let tmpdir = TempDir::new().unwrap();
-        let mut db = Filesystem::new(tmpdir.path()).unwrap();
+        let mut db = Filesystem::new_from_base(tmpdir.path()).unwrap();
 
         test::test_uid_revocation(&mut db);
     }
@@ -749,7 +696,7 @@ mod tests {
     #[test]
     fn key_reupload() {
         let tmpdir = TempDir::new().unwrap();
-        let mut db = Filesystem::new(tmpdir.path()).unwrap();
+        let mut db = Filesystem::new_from_base(tmpdir.path()).unwrap();
 
         test::test_reupload(&mut db);
     }
@@ -757,7 +704,7 @@ mod tests {
     #[test]
     fn uid_replacement() {
         let tmpdir = TempDir::new().unwrap();
-        let mut db = Filesystem::new(tmpdir.path()).unwrap();
+        let mut db = Filesystem::new_from_base(tmpdir.path()).unwrap();
 
         test::test_uid_replacement(&mut db);
     }
@@ -765,7 +712,7 @@ mod tests {
     #[test]
     fn uid_stealing() {
         let tmpdir = TempDir::new().unwrap();
-        let mut db = Filesystem::new(tmpdir.path()).unwrap();
+        let mut db = Filesystem::new_from_base(tmpdir.path()).unwrap();
 
         test::test_steal_uid(&mut db);
     }
@@ -773,14 +720,14 @@ mod tests {
     #[test]
     fn uid_unlinking() {
         let tmpdir = TempDir::new().unwrap();
-        let mut db = Filesystem::new(tmpdir.path()).unwrap();
+        let mut db = Filesystem::new_from_base(tmpdir.path()).unwrap();
         test::test_unlink_uid(&mut db);
     }
 
     #[test]
     fn same_email_1() {
         let tmpdir = TempDir::new().unwrap();
-        let mut db = Filesystem::new(tmpdir.path()).unwrap();
+        let mut db = Filesystem::new_from_base(tmpdir.path()).unwrap();
 
         test::test_same_email_1(&mut db);
     }
@@ -788,7 +735,7 @@ mod tests {
     #[test]
     fn same_email_2() {
         let tmpdir = TempDir::new().unwrap();
-        let mut db = Filesystem::new(tmpdir.path()).unwrap();
+        let mut db = Filesystem::new_from_base(tmpdir.path()).unwrap();
 
         test::test_same_email_2(&mut db);
     }
@@ -796,7 +743,7 @@ mod tests {
     #[test]
     fn reverse_fingerprint_to_path() {
         let tmpdir = TempDir::new().unwrap();
-        let db = Filesystem::new(tmpdir.path()).unwrap();
+        let db = Filesystem::new_from_base(tmpdir.path()).unwrap();
 
         let fp: Fingerprint =
             "CBCD8F030588653EEDD7E2659B7DD433F254904A".parse().unwrap();

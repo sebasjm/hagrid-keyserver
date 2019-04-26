@@ -89,8 +89,8 @@ pub fn test_uid_verification<D: Database>(db: &mut D) {
         }
     }
 
-    // verify 1st uid again
-    assert!(db.verify_token(&tokens[0].1).is_err());
+    // this operation is idempotent - let's try again!
+    assert!(db.verify_token(&tokens[0].1).unwrap().is_some());
 
     {
         // fetch by fpr

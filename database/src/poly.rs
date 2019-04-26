@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use {Database, Filesystem, Memory, Verify, Query};
+use {Database, Filesystem, Memory, Query};
 use Result;
 use types::{Email, Fingerprint, KeyID};
 use sync::MutexGuard;
@@ -15,13 +15,6 @@ impl Database for Polymorphic {
         match self {
             &Polymorphic::Memory(ref db) => db.lock(),
             &Polymorphic::Filesystem(ref db) => db.lock(),
-        }
-    }
-
-    fn new_verify_token(&self, payload: Verify) -> Result<String> {
-        match self {
-            &Polymorphic::Memory(ref db) => db.new_verify_token(payload),
-            &Polymorphic::Filesystem(ref db) => db.new_verify_token(payload),
         }
     }
 
@@ -96,13 +89,6 @@ impl Database for Polymorphic {
         match self {
             &Polymorphic::Memory(ref db) => db.unlink_email(email, fpr),
             &Polymorphic::Filesystem(ref db) => db.unlink_email(email, fpr),
-        }
-    }
-
-    fn pop_verify_token(&self, token: &str) -> Option<Verify> {
-        match self {
-            &Polymorphic::Memory(ref db) => db.pop_verify_token(token),
-            &Polymorphic::Filesystem(ref db) => db.pop_verify_token(token),
         }
     }
 

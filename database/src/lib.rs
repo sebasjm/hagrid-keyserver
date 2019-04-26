@@ -51,6 +51,9 @@ pub use self::memory::Memory;
 mod poly;
 pub use self::poly::Polymorphic;
 
+mod stateful_tokens;
+pub use stateful_tokens::StatefulTokens;
+
 #[cfg(test)]
 mod test;
 
@@ -149,8 +152,6 @@ pub trait Database: Sync + Send {
     /// read operations to ensure that we return something sane.
     fn lock(&self) -> MutexGuard<()>;
 
-    fn new_verify_token(&self, payload: Verify) -> Result<String>;
-
     /// Update the data associated with `fpr` with the data in new.
     ///
     /// If new is None, this removes any associated data.
@@ -223,9 +224,6 @@ pub trait Database: Sync + Send {
 
     fn link_fpr(&self, from: &Fingerprint, to: &Fingerprint) -> Result<()>;
     fn unlink_fpr(&self, from: &Fingerprint, to: &Fingerprint) -> Result<()>;
-
-    // (verified uid, fpr)
-    fn pop_verify_token(&self, token: &str) -> Option<Verify>;
 
     fn by_fpr(&self, fpr: &Fingerprint) -> Option<String>;
     fn by_kid(&self, kid: &KeyID) -> Option<String>;
@@ -397,8 +395,8 @@ pub trait Database: Sync + Send {
         self.link_subkeys(&fpr, subkeys)?;
 
         let mut tokens = Vec::new();
-        for (fp, verify) in unverified_uids.into_iter() {
-            tokens.push((fp, self.new_verify_token(verify)?));
+        for (email, verify) in unverified_uids.into_iter() {
+            tokens.push((email, serde_json::to_string(&verify)?));
         }
         Ok(tokens)
     }
@@ -411,46 +409,43 @@ pub trait Database: Sync + Send {
     //  }
     // }
     fn verify_token(
-        &self, token: &str,
+        &self, token_str: &str,
     ) -> Result<Option<(Email, Fingerprint)>> {
         let _ = self.lock();
 
-        match self.pop_verify_token(token) {
-            Some(Verify { created, packets, fpr, email }) => {
-                let now = time::now().to_timespec().sec;
-                if created > now || now - created > 3 * 3600 {
-                    return Ok(None);
-                }
+        let Verify { created, packets, fpr, email } = serde_json::from_str(&token_str)?;
 
-                match self.by_fpr(&fpr) {
-                    Some(old) => {
+        let now = time::now().to_timespec().sec;
+        if created > now || now - created > 3 * 3600 {
+            return Ok(None);
+        }
 
-                        let tpk = TPK::from_bytes(old.as_bytes()).unwrap();
-                        let packet_pile = PacketPile::from_bytes(&packets)
-                            .unwrap().into_children().collect::<Vec<_>>();
-                        let new = tpk.merge_packets(packet_pile).unwrap();
+        match self.by_fpr(&fpr) {
+            Some(old) => {
+
+                let tpk = TPK::from_bytes(old.as_bytes()).unwrap();
+                let packet_pile = PacketPile::from_bytes(&packets)
+                    .unwrap().into_children().collect::<Vec<_>>();
+                let new = tpk.merge_packets(packet_pile).unwrap();
 
 
-                        let mut buf = std::io::Cursor::new(vec![]);
-                        {
-                            let mut armor_writer = Writer::new(&mut buf, Kind::PublicKey,
-                                                               &[][..])?;
+                let mut buf = std::io::Cursor::new(vec![]);
+                {
+                    let mut armor_writer = Writer::new(&mut buf, Kind::PublicKey,
+                                                        &[][..])?;
 
-                            armor_writer.write_all(&Self::tpk_into_bytes(&new).unwrap())?;
-                        };
-                        let armored = String::from_utf8_lossy(buf.get_ref());
+                    armor_writer.write_all(&Self::tpk_into_bytes(&new).unwrap())?;
+                };
+                let armored = String::from_utf8_lossy(buf.get_ref());
 
-                        self.update(&fpr, Some(armored.into_owned()))?;
-                        self.link_email(&email, &fpr)?;
-                        return Ok(Some((email.clone(), fpr.clone())));
-                    }
-
-                    None => {
-                        return Ok(None);
-                    }
-                }
+                self.update(&fpr, Some(armored.into_owned()))?;
+                self.link_email(&email, &fpr)?;
+                return Ok(Some((email.clone(), fpr.clone())));
             }
-            None => Err(failure::err_msg("No such token")),
+
+            None => {
+                return Ok(None);
+            }
         }
     }
 

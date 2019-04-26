@@ -8,7 +8,7 @@ use multipart::server::Multipart;
 use rocket::http::ContentType;
 use rocket::Data;
 
-use database::{Database, Polymorphic};
+use database::{Database, Polymorphic, StatefulTokens};
 use mail;
 use web::MyResponse;
 
@@ -45,19 +45,29 @@ pub fn publish(guide: bool) -> MyResponse {
 
 #[post("/vks/v1/publish", data = "<data>")]
 pub fn vks_v1_publish_post(
-    db: rocket::State<Polymorphic>, cont_type: &ContentType, data: Data,
-    mail_service: rocket::State<mail::Service>
+    db: rocket::State<Polymorphic>,
+    mail_service: rocket::State<mail::Service>,
+    token_service: rocket::State<StatefulTokens>,
+    cont_type: &ContentType,
+    data: Data,
 ) -> MyResponse {
-    match handle_upload(db, cont_type, data, Some(mail_service)) {
+    match handle_upload(db, cont_type, data, Some((mail_service, token_service))) {
         Ok(ok) => ok,
         Err(err) => MyResponse::ise(err),
     }
+}
+pub fn handle_upload_without_verify(
+    db: rocket::State<Polymorphic>,
+    cont_type: &ContentType,
+    data: Data,
+) -> Result<MyResponse> {
+    handle_upload(db, cont_type, data, None)
 }
 
 // signature requires the request to have a `Content-Type`
 pub fn handle_upload(
     db: rocket::State<Polymorphic>, cont_type: &ContentType, data: Data,
-    mail_service: Option<rocket::State<mail::Service>>
+    services: Option<(rocket::State<mail::Service>, rocket::State<StatefulTokens>)>,
 ) -> Result<MyResponse> {
     if cont_type.is_form_data() {
         // multipart/form-data
@@ -70,7 +80,7 @@ pub fn handle_upload(
                                       boundary param not provided"))),
             };
 
-        process_upload(boundary, data, db.inner(), mail_service)
+        process_upload(boundary, data, db.inner(), services)
     } else if cont_type.is_form() {
         use rocket::request::FormItems;
         use std::io::Cursor;
@@ -93,7 +103,7 @@ pub fn handle_upload(
                     return process_key(
                         Cursor::new(decoded_value.as_bytes()),
                         &db,
-                        mail_service,
+                        services,
                     );
                 }
                 _ => { /* skip */ }
@@ -110,29 +120,30 @@ pub fn handle_upload(
 
 fn process_upload(
     boundary: &str, data: Data, db: &Polymorphic,
-    mail_service: Option<rocket::State<mail::Service>>,
+    services: Option<(rocket::State<mail::Service>, rocket::State<StatefulTokens>)>,
 ) -> Result<MyResponse> {
     // saves all fields, any field longer than 10kB goes to a temporary directory
     // Entries could implement FromData though that would give zero control over
     // how the files are saved; Multipart would be a good impl candidate though
     match Multipart::with_body(data.open().take(UPLOAD_LIMIT), boundary).save().temp() {
         Full(entries) => {
-            process_multipart(entries, db, mail_service)
+            process_multipart(entries, db, services)
         }
         Partial(partial, _) => {
-            process_multipart(partial.entries, db, mail_service)
+            process_multipart(partial.entries, db, services)
         }
         Error(err) => Err(err.into())
     }
 }
 
-fn process_multipart(entries: Entries, db: &Polymorphic,
-                     mail_service: Option<rocket::State<mail::Service>>)
-                     -> Result<MyResponse> {
+fn process_multipart(
+    entries: Entries, db: &Polymorphic,
+    services: Option<(rocket::State<mail::Service>, rocket::State<StatefulTokens>)>,
+) -> Result<MyResponse> {
     match entries.fields.get("keytext") {
         Some(ent) if ent.len() == 1 => {
             let reader = ent[0].data.readable()?;
-            process_key(reader, db, mail_service)
+            process_key(reader, db, services)
         }
         Some(_) =>
             Ok(MyResponse::bad_request(
@@ -144,7 +155,9 @@ fn process_multipart(entries: Entries, db: &Polymorphic,
 }
 
 fn process_key<R>(
-    reader: R, db: &Polymorphic, mail_service: Option<rocket::State<mail::Service>>,
+    reader: R,
+    db: &Polymorphic,
+    services: Option<(rocket::State<mail::Service>, rocket::State<StatefulTokens>)>,
 ) -> Result<MyResponse>
 where
     R: Read,
@@ -173,10 +186,11 @@ where
 
     let mut results: Vec<String> = vec!();
     for tpk in tpks {
-        let tokens = db.merge_or_publish(&tpk)?;
+        let verification_strings = db.merge_or_publish(&tpk)?;
 
-        if let Some(ref mail_service) = mail_service {
-            for (email, token) in tokens {
+        if let Some((ref mail_service, ref token_service)) = services {
+            for (email, data) in verification_strings {
+                let token = token_service.new_token("verify", data.as_bytes())?;
                 mail_service.send_verification(
                     &tpk,
                     &email,

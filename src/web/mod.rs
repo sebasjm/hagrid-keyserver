@@ -13,7 +13,7 @@ pub mod upload;
 use mail;
 use tokens;
 
-use database::{Database, Polymorphic, Query};
+use database::{Database, Polymorphic, Query, StatefulTokens};
 use database::types::{Email, Fingerprint, KeyID};
 use Result;
 
@@ -66,20 +66,12 @@ impl MyResponse {
             })
     }
 
-    // XXX needs fixing for keys_dir!
-    pub fn x_accel_redirect(path: PathBuf, fp: &Fingerprint) -> Self {
+    pub fn x_accel_redirect(x_accel_path: String, fp: &Fingerprint) -> Self {
         use rocket::http::hyper::header::{ContentDisposition, DispositionType,
                                           DispositionParam, Charset};
-        // The path is relative to our base directory, but we need to
-        // get it relative to base/public.
-        let mut path = path.into_os_string().into_string().expect("valid UTF8");
-        // Drop the first component.
-        assert!(path.starts_with("public/"));
-        path.drain(..6);
-
         MyResponse::XAccelRedirect(
             "",
-            Header::new("X-Accel-Redirect", path),
+            Header::new("X-Accel-Redirect", x_accel_path),
             ContentDisposition {
                 disposition: DispositionType::Attachment,
                 parameters: vec![
@@ -91,6 +83,7 @@ impl MyResponse {
     }
 
     pub fn ise(e: failure::Error) -> Self {
+        println!("Internal error: {:?}", e);
         let ctx = templates::FiveHundred{
             error: format!("{}", e),
             version: env!("VERGEN_SEMVER").to_string(),
@@ -172,9 +165,6 @@ mod templates {
 }
 
 pub struct HagridState {
-    /// State directory, used internally by hagrid
-    state_dir: PathBuf,
-
     /// Assets directory, mounted to /assets, served by hagrid or nginx
     assets_dir: PathBuf,
 
@@ -202,8 +192,9 @@ fn key_to_response<'a>(state: rocket::State<HagridState>,
 
     if machine_readable {
         if state.x_accel_redirect {
-            if let Some(path) = db.lookup_path(&query) {
-                return MyResponse::x_accel_redirect(path, &fp);
+            if let Some(key_path) = db.lookup_path(&query) {
+                let x_accel_path = state.keys_dir.join(&key_path).to_string_lossy().to_string();
+                return MyResponse::x_accel_redirect(x_accel_path, &fp);
             }
         }
 
@@ -239,7 +230,7 @@ fn key_has_uids(state: &HagridState, db: &Polymorphic, query: &Query)
     use sequoia_openpgp::Packet;
     use sequoia_openpgp::parse::{Parse, PacketParser, PacketParserResult};
     let mut ppr = match db.lookup_path(query) {
-        Some(path) => PacketParser::from_file(&state.state_dir.join(path))?,
+        Some(path) => PacketParser::from_file(&state.keys_dir.join(path))?,
         None => return Err(failure::err_msg("key vanished")),
     };
 
@@ -290,10 +281,27 @@ fn vks_v1_by_keyid(state: rocket::State<HagridState>,
 }
 
 #[get("/publish/<token>")]
-fn publish_verify(db: rocket::State<Polymorphic>,
-                  token: String) -> MyResponse {
-    match db.verify_token(&token) {
-        Ok(Some((userid, _fpr))) => {
+fn publish_verify(
+    db: rocket::State<Polymorphic>,
+    token_service: rocket::State<StatefulTokens>,
+    token: String,
+) -> MyResponse {
+    match publish_verify_or_fail(db, token_service, token) {
+        Ok(response) => response,
+        Err(e) => MyResponse::ise(e),
+    }
+}
+
+fn publish_verify_or_fail(
+    db: rocket::State<Polymorphic>,
+    token_service: rocket::State<StatefulTokens>,
+    token: String,
+) -> Result<MyResponse> {
+    println!("hi");
+    let payload = token_service.pop_token("verify", &token)?;
+
+    match db.verify_token(&payload)? {
+        Some((userid, _fpr)) => {
             let context = templates::Verify {
                 verified: true,
                 userid: userid.to_string(),
@@ -301,10 +309,9 @@ fn publish_verify(db: rocket::State<Polymorphic>,
                 commit: env!("VERGEN_SHA_SHORT").to_string(),
             };
 
-            MyResponse::ok("publish-result", context)
+            Ok(MyResponse::ok("publish-result", context))
         }
-        Ok(None) => MyResponse::not_found(Some("generic-error"), None),
-        Err(e) => MyResponse::ise(e),
+        None => Ok(MyResponse::not_found(Some("generic-error"), None)),
     }
 }
 
@@ -365,13 +372,15 @@ fn rocket_factory(rocket: rocket::Rocket) -> Result<rocket::Rocket> {
 
     let db_service = configure_db_service(rocket.config())?;
     let hagrid_state = configure_hagrid_state(rocket.config())?;
-    let token_service = configure_token_service(rocket.config())?;
+    let stateful_token_service = configure_stateful_token_service(rocket.config())?;
+    let stateless_token_service = configure_stateless_token_service(rocket.config())?;
     let mail_service = configure_mail_service(rocket.config())?;
 
     Ok(rocket
        .attach(Template::fairing())
        .manage(hagrid_state)
-       .manage(token_service)
+       .manage(stateless_token_service)
+       .manage(stateful_token_service)
        .manage(mail_service)
        .manage(db_service)
        .mount("/", routes)
@@ -382,30 +391,32 @@ fn configure_db_service(config: &Config) -> Result<Polymorphic> {
     use database::{Filesystem, Polymorphic};
 
     let keys_dir: PathBuf = config.get_str("keys_dir")?.into();
-    let state_dir: PathBuf = config.get_str("state_dir")?.into();
     let tmp_dir: PathBuf = config.get_str("tmp_dir")?.into();
 
-    let fs_db = Filesystem::new(keys_dir, state_dir, tmp_dir)?;
+    let fs_db = Filesystem::new(keys_dir, tmp_dir)?;
     Ok(Polymorphic::Filesystem(fs_db))
 }
 
 fn configure_hagrid_state(config: &Config) -> Result<HagridState> {
-    let state_dir: PathBuf = config.get_str("state_dir")?.into();
     let assets_dir: PathBuf = config.get_str("assets_dir")?.into();
     let keys_dir: PathBuf = config.get_str("keys_dir")?.into();
 
     // State
     let base_uri = config.get_str("base-URI")?.to_string();
     Ok(HagridState {
-        state_dir,
         assets_dir,
-        keys_dir,
+        keys_dir: keys_dir,
         base_uri: base_uri.clone(),
         x_accel_redirect: config.get_bool("x-accel-redirect")?,
     })
 }
 
-fn configure_token_service(config: &Config) -> Result<tokens::Service> {
+fn configure_stateful_token_service(config: &Config) -> Result<database::StatefulTokens> {
+    let state_dir: PathBuf = config.get_str("state_dir")?.into();
+    database::StatefulTokens::new(state_dir)
+}
+
+fn configure_stateless_token_service(config: &Config) -> Result<tokens::Service> {
     use std::convert::TryFrom;
 
     let secret = config.get_str("token_secret")?.to_string();
