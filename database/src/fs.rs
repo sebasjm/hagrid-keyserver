@@ -19,10 +19,12 @@ use Result;
 pub struct Filesystem {
     update_lock: FlockMutex,
 
-    base: PathBuf,
-    base_by_keyid: PathBuf,
-    base_by_fingerprint: PathBuf,
-    base_by_email: PathBuf,
+    state_dir: PathBuf,
+    tmp_dir: PathBuf,
+
+    keys_dir_by_keyid: PathBuf,
+    keys_dir_by_fingerprint: PathBuf,
+    keys_dir_by_email: PathBuf,
 }
 
 /// Returns the given path, ensuring that the parent directory exists.
@@ -37,68 +39,89 @@ fn ensure_parent(path: &Path) -> Result<&Path> {
 
 
 impl Filesystem {
-    pub fn new<P: Into<PathBuf>>(base: P) -> Result<Self> {
+    pub fn new_from_base(base_dir: impl Into<PathBuf>) -> Result<Self> {
+        let base_dir: PathBuf = base_dir.into();
+
+        let keys_dir = base_dir.join("keys");
+        let state_dir = base_dir.join("hagrid_state");
+        let tmp_dir = base_dir.join("tmp");
+
+        Self::new(keys_dir, state_dir, tmp_dir)
+    }
+
+    pub fn new(
+        keys_dir: impl Into<PathBuf>,
+        state_dir: impl Into<PathBuf>,
+        tmp_dir: impl Into<PathBuf>,
+    ) -> Result<Self> {
         use std::fs;
 
-        let base: PathBuf = base.into();
+        let state_dir = state_dir.into();
 
-        if fs::create_dir(&base).is_err() {
-            let meta = fs::metadata(&base);
+        if fs::create_dir(&state_dir).is_err() {
+            let meta = fs::metadata(&state_dir);
 
             match meta {
                 Ok(meta) => {
                     if !meta.file_type().is_dir() {
                         return Err(failure::format_err!(
                             "'{}' exists already and is not a directory",
-                            base.display()));
+                            state_dir.display()));
                     }
 
                     if meta.permissions().readonly() {
                         return Err(failure::format_err!(
                             "Cannot write '{}'",
-                            base.display()));
+                            state_dir.display()));
                     }
                 }
 
                 Err(e) => {
                     return Err(failure::format_err!(
                         "Cannot read '{}': {}",
-                        base.display(), e));
+                        state_dir.display(), e));
                 }
             }
         }
 
-        // create directories
-        create_dir_all(base.join("verification_tokens"))?;
-        create_dir_all(base.join("scratch_pad"))?;
+        let tmp_dir = tmp_dir.into();
+        create_dir_all(&tmp_dir)?;
 
-        let base_by_keyid = base.join("public").join("by-keyid");
-        let base_by_fingerprint = base.join("public").join("by-fpr");
-        let base_by_email = base.join("public").join("by-email");
-        create_dir_all(&base_by_keyid)?;
-        create_dir_all(&base_by_fingerprint)?;
-        create_dir_all(&base_by_email)?;
+        let token_dir = state_dir.join("verification_tokens");
+        create_dir_all(token_dir)?;
 
-        info!("Opened base dir '{}'", base.display());
+        let keys_dir: PathBuf = keys_dir.into();
+        let keys_dir_by_keyid = keys_dir.join("by-keyid");
+        let keys_dir_by_fingerprint = keys_dir.join("by-fpr");
+        let keys_dir_by_email = keys_dir.join("by-email");
+        create_dir_all(&keys_dir_by_keyid)?;
+        create_dir_all(&keys_dir_by_fingerprint)?;
+        create_dir_all(&keys_dir_by_email)?;
+
+        info!("Opened filesystem database.");
+        info!("keys_dir: '{}'", keys_dir.display());
+        info!("state_dir: '{}'", state_dir.display());
+        info!("tmp_dir: '{}'", tmp_dir.display());
         Ok(Filesystem {
-            update_lock: FlockMutex::new(&base)?,
-            base: base,
-            base_by_keyid: base_by_keyid,
-            base_by_fingerprint: base_by_fingerprint,
-            base_by_email: base_by_email,
+            update_lock: FlockMutex::new(&state_dir)?,
+            state_dir: state_dir,
+            tmp_dir: tmp_dir,
+            keys_dir_by_keyid: keys_dir_by_keyid,
+            keys_dir_by_fingerprint: keys_dir_by_fingerprint,
+            keys_dir_by_email: keys_dir_by_email,
         })
     }
 
     /// Returns the path to the given KeyID.
     fn keyid_to_path(&self, keyid: &KeyID) -> PathBuf {
         let hex = keyid.to_string();
-        self.base_by_keyid.join(&hex[..2]).join(&hex[2..])
+        self.keys_dir_by_keyid.join(&hex[..2]).join(&hex[2..])
     }
 
     /// Returns the path to the given Fingerprint.
     fn fingerprint_to_path(&self, fingerprint: &Fingerprint) -> PathBuf {
         let hex = fingerprint.to_string();
-        self.base_by_fingerprint.join(&hex[..2]).join(&hex[2..])
+        self.keys_dir_by_fingerprint.join(&hex[..2]).join(&hex[2..])
     }
 
     /// Returns the path to the given Email.
@@ -107,9 +130,9 @@ impl Filesystem {
             url::form_urlencoded::byte_serialize(email.as_str().as_bytes())
                 .collect::<String>();
         if email.len() > 2 {
-            self.base_by_email.join(&email[..2]).join(&email[2..])
+            self.keys_dir_by_email.join(&email[..2]).join(&email[2..])
         } else {
-            self.base_by_email.join(email)
+            self.keys_dir_by_email.join(email)
         }
     }
 
@@ -178,7 +201,7 @@ impl Filesystem {
         Email::from_str(&decoded).ok()
     }
 
-    fn new_token<'a>(&self, base: &'a str) -> Result<(File, String)> {
+    fn new_token<'a>(&self, token_type: &'a str) -> Result<(File, String)> {
         use rand::distributions::Alphanumeric;
         use rand::{thread_rng, Rng};
 
@@ -186,16 +209,16 @@ impl Filesystem {
         // samples from [a-zA-Z0-9]
         // 43 chars ~ 256 bit
         let name: String = rng.sample_iter(&Alphanumeric).take(43).collect();
-        let dir = self.base.join(base);
+        let dir = self.state_dir.join(token_type);
         let fd = File::create(dir.join(&name))?;
 
         Ok((fd, name))
     }
 
     fn pop_token<'a>(
-        &self, base: &'a str, token: &'a str,
+        &self, token_type: &'a str, token: &'a str,
     ) -> Result<Box<[u8]>> {
-        let path = self.base.join(base).join(token);
+        let path = self.state_dir.join(token_type).join(token);
         let buf = {
             let mut fd = File::open(&path)?;
             let mut buf = Vec::default();
@@ -221,7 +244,7 @@ impl Filesystem {
         let mut tpks = HashMap::new();
 
         // Check Fingerprints.
-        for entry in fs::read_dir(&self.base_by_fingerprint)? {
+        for entry in fs::read_dir(&self.keys_dir_by_fingerprint)? {
             let prefix = entry?;
             let prefix_path = prefix.path();
             if ! prefix_path.is_dir() {
@@ -293,7 +316,7 @@ impl Filesystem {
         }
 
         // Check KeyIDs.
-        for entry in fs::read_dir(&self.base_by_keyid)? {
+        for entry in fs::read_dir(&self.keys_dir_by_keyid)? {
             let prefix = entry?;
             let prefix_path = prefix.path();
             if ! prefix_path.is_dir() {
@@ -344,7 +367,7 @@ impl Filesystem {
         }
 
         // Check Emails.
-        for entry in fs::read_dir(&self.base_by_email)? {
+        for entry in fs::read_dir(&self.keys_dir_by_email)? {
             let prefix = entry?;
             let prefix_path = prefix.path();
             if ! prefix_path.is_dir() {
@@ -431,14 +454,13 @@ impl Database for Filesystem {
         &self, fpr: &Fingerprint, new: Option<String>,
     ) -> Result<()> {
         let target = self.fingerprint_to_path(fpr);
-        let dir = self.base.join("scratch_pad");
 
         match new {
             Some(new) => {
                 let mut tmp = tempfile::Builder::new()
                     .prefix("key")
                     .rand_bytes(16)
-                    .tempfile_in(dir)?;
+                    .tempfile_in(&self.tmp_dir)?;
 
                 tmp.write_all(new.as_bytes()).unwrap();
                 let _ = tmp.persist(ensure_parent(&target)?)?;
@@ -505,7 +527,7 @@ impl Database for Filesystem {
         };
 
         if path.exists() {
-            Some(diff_paths(&path, &self.base).expect("related paths"))
+            Some(diff_paths(&path, &self.state_dir).expect("related paths"))
         } else {
             None
         }
@@ -786,7 +808,7 @@ mod tests {
         // same two nibble prefix.
         assert_eq!(
             db.path_to_fingerprint_base(
-                &db.base_by_fingerprint.join("CB"),
+                &db.keys_dir_by_fingerprint.join("CB"),
                 &PathBuf::from("CD8F030588653EEDD7E2659B7DD433F254904A")),
             Some(fp));
     }

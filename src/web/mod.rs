@@ -1,6 +1,7 @@
 use rocket;
 use rocket::http::Header;
 use rocket::response::NamedFile;
+use rocket::config::Config;
 use rocket_contrib::templates::Template;
 
 use serde::Serialize;
@@ -65,6 +66,7 @@ impl MyResponse {
             })
     }
 
+    // XXX needs fixing for keys_dir!
     pub fn x_accel_redirect(path: PathBuf, fp: &Fingerprint) -> Self {
         use rocket::http::hyper::header::{ContentDisposition, DispositionType,
                                           DispositionParam, Charset};
@@ -170,13 +172,14 @@ mod templates {
 }
 
 pub struct HagridState {
-    /// The base directory.
+    /// State directory, used internally by hagrid
     state_dir: PathBuf,
 
-    /// The public directory.
-    ///
-    /// This is what nginx serves.
-    public_dir: PathBuf,
+    /// Assets directory, mounted to /assets, served by hagrid or nginx
+    assets_dir: PathBuf,
+
+    /// The keys directory, where keys are located, served by hagrid or nginx
+    keys_dir: PathBuf,
 
     /// XXX
     base_uri: String,
@@ -307,7 +310,7 @@ fn publish_verify(db: rocket::State<Polymorphic>,
 
 #[get("/assets/<file..>")]
 fn files(file: PathBuf, state: rocket::State<HagridState>) -> Option<NamedFile> {
-    NamedFile::open(state.public_dir.join("assets").join(file)).ok()
+    NamedFile::open(state.assets_dir.join(file)).ok()
 }
 
 #[get("/")]
@@ -335,8 +338,6 @@ pub fn serve() -> Result<()> {
 }
 
 fn rocket_factory(rocket: rocket::Rocket) -> Result<rocket::Rocket> {
-    use std::convert::TryFrom;
-
     let routes = routes![
         // infra
         root,
@@ -362,25 +363,62 @@ fn rocket_factory(rocket: rocket::Rocket) -> Result<rocket::Rocket> {
         manage::vks_manage_unpublish,
     ];
 
+    let db_service = configure_db_service(rocket.config())?;
+    let hagrid_state = configure_hagrid_state(rocket.config())?;
+    let token_service = configure_token_service(rocket.config())?;
+    let mail_service = configure_mail_service(rocket.config())?;
+
+    Ok(rocket
+       .attach(Template::fairing())
+       .manage(hagrid_state)
+       .manage(token_service)
+       .manage(mail_service)
+       .manage(db_service)
+       .mount("/", routes)
+      )
+}
+
+fn configure_db_service(config: &Config) -> Result<Polymorphic> {
     use database::{Filesystem, Polymorphic};
-    let db = Polymorphic::Filesystem(
-        Filesystem::new(&PathBuf::from(rocket.config().get_str("state_dir")?))?
-    );
+
+    let keys_dir: PathBuf = config.get_str("keys_dir")?.into();
+    let state_dir: PathBuf = config.get_str("state_dir")?.into();
+    let tmp_dir: PathBuf = config.get_str("tmp_dir")?.into();
+
+    let fs_db = Filesystem::new(keys_dir, state_dir, tmp_dir)?;
+    Ok(Polymorphic::Filesystem(fs_db))
+}
+
+fn configure_hagrid_state(config: &Config) -> Result<HagridState> {
+    let state_dir: PathBuf = config.get_str("state_dir")?.into();
+    let assets_dir: PathBuf = config.get_str("assets_dir")?.into();
+    let keys_dir: PathBuf = config.get_str("keys_dir")?.into();
 
     // State
-    let state_dir: PathBuf = rocket.config().get_str("state_dir")?.into();
-    let public_dir = state_dir.join("public");
-    let base_uri = rocket.config().get_str("base-URI")?.to_string();
-    let state = HagridState {
-        state_dir: state_dir,
-        public_dir: public_dir,
+    let base_uri = config.get_str("base-URI")?.to_string();
+    Ok(HagridState {
+        state_dir,
+        assets_dir,
+        keys_dir,
         base_uri: base_uri.clone(),
-        x_accel_redirect: rocket.config().get_bool("x-accel-redirect")?,
-    };
+        x_accel_redirect: config.get_bool("x-accel-redirect")?,
+    })
+}
 
+fn configure_token_service(config: &Config) -> Result<tokens::Service> {
+    use std::convert::TryFrom;
+
+    let secret = config.get_str("token_secret")?.to_string();
+    let validity = config.get_int("token_validity")?;
+    let validity = u64::try_from(validity)?;
+    Ok(tokens::Service::init(&secret, validity))
+}
+
+fn configure_mail_service(config: &Config) -> Result<mail::Service> {
     // Mail service
-    let template_dir: PathBuf = rocket.config().get_str("template_dir")?.into();
-    let from = rocket.config().get_str("from")?.to_string();
+    let template_dir: PathBuf = config.get_str("template_dir")?.into();
+    let base_uri = config.get_str("base-URI")?.to_string();
+    let from = config.get_str("from")?.to_string();
     let verify_html = template_dir.join("email/publish-html.hbs");
     let verify_txt = template_dir.join("email/publish-txt.hbs");
     let manage_html = template_dir.join("email/manage-html.hbs");
@@ -392,26 +430,14 @@ fn rocket_factory(rocket: rocket::Rocket) -> Result<rocket::Rocket> {
     handlebars.register_template_file("manage-html", manage_html)?;
     handlebars.register_template_file("manage-txt", manage_txt)?;
 
-    let filemail_into = rocket.config().get_str("filemail_into")
+    let filemail_into = config.get_str("filemail_into")
         .ok().map(|p| PathBuf::from(p));
-    let mail_service = if let Some(path) = filemail_into {
-        mail::Service::filemail(from, base_uri, handlebars, path)?
+
+    if let Some(path) = filemail_into {
+        mail::Service::filemail(from, base_uri, handlebars, path)
     } else {
-        mail::Service::sendmail(from, base_uri, handlebars)?
-    };
-
-    let secret = rocket.config().get_str("token_secret")?.to_string();
-    let validity = rocket.config().get_int("token_validity")?;
-    let validity = u64::try_from(validity)?;
-    let token_service = tokens::Service::init(&secret, validity);
-
-    Ok(rocket
-       .attach(Template::fairing())
-       .manage(state)
-       .manage(mail_service)
-       .manage(token_service)
-       .mount("/", routes)
-       .manage(db))
+        mail::Service::sendmail(from, base_uri, handlebars)
+    }
 }
 
 #[cfg(test)]
@@ -449,16 +475,19 @@ pub mod tests {
         let filemail = root.path().join("filemail");
         ::std::fs::create_dir_all(&filemail)?;
 
+        let base_dir: PathBuf = root.path().into();
+
         let config = Config::build(Environment::Staging)
             .root(root.path().to_path_buf())
             .extra("template_dir",
                    ::std::env::current_dir().unwrap().join("dist/templates")
                    .to_str().unwrap())
-            .extra(
-                "state_dir",
-                root.path().to_str()
-                    .ok_or(failure::err_msg("Static path invalid"))?,
-            )
+            .extra("assets_dir",
+                   ::std::env::current_dir().unwrap().join("dist/assets")
+                   .to_str().unwrap())
+            .extra("keys_dir", base_dir.join("keys").to_str().unwrap())
+            .extra("tmp_dir", base_dir.join("tmp").to_str().unwrap())
+            .extra("state_dir", base_dir.join("state").to_str().unwrap())
             .extra("base-URI", BASE_URI)
             .extra("from", "from")
             .extra("token_secret", "hagrid")

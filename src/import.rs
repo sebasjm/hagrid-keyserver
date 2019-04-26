@@ -56,7 +56,7 @@ fn main() {
 }
 
 fn do_import(base: PathBuf, keyrings: Vec<PathBuf>) -> Result<()> {
-    let db = Filesystem::new(base)?;
+    let db = Filesystem::new_from_base(base)?;
 
     // For each input file, create a parser.
     for input in keyrings.iter() {
@@ -110,7 +110,7 @@ mod import_tests {
     fn import() {
         let root = tempdir().unwrap();
 
-        let db = Filesystem::new(root.path().to_path_buf()).unwrap();
+        let db = Filesystem::new_from_base(root.path().to_path_buf()).unwrap();
 
         // Generate a key and import it.
         let (tpk, _) = openpgp::tpk::TPKBuilder::autocrypt(

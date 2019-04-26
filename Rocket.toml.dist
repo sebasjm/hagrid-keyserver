@@ -2,7 +2,10 @@
 address = "0.0.0.0"
 port = 8080
 template_dir = "dist/templates"
-state_dir = "dist"
+assets_dir = "dist/assets"
+keys_dir = "dist/keys"
+state_dir = "dist/hagrid_state"
+tmp_dir = "dist/tmp"
 
 [development]
 base-URI = "http://localhost:8080"

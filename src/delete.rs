@@ -51,7 +51,7 @@ fn main() {
 
 fn real_main() -> Result<()> {
     let opt = Opt::from_args();
-    let db = Filesystem::new(opt.base.canonicalize()?)?;
+    let db = Filesystem::new_from_base(opt.base.canonicalize()?)?;
     delete(&db, &opt.query.parse()?, opt.all_bindings, opt.all)
 }
 
