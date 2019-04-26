@@ -7,18 +7,18 @@ use std::str;
 use Result;
 
 pub struct StatefulTokens {
-    state_dir: PathBuf,
+    token_dir: PathBuf,
 }
 
 impl StatefulTokens {
-    pub fn new(state_dir: impl Into<PathBuf>) -> Result<Self> {
-        let state_dir = state_dir.into();
-        create_dir_all(&state_dir)?;
+    pub fn new(token_dir: impl Into<PathBuf>) -> Result<Self> {
+        let token_dir = token_dir.into();
+        create_dir_all(&token_dir)?;
 
         info!("Opened stateful token store");
-        info!("state_dir: '{}'", state_dir.display());
+        info!("token_dir: '{}'", token_dir.display());
 
-        Ok(StatefulTokens { state_dir })
+        Ok(StatefulTokens { token_dir })
     }
 
     pub fn new_token(&self, token_type: &str, payload: &[u8]) -> Result<String> {
@@ -29,7 +29,7 @@ impl StatefulTokens {
         // samples from [a-zA-Z0-9]
         // 43 chars ~ 256 bit
         let name: String = rng.sample_iter(&Alphanumeric).take(43).collect();
-        let dir = self.state_dir.join(token_type);
+        let dir = self.token_dir.join(token_type);
         create_dir_all(&dir)?;
 
         let mut fd = File::create(dir.join(&name))?;
@@ -39,7 +39,7 @@ impl StatefulTokens {
     }
 
     pub fn pop_token(&self, token_type: &str, token: &str) -> Result<String> {
-        let path = self.state_dir.join(token_type).join(token);
+        let path = self.token_dir.join(token_type).join(token);
         let buf = {
             let mut fd = File::open(&path)?;
             let mut buf = Vec::default();

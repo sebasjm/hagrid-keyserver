@@ -4,7 +4,7 @@ port = 8080
 template_dir = "dist/templates"
 assets_dir = "dist/assets"
 keys_dir = "dist/keys"
-state_dir = "dist/hagrid_state"
+token_dir = "dist/tokens"
 tmp_dir = "dist/tmp"
 
 [development]

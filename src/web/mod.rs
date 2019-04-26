@@ -416,8 +416,8 @@ fn configure_hagrid_state(config: &Config) -> Result<HagridState> {
 }
 
 fn configure_stateful_token_service(config: &Config) -> Result<database::StatefulTokens> {
-    let state_dir: PathBuf = config.get_str("state_dir")?.into();
-    database::StatefulTokens::new(state_dir)
+    let token_dir: PathBuf = config.get_str("token_dir")?.into();
+    database::StatefulTokens::new(token_dir)
 }
 
 fn configure_stateless_token_service(config: &Config) -> Result<tokens::Service> {
@@ -502,7 +502,7 @@ pub mod tests {
                    .to_str().unwrap())
             .extra("keys_dir", base_dir.join("keys").to_str().unwrap())
             .extra("tmp_dir", base_dir.join("tmp").to_str().unwrap())
-            .extra("state_dir", base_dir.join("state").to_str().unwrap())
+            .extra("token_dir", base_dir.join("tokens").to_str().unwrap())
             .extra("base-URI", BASE_URI)
             .extra("from", "from")
             .extra("token_secret", "hagrid")
