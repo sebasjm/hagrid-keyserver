@@ -70,7 +70,6 @@ impl Filesystem {
 
         // create directories
         create_dir_all(base.join("verification_tokens"))?;
-        create_dir_all(base.join("deletion_tokens"))?;
         create_dir_all(base.join("scratch_pad"))?;
 
         let base_by_keyid = base.join("public").join("by-keyid");
