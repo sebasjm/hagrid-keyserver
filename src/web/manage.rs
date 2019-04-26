@@ -12,7 +12,8 @@ use tokens;
 mod templates {
     #[derive(Serialize)]
     pub struct ManageKey {
-        pub fpr: String,
+        pub key_fpr: String,
+        pub key_link: String,
         pub base_uri: String,
         pub uid_status: Vec<ManageKeyUidStatus>,
         pub token: String,
@@ -75,8 +76,10 @@ pub fn vks_manage_key(
                         published: true,
                     }
                 ).collect();
+                use web::get_link_by_fingerprint;
                 let context = templates::ManageKey {
-                    fpr: fp.to_string(),
+                    key_fpr: fp.to_string(),
+                    key_link: get_link_by_fingerprint(&fp),
                     uid_status,
                     token,
                     base_uri: state.base_uri.clone(),

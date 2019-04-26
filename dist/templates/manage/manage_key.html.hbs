@@ -1,12 +1,8 @@
 {{#> layout }}
 
-  <p>
-    <a href="{{base_uri}}/vks/v1/by-fingerprint/{{ fpr }}">{{base_uri}}/vks/v1/by-fingerprint/{{ fpr }}</a>
-  </p>
-
   {{#if uid_status}}
   <p>
-    This key is published for the following addresses:
+    Your key <span class="fingerprint"><a href="{{key_link}}">{{key_fpr}}</a></span> is published for the following addresses.
   </p>
 
   {{#each uid_status}}
@@ -15,7 +11,7 @@
       <form action="/manage/unpublish" method="post">
         <input type="hidden" name="token" value="{{../token}}" />
         <input type="hidden" name="address" value="{{address}}" />
-        <input type="submit" class="link" value="Unpublish">
+        <input type="submit" class="link" value="Delete">
       </form>
     </div>
     <p>
@@ -24,17 +20,18 @@
   </div>
   {{/each}}
 
-  <p>
-    To publish this key under another address, you need to <a href="/publish">upload</a> it again.
+  <p style="line-height: 1.8em;">
+    Clicking "delete" on any address will remove it from this key. It will no longer appear in a search.<br />
+    To add another address, <a href="/publish">upload</a> the key again.
   </p>
 
   {{else}}
   <p>
-    This key is not published under any e-mail address!
+    Your key <span class="fingerprint"><a href="{{key_link}}">{{key_fpr}}</a></span> is not published under any addresses!
   </p>
 
   <p>
-    To publish this key under another address, you need to <a href="/publish">upload</a> it again.
+    To add an address, <a href="/publish">upload</a> the key again.
   </p>
   {{/if}}
 

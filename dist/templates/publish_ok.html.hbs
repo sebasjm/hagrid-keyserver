@@ -1,13 +1,16 @@
 {{#> layout }}
-<h2>Email verification</h2>
-<p>
-  We have sent verification emails to the following addresses:
-  <ul>
-    {{#each emails}}
+  <h2>Email verification</h2>
+  <p style="line-height: 2em;">
+    Your key was successfully uploaded, and can now be retrieved by fingerprint.<br />
+  </p>
+  We also sent verification emails to the following addresses:
+  <div class="verificationEmails">
+    <ul>
+      {{#each emails}}
       <li><span class="email">{{this}}</span></li>
-    {{/each}}
-  </ul>
-  To make the keys available when searching by address, you need to
-  follow the link sent to each address.
-</p>
+      {{/each}}
+    </ul>
+  </div>
+    To make the key available for search by address, follow the link sent to
+    each address.
 {{/layout}}

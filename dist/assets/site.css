@@ -116,11 +116,25 @@ a.brand {
 .publishedUid {
   margin-left: auto;
   margin-right: auto;
-  max-width: 80%;
+  width: 50%;
   text-align: left;
 }
 .publishedUid div {
   float: right;
+}
+
+.verificationEmails {
+  margin-left: auto;
+  margin-right: auto;
+  width: 50%;
+  text-align: left;
+}
+.verificationEmails ul {
+  margin-top: 0.3em;
+  margin-bottom: 0.3em;
+}
+.verificationEmails li {
+  line-height: 1.5em;
 }
 
 .button {
@@ -165,6 +179,11 @@ a.brand {
    flow of text in /about.  */
 .card > .about {
   text-align: left;
+}
+
+span.fingerprint {
+  font-family: monospace;
+  font-size: larger;
 }
 
 span.email {
