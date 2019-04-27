@@ -14,15 +14,20 @@ use types::{Email, Fingerprint, KeyID};
 use sync::{MutexGuard, FlockMutex};
 use Result;
 
+use tempfile::NamedTempFile;
+
 pub struct Filesystem {
     update_lock: FlockMutex,
 
     tmp_dir: PathBuf,
 
     keys_dir: PathBuf,
-    keys_dir_by_keyid: PathBuf,
-    keys_dir_by_fingerprint: PathBuf,
-    keys_dir_by_email: PathBuf,
+    keys_dir_full: PathBuf,
+    keys_dir_published: PathBuf,
+
+    links_dir_by_fingerprint: PathBuf,
+    links_dir_by_keyid: PathBuf,
+    links_dir_by_email: PathBuf,
 }
 
 /// Returns the given path, ensuring that the parent directory exists.
@@ -83,54 +88,78 @@ impl Filesystem {
         create_dir_all(&tmp_dir)?;
 
         let keys_dir: PathBuf = keys_dir.into();
-        let keys_dir_by_keyid = keys_dir.join("by-keyid");
-        let keys_dir_by_fingerprint = keys_dir.join("by-fpr");
-        let keys_dir_by_email = keys_dir.join("by-email");
-        create_dir_all(&keys_dir_by_keyid)?;
-        create_dir_all(&keys_dir_by_fingerprint)?;
-        create_dir_all(&keys_dir_by_email)?;
+        let keys_dir_full = keys_dir.join("full");
+        let keys_dir_published = keys_dir.join("published");
+        create_dir_all(&keys_dir_full)?;
+        create_dir_all(&keys_dir_published)?;
+
+        let links_dir_by_keyid = keys_dir.join("by-keyid");
+        let links_dir_by_fingerprint = keys_dir.join("by-fpr");
+        let links_dir_by_email = keys_dir.join("by-email");
+        create_dir_all(&links_dir_by_keyid)?;
+        create_dir_all(&links_dir_by_fingerprint)?;
+        create_dir_all(&links_dir_by_email)?;
 
         info!("Opened filesystem database.");
         info!("keys_dir: '{}'", keys_dir.display());
         info!("tmp_dir: '{}'", tmp_dir.display());
         Ok(Filesystem {
             update_lock: FlockMutex::new(&keys_dir)?,
-            keys_dir: keys_dir,
-            tmp_dir: tmp_dir,
-            keys_dir_by_keyid: keys_dir_by_keyid,
-            keys_dir_by_fingerprint: keys_dir_by_fingerprint,
-            keys_dir_by_email: keys_dir_by_email,
+            keys_dir,
+            tmp_dir,
+
+            keys_dir_full,
+            keys_dir_published,
+
+            links_dir_by_keyid,
+            links_dir_by_fingerprint,
+            links_dir_by_email,
         })
     }
 
-    /// Returns the path to the given KeyID.
-    fn keyid_to_path(&self, keyid: &KeyID) -> PathBuf {
-        let hex = keyid.to_string();
-        self.keys_dir_by_keyid.join(&hex[..2]).join(&hex[2..])
+    /// Returns the path to the given Fingerprint.
+    fn fingerprint_to_path_full(&self, fingerprint: &Fingerprint) -> PathBuf {
+        let hex = fingerprint.to_string();
+        self.keys_dir_full.join(&hex[..2]).join(&hex[2..])
     }
 
     /// Returns the path to the given Fingerprint.
-    fn fingerprint_to_path(&self, fingerprint: &Fingerprint) -> PathBuf {
+    fn fingerprint_to_path_published(&self, fingerprint: &Fingerprint) -> PathBuf {
         let hex = fingerprint.to_string();
-        self.keys_dir_by_fingerprint.join(&hex[..2]).join(&hex[2..])
+        self.keys_dir_published.join(&hex[..2]).join(&hex[2..])
+    }
+
+    /// Returns the path to the given KeyID.
+    fn link_by_keyid(&self, keyid: &KeyID) -> PathBuf {
+        let hex = keyid.to_string();
+        self.links_dir_by_keyid.join(&hex[..2]).join(&hex[2..])
+    }
+
+    /// Returns the path to the given Fingerprint.
+    fn link_by_fingerprint(&self, fingerprint: &Fingerprint) -> PathBuf {
+        let hex = fingerprint.to_string();
+        self.links_dir_by_fingerprint.join(&hex[..2]).join(&hex[2..])
     }
 
     /// Returns the path to the given Email.
-    fn email_to_path(&self, email: &Email) -> PathBuf {
+    fn link_by_email(&self, email: &Email) -> PathBuf {
         let email =
             url::form_urlencoded::byte_serialize(email.as_str().as_bytes())
                 .collect::<String>();
         if email.len() > 2 {
-            self.keys_dir_by_email.join(&email[..2]).join(&email[2..])
+            self.links_dir_by_email.join(&email[..2]).join(&email[2..])
         } else {
-            self.keys_dir_by_email.join(email)
+            self.links_dir_by_email.join(email)
         }
     }
 
     fn read_from_path(&self, path: &Path) -> Option<String> {
         use std::fs;
 
-        // TODO check that we're within our bounds! never read from outside
+        if !path.starts_with(&self.keys_dir) {
+            panic!("Attempted to access file outside keys_dir!");
+        }
+
         if path.exists() {
             fs::read_to_string(path).ok()
         } else {
@@ -205,7 +234,7 @@ impl Filesystem {
         let mut tpks = HashMap::new();
 
         // Check Fingerprints.
-        for entry in fs::read_dir(&self.keys_dir_by_fingerprint)? {
+        for entry in fs::read_dir(&self.links_dir_by_fingerprint)? {
             let prefix = entry?;
             let prefix_path = prefix.path();
             if ! prefix_path.is_dir() {
@@ -277,7 +306,7 @@ impl Filesystem {
         }
 
         // Check KeyIDs.
-        for entry in fs::read_dir(&self.keys_dir_by_keyid)? {
+        for entry in fs::read_dir(&self.links_dir_by_keyid)? {
             let prefix = entry?;
             let prefix_path = prefix.path();
             if ! prefix_path.is_dir() {
@@ -328,7 +357,7 @@ impl Filesystem {
         }
 
         // Check Emails.
-        for entry in fs::read_dir(&self.keys_dir_by_email)? {
+        for entry in fs::read_dir(&self.links_dir_by_email)? {
             let prefix = entry?;
             let prefix_path = prefix.path();
             if ! prefix_path.is_dir() {
@@ -404,10 +433,55 @@ impl Database for Filesystem {
         self.update_lock.lock().into()
     }
 
+    fn write_to_temp(&self, content: &[u8]) -> Result<NamedTempFile> {
+        let mut tempfile = tempfile::Builder::new()
+            .prefix("key")
+            .rand_bytes(16)
+            .tempfile_in(&self.tmp_dir)?;
+
+        tempfile.write_all(content).unwrap();
+
+        // fix permissions to 640
+        if cfg!(unix) {
+            use std::fs::{set_permissions, Permissions};
+            use std::os::unix::fs::PermissionsExt;
+
+            let perm = Permissions::from_mode(0o640);
+            set_permissions(tempfile.path(), perm)?;
+        }
+
+        Ok(tempfile)
+    }
+    fn move_tmp_to_full(&self, file: NamedTempFile, fpr: &Fingerprint) -> Result<()> {
+        let target = self.fingerprint_to_path_full(fpr);
+        file.persist(ensure_parent(&target)?)?;
+        Ok(())
+    }
+    fn move_tmp_to_published(&self, file: NamedTempFile, fpr: &Fingerprint) -> Result<()> {
+        let target = self.fingerprint_to_path_published(fpr);
+        file.persist(ensure_parent(&target)?)?;
+        Ok(())
+    }
+
+    fn check_link_fpr(&self, fpr: &Fingerprint, fpr_target: &Fingerprint) -> Result<Option<Fingerprint>> {
+        let link = self.link_by_fingerprint(&fpr);
+        let target = self.fingerprint_to_path_published(&fpr_target);
+
+        if link == target {
+            return Ok(None);
+        }
+
+        Ok(Some(fpr.clone()))
+    }
+
+    fn ensure_link_fpr(&self, _fpr: &Fingerprint, _target: &Fingerprint) -> Result<()> {
+        Ok(())
+    }
+
     fn update(
         &self, fpr: &Fingerprint, new: Option<String>,
     ) -> Result<()> {
-        let target = self.fingerprint_to_path(fpr);
+        let target = self.link_by_fingerprint(fpr);
 
         match new {
             Some(new) => {
@@ -440,7 +514,7 @@ impl Database for Filesystem {
         use super::Query::*;
         match term {
             ByFingerprint(ref fp) => {
-                let path = self.fingerprint_to_path(fp);
+                let path = self.link_by_fingerprint(fp);
                 let typ = match path.symlink_metadata() {
                     Ok(meta) => meta.file_type(),
                     Err(_) => return None,
@@ -459,12 +533,12 @@ impl Database for Filesystem {
                 }
             },
             ByKeyID(ref keyid) => {
-                let path = self.keyid_to_path(keyid);
+                let path = self.link_by_keyid(keyid);
                 path.read_link().ok()
                     .and_then(|path| self.path_to_fingerprint(&path))
             },
             ByEmail(ref email) => {
-                let path = self.email_to_path(email);
+                let path = self.link_by_email(email);
                 path.read_link().ok()
                     .and_then(|path| self.path_to_fingerprint(&path))
             },
@@ -475,9 +549,9 @@ impl Database for Filesystem {
     fn lookup_path(&self, term: &Query) -> Option<PathBuf> {
         use super::Query::*;
         let path = match term {
-            ByFingerprint(ref fp) => self.fingerprint_to_path(fp),
-            ByKeyID(ref keyid) => self.keyid_to_path(keyid),
-            ByEmail(ref email) => self.email_to_path(email),
+            ByFingerprint(ref fp) => self.link_by_fingerprint(fp),
+            ByKeyID(ref keyid) => self.link_by_keyid(keyid),
+            ByEmail(ref email) => self.link_by_email(email),
         };
 
         if path.exists() {
@@ -491,8 +565,8 @@ impl Database for Filesystem {
     }
 
     fn link_email(&self, email: &Email, fpr: &Fingerprint) -> Result<()> {
-        let link = self.email_to_path(&email);
-        let target = diff_paths(&self.fingerprint_to_path(fpr),
+        let link = self.link_by_email(&email);
+        let target = diff_paths(&self.link_by_fingerprint(fpr),
                                 link.parent().unwrap()).unwrap();
 
         if link == target {
@@ -503,11 +577,11 @@ impl Database for Filesystem {
     }
 
     fn unlink_email(&self, email: &Email, fpr: &Fingerprint) -> Result<()> {
-        let link = self.email_to_path(&email);
+        let link = self.link_by_email(&email);
 
         match read_link(&link) {
             Ok(target) => {
-                let expected = diff_paths(&self.fingerprint_to_path(fpr),
+                let expected = diff_paths(&self.link_by_fingerprint(fpr),
                                           link.parent().unwrap()).unwrap();
 
                 if target == expected {
@@ -521,8 +595,8 @@ impl Database for Filesystem {
     }
 
     fn link_kid(&self, kid: &KeyID, fpr: &Fingerprint) -> Result<()> {
-        let link = self.keyid_to_path(kid);
-        let target = diff_paths(&self.fingerprint_to_path(fpr),
+        let link = self.link_by_keyid(kid);
+        let target = diff_paths(&self.link_by_fingerprint(fpr),
                                 link.parent().unwrap()).unwrap();
 
         if link == target {
@@ -544,11 +618,11 @@ impl Database for Filesystem {
     }
 
     fn unlink_kid(&self, kid: &KeyID, fpr: &Fingerprint) -> Result<()> {
-        let link = self.keyid_to_path(kid);
+        let link = self.link_by_keyid(kid);
 
         match read_link(&link) {
             Ok(target) => {
-                let expected = self.fingerprint_to_path(fpr);
+                let expected = self.link_by_fingerprint(fpr);
 
                 if target == expected {
                     remove_file(link)?;
@@ -565,19 +639,19 @@ impl Database for Filesystem {
             return Ok(());
         }
 
-        let link = self.fingerprint_to_path(from);
-        let target = diff_paths(&self.fingerprint_to_path(fpr),
+        let link = self.link_by_fingerprint(from);
+        let target = diff_paths(&self.link_by_fingerprint(fpr),
                                 link.parent().unwrap()).unwrap();
 
         symlink(&target, ensure_parent(&link)?)
     }
 
     fn unlink_fpr(&self, from: &Fingerprint, fpr: &Fingerprint) -> Result<()> {
-        let link = self.fingerprint_to_path(from);
+        let link = self.link_by_fingerprint(from);
 
         match read_link(&link) {
             Ok(target) => {
-                let expected = self.fingerprint_to_path(fpr);
+                let expected = self.link_by_fingerprint(fpr);
 
                 if target == expected {
                     remove_file(link)?;
@@ -589,20 +663,26 @@ impl Database for Filesystem {
     }
 
     // XXX: slow
+    fn by_fpr_full(&self, fpr: &Fingerprint) -> Option<String> {
+        let path = self.fingerprint_to_path_full(fpr);
+        self.read_from_path(&path)
+    }
+
+    // XXX: slow
     fn by_fpr(&self, fpr: &Fingerprint) -> Option<String> {
-        let path = self.fingerprint_to_path(fpr);
+        let path = self.link_by_fingerprint(fpr);
         self.read_from_path(&path)
     }
 
     // XXX: slow
     fn by_email(&self, email: &Email) -> Option<String> {
-        let path = self.email_to_path(&email);
+        let path = self.link_by_email(&email);
         self.read_from_path(&path)
     }
 
     // XXX: slow
     fn by_kid(&self, kid: &KeyID) -> Option<String> {
-        let path = self.keyid_to_path(kid);
+        let path = self.link_by_keyid(kid);
         self.read_from_path(&path)
     }
 }
@@ -748,14 +828,14 @@ mod tests {
         let fp: Fingerprint =
             "CBCD8F030588653EEDD7E2659B7DD433F254904A".parse().unwrap();
 
-        assert_eq!(db.path_to_fingerprint(&db.fingerprint_to_path(&fp)),
+        assert_eq!(db.path_to_fingerprint(&db.link_by_fingerprint(&fp)),
                    Some(fp.clone()));
 
         // Special case: Relative symlink to a fingerprint with the
         // same two nibble prefix.
         assert_eq!(
             db.path_to_fingerprint_base(
-                &db.keys_dir_by_fingerprint.join("CB"),
+                &db.links_dir_by_fingerprint.join("CB"),
                 &PathBuf::from("CD8F030588653EEDD7E2659B7DD433F254904A")),
             Some(fp));
     }

@@ -25,6 +25,8 @@ extern crate time;
 extern crate url;
 extern crate hex;
 
+use tempfile::NamedTempFile;
+
 extern crate sequoia_openpgp as openpgp;
 use openpgp::{
     TPK,
@@ -261,6 +263,152 @@ pub trait Database: Sync + Send {
         }
         Ok(())
     }
+
+    /// Complex operation that updates a TPK in the database.
+    ///
+    /// 1. Merge new TPK with old, full TPK
+    ///    - if old full TPK == new full TPK, stop
+    /// 2. Prepare new published TPK
+    ///    - retrieve UserIDs from old published TPK
+    ///    - create new TPK from full TPK by keeping only published UserIDs
+    /// 3. Write full and published TPK to temporary files
+    /// LOCK
+    /// 3. Check for fingerprint and long key id collisions for published TPK
+    ///    - abort if any problems come up!
+    /// 4. Move full and published temporary TPK to their location
+    /// 5. Update all symlinks
+    /// UNLOCK
+    fn merga(&self, new_tpk: TPK) -> Result<()> {
+        let fpr_primary = Fingerprint::try_from(new_tpk.primary().fingerprint())?;
+
+        let full_tpk_new = if let Some(bytes) = self.by_fpr_full(&fpr_primary) {
+            let full_tpk_old = TPK::from_bytes(bytes.as_ref())?;
+            let full_tpk_new = new_tpk.merge(full_tpk_old.clone())?;
+            // Abort if no changes were made
+            if full_tpk_new == full_tpk_old {
+                return Ok(())
+            }
+            full_tpk_new
+        } else {
+            new_tpk
+        };
+
+        let published_tpk_new = {
+            let published_uids: Vec<UserID> = self
+                .by_fpr(&fpr_primary)
+                .and_then(|bytes| TPK::from_bytes(bytes.as_ref()).ok())
+                .map(|tpk| tpk.userids()
+                    .map(|binding| binding.userid().clone())
+                    .collect()
+                ).unwrap_or_default();
+
+            filter_userids(&full_tpk_new, |uid| published_uids.contains(uid))?
+        };
+
+        let fingerprints = published_tpk_new
+            .keys_all()
+            .unfiltered()
+            .map(|(_, _, key)| key.fingerprint())
+            .map(|fpr| Fingerprint::try_from(fpr))
+            .flatten();
+
+        let full_tpk_tmp = self.write_to_temp(&tpk_to_string(&full_tpk_new)?)?;
+        let published_tpk_tmp = self.write_to_temp(&tpk_to_string(&published_tpk_new)?)?;
+
+        let _lock = self.lock();
+
+        // these are very unlikely to fail. but if it happens,
+        // database consistency might be compromised!
+        self.move_tmp_to_full(full_tpk_tmp, &fpr_primary)?;
+        self.move_tmp_to_published(published_tpk_tmp, &fpr_primary)?;
+
+        let fpr_checks = fingerprints
+            .map(|fpr| self.check_link_fpr(&fpr, &fpr_primary))
+            .collect::<Vec<_>>()
+            .into_iter()
+            .collect::<Result<Vec<_>>>()?;
+        let fpr_not_linked = fpr_checks.into_iter().flatten();
+
+        for fpr in fpr_not_linked {
+            if let Err(e) = self.ensure_link_fpr(&fpr, &fpr_primary) {
+                info!("Error ensuring symlink! {} {} {:?}",
+                      &fpr, &fpr_primary, e);
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Complex operation that published some user id for a TPK already in the database.
+    ///
+    /// 1. Load published TPK
+    ///     - if UserID is already in, stop
+    /// 2. Load full TPK
+    ///     - if requested UserID is not in, stop
+    /// 3. Prepare new published TPK
+    ///    - retrieve UserIDs from old published TPK
+    ///    - create new TPK from full TPK by keeping only published UserIDs
+    ///
+    /// LOCK
+    /// 4. Check for fingerprint and long key id collisions for published TPK
+    ///    - abort if any problems come up!
+    /// 5. Move full and published temporary TPK to their location
+    /// 6. Update all symlinks
+    /// UNLOCK
+    fn set_verified(&self, fpr_primary: &Fingerprint, uid_new: UserID) -> Result<()> {
+        let email_new = Email::try_from(&uid_new)?;
+
+        let full_tpk = self.by_fpr_full(&fpr_primary)
+            .ok_or_else(|| failure::err_msg("Key not in database!"))
+            .and_then(|bytes| TPK::from_bytes(bytes.as_ref()))?;
+
+        let published_uids_old: Vec<UserID> = self
+            .by_fpr(&fpr_primary)
+            .and_then(|bytes| TPK::from_bytes(bytes.as_ref()).ok())
+            .map(|tpk| tpk.userids()
+                .map(|binding| binding.userid().clone())
+                .collect()
+            ).unwrap_or_default();
+        if published_uids_old.contains(&uid_new) {
+            // UserID already published - just stop
+            return Ok(());
+        }
+
+        let published_tpk_new = {
+            filter_userids(&full_tpk,
+                |uid| uid == &uid_new || published_uids_old.contains(uid))?
+        };
+
+        if ! published_tpk_new
+            .userids()
+            .map(|binding| binding.userid())
+            .any(|uid| uid == &uid_new) {
+                return Err(failure::err_msg("Requested UserID not found!"));
+        }
+
+        let published_tpk_tmp = self.write_to_temp(&tpk_to_string(&published_tpk_new)?)?;
+
+        let _lock = self.lock();
+
+        self.move_tmp_to_published(published_tpk_tmp, &fpr_primary)?;
+
+        if let Err(e) = self.link_email(&email_new, &fpr_primary) {
+            info!("Error ensuring email symlink! {} -> {} {:?}",
+                  &email_new, &fpr_primary, e);
+        }
+
+        Ok(())
+    }
+
+    fn check_link_fpr(&self, fpr: &Fingerprint, target: &Fingerprint) -> Result<Option<Fingerprint>>;
+    fn ensure_link_fpr(&self, fpr: &Fingerprint, target: &Fingerprint) -> Result<()>;
+
+    fn by_fpr_full(&self, fpr: &Fingerprint) -> Option<String>;
+
+    fn write_to_temp(&self, content: &[u8]) -> Result<NamedTempFile>;
+    fn move_tmp_to_full(&self, content: NamedTempFile, fpr: &Fingerprint) -> Result<()>;
+    fn move_tmp_to_published(&self, content: NamedTempFile, fpr: &Fingerprint) -> Result<()>;
+
 
     /// Merges the given TPK into the database.
     ///
@@ -509,6 +657,15 @@ pub trait Database: Sync + Send {
             None => Ok(()),
         }
     }
+}
+
+fn tpk_to_string(tpk: &TPK) -> Result<Vec<u8>> {
+    let mut buf = Vec::new();
+    {
+        let mut armor_writer = Writer::new(&mut buf, Kind::PublicKey, &[][..])?;
+        tpk.serialize(&mut armor_writer)?;
+    }
+    Ok(buf)
 }
 
 /// Filters the TPK, keeping only those UserIDs that fulfill the
