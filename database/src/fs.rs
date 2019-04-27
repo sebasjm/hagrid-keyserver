@@ -234,7 +234,7 @@ impl Filesystem {
         let mut tpks = HashMap::new();
 
         // Check Fingerprints.
-        for entry in fs::read_dir(&self.links_dir_by_fingerprint)? {
+        for entry in fs::read_dir(&self.keys_dir_published)? {
             let prefix = entry?;
             let prefix_path = prefix.path();
             if ! prefix_path.is_dir() {
@@ -255,15 +255,8 @@ impl Filesystem {
                 let primary_fp = match () {
                     _ if typ.is_file() =>
                         fp.clone(),
-                    _ if typ.is_symlink() =>
-                        self.path_to_fingerprint_base(path.parent().unwrap(),
-                                                      &path.read_link()?)
-                            .ok_or_else(
-                                || format_err!("Malformed path: {:?}",
-                                              path.read_link().unwrap()))?,
                     _ => return
-                        Err(format_err!("{:?} is neither a file nor a symlink \
-                                         but a {:?}", path, typ)),
+                        Err(format_err!("{:?} is not a file but a {:?}", path, typ)),
                 };
 
                 // Load into cache.
@@ -277,30 +270,59 @@ impl Filesystem {
                 }
                 let tpk = tpks.get(&primary_fp).unwrap();
 
-                if typ.is_file() {
-                    let tpk_primary_fp =
-                        tpk.primary().fingerprint().try_into().unwrap();
-                    if fp != tpk_primary_fp {
-                        return Err(format_err!(
-                            "{:?} points to the wrong TPK, expected {} \
-                             but found {}",
-                            path, fp, tpk_primary_fp));
-                    }
-                } else {
-                    let mut found = false;
-                    for skb in tpk.subkeys() {
-                        if Fingerprint::try_from(skb.subkey().fingerprint())
-                            .unwrap() == fp
-                        {
-                            found = true;
-                            break;
-                        }
-                    }
-                    if ! found {
-                        return Err(format_err!(
-                            "{:?} points to the wrong TPK, the TPK does not \
-                             contain the subkey {}", path, fp));
-                    }
+                let tpk_primary_fp =
+                    tpk.primary().fingerprint().try_into().unwrap();
+                if fp != tpk_primary_fp {
+                    return Err(format_err!(
+                        "{:?} points to the wrong TPK, expected {} \
+                            but found {}",
+                        path, fp, tpk_primary_fp));
+                }
+            }
+        }
+
+        // Check subkeys
+        for entry in fs::read_dir(&self.links_dir_by_fingerprint)? {
+            let prefix = entry?;
+            let prefix_path = prefix.path();
+            if ! prefix_path.is_dir() {
+                return Err(format_err!("{:?} is not a directory", prefix_path));
+            }
+
+            for entry in fs::read_dir(prefix_path)? {
+                let entry = entry?;
+                let path = entry.path();
+                let typ = fs::symlink_metadata(&path)?.file_type();
+
+                // The KeyID corresponding with this path.
+                let fp = self.path_to_fingerprint(&path)
+                    .ok_or_else(|| format_err!("Malformed path: {:?}", path))?;
+
+                // Compute the corresponding primary fingerprint just
+                // by looking at the paths.
+                let primary_fp = match () {
+                    _ if typ.is_symlink() =>
+                        self.path_to_fingerprint(&path.read_link()?)
+                            .ok_or_else(
+                                || format_err!("Malformed path: {:?}",
+                                              path.read_link().unwrap()))?,
+                    _ => return
+                        Err(format_err!("{:?} is not a symlink but a {:?}",
+                                        path, typ)),
+                };
+
+                let tpk = tpks.get(&primary_fp)
+                    .ok_or_else(
+                        || format_err!("Broken symlink {:?}: No such Key {}",
+                                       path, primary_fp))?;
+
+                let found = tpk.keys_all()
+                    .map(|(_, _, key)| Fingerprint::try_from(key.fingerprint()).unwrap())
+                    .any(|key_fp| key_fp == fp);
+                if ! found {
+                    return Err(format_err!(
+                        "{:?} points to the wrong TPK, the TPK does not \
+                            contain the subkey {}", path, fp));
                 }
             }
         }
@@ -340,14 +362,9 @@ impl Filesystem {
                         || format_err!("Broken symlink {:?}: No such Key {}",
                                        path, primary_fp))?;
 
-                let mut found = false;
-                for (_, _, key) in tpk.keys_all() {
-                    if KeyID::try_from(key.fingerprint()).unwrap() == id
-                    {
-                        found = true;
-                        break;
-                    }
-                }
+                let found = tpk.keys_all()
+                    .map(|(_, _, key)| KeyID::try_from(key.fingerprint()).unwrap())
+                    .any(|key_fp| key_fp == id);
                 if ! found {
                     return Err(format_err!(
                         "{:?} points to the wrong TPK, the TPK does not \
@@ -465,17 +482,14 @@ impl Database for Filesystem {
 
     fn check_link_fpr(&self, fpr: &Fingerprint, fpr_target: &Fingerprint) -> Result<Option<Fingerprint>> {
         let link = self.link_by_fingerprint(&fpr);
-        let target = self.fingerprint_to_path_published(&fpr_target);
+        let target = diff_paths(&self.fingerprint_to_path_published(fpr),
+                                link.parent().unwrap()).unwrap();
 
         if link == target {
             return Ok(None);
         }
 
         Ok(Some(fpr.clone()))
-    }
-
-    fn ensure_link_fpr(&self, _fpr: &Fingerprint, _target: &Fingerprint) -> Result<()> {
-        Ok(())
     }
 
     fn update(
@@ -556,17 +570,15 @@ impl Database for Filesystem {
 
         if path.exists() {
             let x = diff_paths(&path, &self.keys_dir).expect("related paths");
-            println!("YEAP: {:?}", &x);
             Some(x)
         } else {
-            println!("NOPE");
             None
         }
     }
 
     fn link_email(&self, email: &Email, fpr: &Fingerprint) -> Result<()> {
         let link = self.link_by_email(&email);
-        let target = diff_paths(&self.link_by_fingerprint(fpr),
+        let target = diff_paths(&self.fingerprint_to_path_published(fpr),
                                 link.parent().unwrap()).unwrap();
 
         if link == target {
@@ -581,7 +593,7 @@ impl Database for Filesystem {
 
         match read_link(&link) {
             Ok(target) => {
-                let expected = diff_paths(&self.link_by_fingerprint(fpr),
+                let expected = diff_paths(&self.fingerprint_to_path_published(fpr),
                                           link.parent().unwrap()).unwrap();
 
                 if target == expected {
@@ -596,7 +608,7 @@ impl Database for Filesystem {
 
     fn link_kid(&self, kid: &KeyID, fpr: &Fingerprint) -> Result<()> {
         let link = self.link_by_keyid(kid);
-        let target = diff_paths(&self.link_by_fingerprint(fpr),
+        let target = diff_paths(&self.fingerprint_to_path_published(fpr),
                                 link.parent().unwrap()).unwrap();
 
         if link == target {
@@ -622,7 +634,7 @@ impl Database for Filesystem {
 
         match read_link(&link) {
             Ok(target) => {
-                let expected = self.link_by_fingerprint(fpr);
+                let expected = self.fingerprint_to_path_published(fpr);
 
                 if target == expected {
                     remove_file(link)?;
@@ -635,12 +647,8 @@ impl Database for Filesystem {
     }
 
     fn link_fpr(&self, from: &Fingerprint, fpr: &Fingerprint) -> Result<()> {
-        if from == fpr {
-            return Ok(());
-        }
-
         let link = self.link_by_fingerprint(from);
-        let target = diff_paths(&self.link_by_fingerprint(fpr),
+        let target = diff_paths(&self.fingerprint_to_path_published(fpr),
                                 link.parent().unwrap()).unwrap();
 
         symlink(&target, ensure_parent(&link)?)
@@ -651,7 +659,7 @@ impl Database for Filesystem {
 
         match read_link(&link) {
             Ok(target) => {
-                let expected = self.link_by_fingerprint(fpr);
+                let expected = self.fingerprint_to_path_published(fpr);
 
                 if target == expected {
                     remove_file(link)?;

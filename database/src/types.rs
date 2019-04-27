@@ -145,6 +145,15 @@ impl TryFrom<sequoia_openpgp::Fingerprint> for KeyID {
     }
 }
 
+impl From<&Fingerprint> for KeyID {
+    fn from(fpr: &Fingerprint) -> KeyID {
+        let mut arr = [0u8; 8];
+
+        arr.copy_from_slice(&fpr.0[12..20]);
+        KeyID(arr)
+    }
+}
+
 impl From<Fingerprint> for KeyID {
     fn from(fpr: Fingerprint) -> KeyID {
         let mut arr = [0u8; 8];

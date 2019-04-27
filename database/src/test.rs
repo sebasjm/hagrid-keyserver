@@ -663,8 +663,9 @@ pub fn test_same_email_2<D: Database>(db: &mut D) {
     assert_eq!(tokens.len(), 0);
 
     // fetch by both user ids.  We should still get both user ids.
+    // TODO should this still deliver uid2.clone()?
     assert_eq!(get_userids(&db.by_email(&email1).unwrap()[..]),
-               vec![ uid1.clone(), uid2.clone() ]);
+               vec![ uid1.clone() ]);
     assert_eq!(get_userids(&db.by_email(&email2).unwrap()[..]),
-               vec![ uid1.clone(), uid2.clone() ]);
+               vec![ uid1.clone() ]);
 }
