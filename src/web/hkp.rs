@@ -20,8 +20,9 @@ use web::{
 pub enum Hkp {
     Fingerprint { fpr: Fingerprint, index: bool, machine_readable: bool },
     KeyID { keyid: KeyID, index: bool, machine_readable: bool },
+    ShortKeyID { query: String, index: bool, machine_readable: bool },
     Email { email: Email, index: bool, machine_readable: bool },
-    Invalid{ query: String, },
+    Invalid { query: String, },
 }
 
 impl fmt::Display for Hkp {
@@ -30,6 +31,7 @@ impl fmt::Display for Hkp {
             Hkp::Fingerprint{ ref fpr,.. } => write!(f, "{}", fpr),
             Hkp::KeyID{ ref keyid,.. } => write!(f, "{}", keyid),
             Hkp::Email{ ref email,.. } => write!(f, "{}", email),
+            Hkp::ShortKeyID{ ref query,.. } => write!(f, "{}", query),
             Hkp::Invalid{ ref query } => write!(f, "{}", query),
         }
     }
@@ -68,7 +70,13 @@ impl<'a, 'r> FromRequest<'a, 'r> for Hkp {
             let maybe_fpr = Fingerprint::from_str(&search);
             let maybe_keyid = KeyID::from_str(&search);
 
-            if let Ok(fpr) = maybe_fpr {
+            if search.starts_with("0x") && search.len() < 16 && !search.contains('@') {
+                Outcome::Success(Hkp::ShortKeyID {
+                    query: search,
+                    index: index,
+                    machine_readable: machine_readable,
+                })
+            } else if let Ok(fpr) = maybe_fpr {
                 Outcome::Success(Hkp::Fingerprint {
                     fpr: fpr,
                     index: index,
@@ -131,6 +139,10 @@ pub fn pks_lookup(state: rocket::State<HagridState>,
             (Query::ByKeyID(keyid), index, machine_readable),
         Hkp::Email { email, index, machine_readable } => {
             (Query::ByEmail(email), index, machine_readable)
+        }
+        Hkp::ShortKeyID { query: _, .. } => {
+            return MyResponse::not_found(None, Some(
+                "Search by short key ids is not supported, sorry!".to_owned()));
         }
         Hkp::Invalid { query: _ } => {
             return MyResponse::not_found(None, None);
