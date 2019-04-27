@@ -190,7 +190,8 @@ where
     for tpk in tpks {
         let tpk_name = tpk.fingerprint().to_string();
         let tpk_fpr = Fingerprint::try_from(tpk.fingerprint()).unwrap();
-        let unpublished_emails = db.merge(tpk)?;
+        let mut unpublished_emails = db.merge(tpk)?;
+        unpublished_emails.sort();
 
         if let Some((ref mail_service, ref token_service)) = services {
             for email in unpublished_emails {
