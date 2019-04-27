@@ -21,6 +21,7 @@ base64 = "0.10"
 pathdiff = "0.1"
 idna = "0.1"
 fs2 = "0.4"
+walkdir = "2.2"
 
 [lib]
 name = "hagrid_database"

@@ -120,25 +120,25 @@ impl Filesystem {
     /// Returns the path to the given Fingerprint.
     fn fingerprint_to_path_full(&self, fingerprint: &Fingerprint) -> PathBuf {
         let hex = fingerprint.to_string();
-        self.keys_dir_full.join(&hex[..2]).join(&hex[2..])
+        self.keys_dir_full.join(path_split(&hex))
     }
 
     /// Returns the path to the given Fingerprint.
     fn fingerprint_to_path_published(&self, fingerprint: &Fingerprint) -> PathBuf {
         let hex = fingerprint.to_string();
-        self.keys_dir_published.join(&hex[..2]).join(&hex[2..])
+        self.keys_dir_published.join(path_split(&hex))
     }
 
     /// Returns the path to the given KeyID.
     fn link_by_keyid(&self, keyid: &KeyID) -> PathBuf {
         let hex = keyid.to_string();
-        self.links_dir_by_keyid.join(&hex[..2]).join(&hex[2..])
+        self.links_dir_by_keyid.join(path_split(&hex))
     }
 
     /// Returns the path to the given Fingerprint.
     fn link_by_fingerprint(&self, fingerprint: &Fingerprint) -> PathBuf {
         let hex = fingerprint.to_string();
-        self.links_dir_by_fingerprint.join(&hex[..2]).join(&hex[2..])
+        self.links_dir_by_fingerprint.join(path_split(&hex))
     }
 
     /// Returns the path to the given Email.
@@ -146,11 +146,7 @@ impl Filesystem {
         let email =
             url::form_urlencoded::byte_serialize(email.as_str().as_bytes())
                 .collect::<String>();
-        if email.len() > 2 {
-            self.links_dir_by_email.join(&email[..2]).join(&email[2..])
-        } else {
-            self.links_dir_by_email.join(email)
-        }
+        self.links_dir_by_email.join(path_split(&email))
     }
 
     fn read_from_path(&self, path: &Path) -> Option<String> {
@@ -170,54 +166,22 @@ impl Filesystem {
     /// Returns the KeyID the given path is pointing to.
     fn path_to_keyid(&self, path: &Path) -> Option<KeyID> {
         use std::str::FromStr;
-        let rest = path.file_name()?;
-        let prefix = path.parent()?.file_name()?;
-        KeyID::from_str(&format!("{}{}", prefix.to_str()?, rest.to_str()?))
-            .ok()
+        let merged = path_merge(path);
+        KeyID::from_str(&merged).ok()
     }
 
     /// Returns the Fingerprint the given path is pointing to.
     fn path_to_fingerprint(&self, path: &Path) -> Option<Fingerprint> {
         use std::str::FromStr;
-        let rest = path.file_name()?;
-        let prefix = path.parent()?.file_name()?;
-        Fingerprint::from_str(&format!("{}{}", prefix.to_str()?, rest.to_str()?))
-            .ok()
+        let merged = path_merge(path);
+        Fingerprint::from_str(&merged).ok()
     }
-
-    /// Returns the Fingerprint the given path is pointing to.
-    ///
-    /// This function must be used when converting links connecting
-    /// subkey fingerprints to the TPK.
-    ///
-    /// Here, a complication arises if both fingerprints share the
-    /// same two nibble prefix, because they end up in the same
-    /// subdirectory.
-    fn path_to_fingerprint_base(&self, base: &Path, path: &Path)
-                                -> Option<Fingerprint> {
-        use std::str::FromStr;
-
-        let rest = path.file_name()?;
-        let prefix =
-            if path.to_str().unwrap().len() == 38 {
-                base.file_name()?
-            } else {
-                path.parent().unwrap().file_name()?
-            };
-
-        Fingerprint::from_str(&format!("{}{}", prefix.to_str()?, rest.to_str()?))
-            .ok()
-    }
-
 
     /// Returns the Email the given path is pointing to.
     fn path_to_email(&self, path: &Path) -> Option<Email> {
         use std::str::FromStr;
-        let rest = path.file_name()?;
-        let prefix = path.parent()?.file_name()?;
-        let joined = format!("{}{}", prefix.to_str()?, rest.to_str()?);
-        let decoded = url::form_urlencoded::parse(joined.as_bytes())
-            .next()?.0;
+        let merged = path_merge(path);
+        let decoded = url::form_urlencoded::parse(merged.as_bytes()).next()?.0;
         Email::from_str(&decoded).ok()
     }
 
@@ -229,198 +193,178 @@ impl Filesystem {
         use std::fs;
         use std::collections::HashMap;
         use failure::format_err;
+        use walkdir::WalkDir;
 
         // A cache of all TPKs, for quick lookups.
         let mut tpks = HashMap::new();
 
-        // Check Fingerprints.
-        for entry in fs::read_dir(&self.keys_dir_published)? {
-            let prefix = entry?;
-            let prefix_path = prefix.path();
-            if ! prefix_path.is_dir() {
-                return Err(format_err!("{:?} is not a directory", prefix_path));
+        for entry in WalkDir::new(&self.keys_dir_published) {
+            let entry = entry?;
+            let path = entry.path();
+            let typ = fs::symlink_metadata(&path)?.file_type();
+            if typ.is_dir() {
+                continue;
             }
 
-            for entry in fs::read_dir(prefix_path)? {
-                let entry = entry?;
-                let path = entry.path();
-                let typ = fs::symlink_metadata(&path)?.file_type();
+            // The Fingerprint corresponding with this path.
+            let fp = self.path_to_fingerprint(&path)
+                .ok_or_else(|| format_err!("Malformed path: {:?}", path))?;
 
-                // The Fingerprint corresponding with this path.
-                let fp = self.path_to_fingerprint(&path)
-                    .ok_or_else(|| format_err!("Malformed path: {:?}", path))?;
+            // Compute the corresponding primary fingerprint just
+            // by looking at the paths.
+            let primary_fp = match () {
+                _ if typ.is_file() =>
+                    fp.clone(),
+                _ => return
+                    Err(format_err!("{:?} is not a file but a {:?}", path, typ)),
+            };
 
-                // Compute the corresponding primary fingerprint just
-                // by looking at the paths.
-                let primary_fp = match () {
-                    _ if typ.is_file() =>
-                        fp.clone(),
-                    _ => return
-                        Err(format_err!("{:?} is not a file but a {:?}", path, typ)),
-                };
+            // Load into cache.
+            if ! tpks.contains_key(&primary_fp) {
+                tpks.insert(
+                    primary_fp.clone(),
+                    self.lookup(&Query::ByFingerprint(primary_fp.clone()))
+                        ?.ok_or_else(
+                            || format_err!("No TPK with fingerprint {:?}",
+                                            primary_fp))?);
+            }
+            let tpk = tpks.get(&primary_fp).unwrap();
 
-                // Load into cache.
-                if ! tpks.contains_key(&primary_fp) {
-                    tpks.insert(
-                        primary_fp.clone(),
-                        self.lookup(&Query::ByFingerprint(primary_fp.clone()))
-                            ?.ok_or_else(
-                                || format_err!("No TPK with fingerprint {:?}",
-                                               primary_fp))?);
-                }
-                let tpk = tpks.get(&primary_fp).unwrap();
-
-                let tpk_primary_fp =
-                    tpk.primary().fingerprint().try_into().unwrap();
-                if fp != tpk_primary_fp {
-                    return Err(format_err!(
-                        "{:?} points to the wrong TPK, expected {} \
-                            but found {}",
-                        path, fp, tpk_primary_fp));
-                }
+            let tpk_primary_fp =
+                tpk.primary().fingerprint().try_into().unwrap();
+            if fp != tpk_primary_fp {
+                return Err(format_err!(
+                    "{:?} points to the wrong TPK, expected {} \
+                        but found {}",
+                    path, fp, tpk_primary_fp));
             }
         }
 
         // Check subkeys
-        for entry in fs::read_dir(&self.links_dir_by_fingerprint)? {
-            let prefix = entry?;
-            let prefix_path = prefix.path();
-            if ! prefix_path.is_dir() {
-                return Err(format_err!("{:?} is not a directory", prefix_path));
+        for entry in WalkDir::new(&self.links_dir_by_fingerprint) {
+            let entry = entry?;
+            let path = entry.path();
+            let typ = fs::symlink_metadata(&path)?.file_type();
+            if typ.is_dir() {
+                continue;
             }
 
-            for entry in fs::read_dir(prefix_path)? {
-                let entry = entry?;
-                let path = entry.path();
-                let typ = fs::symlink_metadata(&path)?.file_type();
+            // The KeyID corresponding with this path.
+            let fp = self.path_to_fingerprint(&path)
+                .ok_or_else(|| format_err!("Malformed path: {:?}", path))?;
 
-                // The KeyID corresponding with this path.
-                let fp = self.path_to_fingerprint(&path)
-                    .ok_or_else(|| format_err!("Malformed path: {:?}", path))?;
+            // Compute the corresponding primary fingerprint just
+            // by looking at the paths.
+            let primary_fp = match () {
+                _ if typ.is_symlink() =>
+                    self.path_to_fingerprint(&path.read_link()?)
+                        .ok_or_else(
+                            || format_err!("Malformed path: {:?}",
+                                            path.read_link().unwrap()))?,
+                _ => return
+                    Err(format_err!("{:?} is not a symlink but a {:?}",
+                                    path, typ)),
+            };
 
-                // Compute the corresponding primary fingerprint just
-                // by looking at the paths.
-                let primary_fp = match () {
-                    _ if typ.is_symlink() =>
-                        self.path_to_fingerprint(&path.read_link()?)
-                            .ok_or_else(
-                                || format_err!("Malformed path: {:?}",
-                                              path.read_link().unwrap()))?,
-                    _ => return
-                        Err(format_err!("{:?} is not a symlink but a {:?}",
-                                        path, typ)),
-                };
+            let tpk = tpks.get(&primary_fp)
+                .ok_or_else(
+                    || format_err!("Broken symlink {:?}: No such Key {}",
+                                    path, primary_fp))?;
 
-                let tpk = tpks.get(&primary_fp)
-                    .ok_or_else(
-                        || format_err!("Broken symlink {:?}: No such Key {}",
-                                       path, primary_fp))?;
-
-                let found = tpk.keys_all()
-                    .map(|(_, _, key)| Fingerprint::try_from(key.fingerprint()).unwrap())
-                    .any(|key_fp| key_fp == fp);
-                if ! found {
-                    return Err(format_err!(
-                        "{:?} points to the wrong TPK, the TPK does not \
-                            contain the subkey {}", path, fp));
-                }
+            let found = tpk.keys_all()
+                .map(|(_, _, key)| Fingerprint::try_from(key.fingerprint()).unwrap())
+                .any(|key_fp| key_fp == fp);
+            if ! found {
+                return Err(format_err!(
+                    "{:?} points to the wrong TPK, the TPK does not \
+                        contain the subkey {}", path, fp));
             }
         }
 
         // Check KeyIDs.
-        for entry in fs::read_dir(&self.links_dir_by_keyid)? {
-            let prefix = entry?;
-            let prefix_path = prefix.path();
-            if ! prefix_path.is_dir() {
-                return Err(format_err!("{:?} is not a directory", prefix_path));
+        for entry in WalkDir::new(&self.links_dir_by_keyid) {
+            let entry = entry?;
+            let path = entry.path();
+            let typ = fs::symlink_metadata(&path)?.file_type();
+            if typ.is_dir() {
+                continue;
             }
 
-            for entry in fs::read_dir(prefix_path)? {
-                let entry = entry?;
-                let path = entry.path();
-                let typ = fs::symlink_metadata(&path)?.file_type();
+            // The KeyID corresponding with this path.
+            let id = self.path_to_keyid(&path)
+                .ok_or_else(|| format_err!("Malformed path: {:?}", path))?;
 
-                // The KeyID corresponding with this path.
-                let id = self.path_to_keyid(&path)
-                    .ok_or_else(|| format_err!("Malformed path: {:?}", path))?;
+            // Compute the corresponding primary fingerprint just
+            // by looking at the paths.
+            let primary_fp = match () {
+                _ if typ.is_symlink() =>
+                    self.path_to_fingerprint(&path.read_link()?)
+                        .ok_or_else(
+                            || format_err!("Malformed path: {:?}",
+                                            path.read_link().unwrap()))?,
+                _ => return
+                    Err(format_err!("{:?} is not a symlink but a {:?}",
+                                    path, typ)),
+            };
 
-                // Compute the corresponding primary fingerprint just
-                // by looking at the paths.
-                let primary_fp = match () {
-                    _ if typ.is_symlink() =>
-                        self.path_to_fingerprint(&path.read_link()?)
-                            .ok_or_else(
-                                || format_err!("Malformed path: {:?}",
-                                              path.read_link().unwrap()))?,
-                    _ => return
-                        Err(format_err!("{:?} is not a symlink but a {:?}",
-                                        path, typ)),
-                };
+            let tpk = tpks.get(&primary_fp)
+                .ok_or_else(
+                    || format_err!("Broken symlink {:?}: No such Key {}",
+                                    path, primary_fp))?;
 
-                let tpk = tpks.get(&primary_fp)
-                    .ok_or_else(
-                        || format_err!("Broken symlink {:?}: No such Key {}",
-                                       path, primary_fp))?;
-
-                let found = tpk.keys_all()
-                    .map(|(_, _, key)| KeyID::try_from(key.fingerprint()).unwrap())
-                    .any(|key_fp| key_fp == id);
-                if ! found {
-                    return Err(format_err!(
-                        "{:?} points to the wrong TPK, the TPK does not \
-                         contain the (sub)key {}", path, id));
-                }
+            let found = tpk.keys_all()
+                .map(|(_, _, key)| KeyID::try_from(key.fingerprint()).unwrap())
+                .any(|key_fp| key_fp == id);
+            if ! found {
+                return Err(format_err!(
+                    "{:?} points to the wrong TPK, the TPK does not \
+                        contain the (sub)key {}", path, id));
             }
         }
 
         // Check Emails.
-        for entry in fs::read_dir(&self.links_dir_by_email)? {
-            let prefix = entry?;
-            let prefix_path = prefix.path();
-            if ! prefix_path.is_dir() {
-                return Err(format_err!("{:?} is not a directory", prefix_path));
+        for entry in WalkDir::new(&self.links_dir_by_email) {
+            let entry = entry?;
+            let path = entry.path();
+            let typ = fs::symlink_metadata(&path)?.file_type();
+            if typ.is_dir() {
+                continue;
             }
 
-            for entry in fs::read_dir(prefix_path)? {
-                let entry = entry?;
-                let path = entry.path();
-                let typ = fs::symlink_metadata(&path)?.file_type();
+            // The Email corresponding with this path.
+            let email = self.path_to_email(&path)
+                .ok_or_else(|| format_err!("Malformed path: {:?}", path))?;
 
-                // The Email corresponding with this path.
-                let email = self.path_to_email(&path)
-                    .ok_or_else(|| format_err!("Malformed path: {:?}", path))?;
+            // Compute the corresponding primary fingerprint just
+            // by looking at the paths.
+            let primary_fp = match () {
+                _ if typ.is_symlink() =>
+                    self.path_to_fingerprint(&path.read_link()?)
+                        .ok_or_else(
+                            || format_err!("Malformed path: {:?}",
+                                            path.read_link().unwrap()))?,
+                _ => return
+                    Err(format_err!("{:?} is not a symlink but a {:?}",
+                                    path, typ)),
+            };
 
-                // Compute the corresponding primary fingerprint just
-                // by looking at the paths.
-                let primary_fp = match () {
-                    _ if typ.is_symlink() =>
-                        self.path_to_fingerprint(&path.read_link()?)
-                            .ok_or_else(
-                                || format_err!("Malformed path: {:?}",
-                                              path.read_link().unwrap()))?,
-                    _ => return
-                        Err(format_err!("{:?} is not a symlink but a {:?}",
-                                        path, typ)),
-                };
+            let tpk = tpks.get(&primary_fp)
+                .ok_or_else(
+                    || format_err!("Broken symlink {:?}: No such Key {}",
+                                    path, primary_fp))?;
 
-                let tpk = tpks.get(&primary_fp)
-                    .ok_or_else(
-                        || format_err!("Broken symlink {:?}: No such Key {}",
-                                       path, primary_fp))?;
-
-                let mut found = false;
-                for uidb in tpk.userids() {
-                    if Email::try_from(uidb.userid()).unwrap() == email
-                    {
-                        found = true;
-                        break;
-                    }
+            let mut found = false;
+            for uidb in tpk.userids() {
+                if Email::try_from(uidb.userid()).unwrap() == email
+                {
+                    found = true;
+                    break;
                 }
-                if ! found {
-                    return Err(format_err!(
-                        "{:?} points to the wrong TPK, the TPK does not \
-                         contain the email {}", path, email));
-                }
+            }
+            if ! found {
+                return Err(format_err!(
+                    "{:?} points to the wrong TPK, the TPK does not \
+                        contain the email {}", path, email));
             }
         }
 
@@ -506,9 +450,7 @@ impl Database for Filesystem {
                     Some(fp.clone())
                 } else if typ.is_symlink() {
                     path.read_link().ok()
-                        .and_then(|link_path|
-                                  self.path_to_fingerprint_base(
-                                      path.parent().unwrap(), &link_path))
+                        .and_then(|link_path| self.path_to_fingerprint(&link_path))
                 } else {
                     // Neither file nor symlink.  Freak value.
                     None
@@ -632,6 +574,20 @@ impl Database for Filesystem {
         let path = self.link_by_keyid(kid);
         self.read_from_path(&path)
     }
+}
+
+fn path_split(path: &str) -> PathBuf {
+    if path.len() > 4 {
+        [&path[..2], &path[2..4], &path[4..]].iter().collect()
+    } else {
+        path.into()
+    }
+}
+
+fn path_merge(path: &Path) -> String {
+    let comps = path.iter().rev().take(3).collect::<Vec<_>>().into_iter().rev();
+    let comps: Vec<_> = comps.map(|os| os.to_string_lossy()).collect();
+    comps.join("")
 }
 
 #[cfg(test)]
@@ -769,13 +725,5 @@ mod tests {
 
         assert_eq!(db.path_to_fingerprint(&db.link_by_fingerprint(&fp)),
                    Some(fp.clone()));
-
-        // Special case: Relative symlink to a fingerprint with the
-        // same two nibble prefix.
-        assert_eq!(
-            db.path_to_fingerprint_base(
-                &db.links_dir_by_fingerprint.join("CB"),
-                &PathBuf::from("CD8F030588653EEDD7E2659B7DD433F254904A")),
-            Some(fp));
     }
 }

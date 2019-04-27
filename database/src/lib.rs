@@ -23,6 +23,7 @@ extern crate tempfile;
 extern crate time;
 extern crate url;
 extern crate hex;
+extern crate walkdir;
 
 use tempfile::NamedTempFile;
 
