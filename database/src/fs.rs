@@ -482,7 +482,7 @@ impl Database for Filesystem {
 
     fn check_link_fpr(&self, fpr: &Fingerprint, fpr_target: &Fingerprint) -> Result<Option<Fingerprint>> {
         let link = self.link_by_fingerprint(&fpr);
-        let target = diff_paths(&self.fingerprint_to_path_published(fpr),
+        let target = diff_paths(&self.fingerprint_to_path_published(fpr_target),
                                 link.parent().unwrap()).unwrap();
 
         if link == target {
@@ -490,38 +490,6 @@ impl Database for Filesystem {
         }
 
         Ok(Some(fpr.clone()))
-    }
-
-    fn update(
-        &self, fpr: &Fingerprint, new: Option<String>,
-    ) -> Result<()> {
-        let target = self.link_by_fingerprint(fpr);
-
-        match new {
-            Some(new) => {
-                let mut tmp = tempfile::Builder::new()
-                    .prefix("key")
-                    .rand_bytes(16)
-                    .tempfile_in(&self.tmp_dir)?;
-
-                tmp.write_all(new.as_bytes()).unwrap();
-                let _ = tmp.persist(ensure_parent(&target)?)?;
-
-                // fix permissions to 640
-                if cfg!(unix) {
-                    use std::fs::{set_permissions, Permissions};
-                    use std::os::unix::fs::PermissionsExt;
-
-                    let perm = Permissions::from_mode(0o640);
-                    set_permissions(target, perm)?;
-                }
-            }
-            None => {
-                remove_file(target)?;
-            }
-        }
-
-        Ok(())
     }
 
     fn lookup_primary_fingerprint(&self, term: &Query) -> Option<Fingerprint> {
@@ -606,67 +574,38 @@ impl Database for Filesystem {
         Ok(())
     }
 
-    fn link_kid(&self, kid: &KeyID, fpr: &Fingerprint) -> Result<()> {
-        let link = self.link_by_keyid(kid);
-        let target = diff_paths(&self.fingerprint_to_path_published(fpr),
-                                link.parent().unwrap()).unwrap();
+    fn link_fpr(&self, from: &Fingerprint, primary_fpr: &Fingerprint) -> Result<()> {
+        let link_fpr = self.link_by_fingerprint(from);
+        let link_keyid = self.link_by_keyid(&from.into());
+        let target = diff_paths(&self.fingerprint_to_path_published(primary_fpr),
+                                link_fpr.parent().unwrap()).unwrap();
 
-        if link == target {
-            return Ok(());
-        }
-
-        if link.exists() {
-            match link.symlink_metadata() {
-                Ok(ref meta) if meta.file_type().is_file() => {
-                    // If a key is a subkey and a primary key, prefer
-                    // the primary.
-                    return Ok(());
-                }
-                _ => {}
-            }
-        }
-
-        symlink(&target, ensure_parent(&link)?)
+        symlink(&target, ensure_parent(&link_fpr)?)?;
+        symlink(&target, ensure_parent(&link_keyid)?)
     }
 
-    fn unlink_kid(&self, kid: &KeyID, fpr: &Fingerprint) -> Result<()> {
-        let link = self.link_by_keyid(kid);
+    fn unlink_fpr(&self, from: &Fingerprint, primary_fpr: &Fingerprint) -> Result<()> {
+        let link_fpr = self.link_by_fingerprint(from);
+        let link_keyid = self.link_by_keyid(&from.into());
+        let expected = self.fingerprint_to_path_published(primary_fpr);
 
-        match read_link(&link) {
+        match read_link(&link_fpr) {
             Ok(target) => {
-                let expected = self.fingerprint_to_path_published(fpr);
-
                 if target == expected {
-                    remove_file(link)?;
+                    remove_file(link_fpr)?;
+                }
+            }
+            Err(_) => {}
+        }
+        match read_link(&link_keyid) {
+            Ok(target) => {
+                if target == expected {
+                    remove_file(link_keyid)?;
                 }
             }
             Err(_) => {}
         }
 
-        Ok(())
-    }
-
-    fn link_fpr(&self, from: &Fingerprint, fpr: &Fingerprint) -> Result<()> {
-        let link = self.link_by_fingerprint(from);
-        let target = diff_paths(&self.fingerprint_to_path_published(fpr),
-                                link.parent().unwrap()).unwrap();
-
-        symlink(&target, ensure_parent(&link)?)
-    }
-
-    fn unlink_fpr(&self, from: &Fingerprint, fpr: &Fingerprint) -> Result<()> {
-        let link = self.link_by_fingerprint(from);
-
-        match read_link(&link) {
-            Ok(target) => {
-                let expected = self.fingerprint_to_path_published(fpr);
-
-                if target == expected {
-                    remove_file(link)?;
-                }
-            }
-            Err(_) => {}
-        }
         Ok(())
     }
 
@@ -726,12 +665,12 @@ mod tests {
         let k3 = TPKBuilder::default().add_userid("c@invalid.example.org")
             .generate().unwrap().0;
 
-        assert!(db.merge_or_publish(&k1).unwrap().len() > 0);
-        assert!(db.merge_or_publish(&k2).unwrap().len() > 0);
-        assert!(!db.merge_or_publish(&k2).unwrap().len() > 0);
-        assert!(db.merge_or_publish(&k3).unwrap().len() > 0);
-        assert!(!db.merge_or_publish(&k3).unwrap().len() > 0);
-        assert!(!db.merge_or_publish(&k3).unwrap().len() > 0);
+        assert!(db.merge(k1).unwrap().len() > 0);
+        assert!(db.merge(k2.clone()).unwrap().len() > 0);
+        assert!(!db.merge(k2).unwrap().len() > 0);
+        assert!(db.merge(k3.clone()).unwrap().len() > 0);
+        assert!(!db.merge(k3.clone()).unwrap().len() > 0);
+        assert!(!db.merge(k3).unwrap().len() > 0);
     }
 
     #[test]
@@ -795,14 +734,6 @@ mod tests {
         let mut db = Filesystem::new_from_base(tmpdir.path()).unwrap();
 
         test::test_uid_replacement(&mut db);
-    }
-
-    #[test]
-    fn uid_stealing() {
-        let tmpdir = TempDir::new().unwrap();
-        let mut db = Filesystem::new_from_base(tmpdir.path()).unwrap();
-
-        test::test_steal_uid(&mut db);
     }
 
     #[test]

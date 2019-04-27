@@ -2,9 +2,8 @@
 #![recursion_limit = "1024"]
 #![feature(try_from)]
 
-use std::convert::{TryFrom, TryInto};
+use std::convert::TryFrom;
 use std::io::Cursor;
-use std::io::Write;
 use std::path::PathBuf;
 use std::result;
 use std::str::FromStr;
@@ -31,7 +30,6 @@ extern crate sequoia_openpgp as openpgp;
 use openpgp::{
     TPK,
     tpk::UserIDBinding,
-    PacketPile,
     RevocationStatus,
     armor::{Writer, Kind},
     packet::{UserID, Tag},
@@ -103,19 +101,6 @@ impl Verify {
             email: Email::try_from(uidb.userid())?,
         })
     }
-
-    /// Extends the verification token by this userid binding.
-    fn extend(&mut self, uidb: &UserIDBinding) -> Result<()> {
-        use openpgp::serialize::Serialize;
-
-        uidb.userid().serialize(&mut self.packets)?;
-
-        // Serialize selfsigs and certifications, revocations are
-        // never stripped from the TPKs in the first place.
-        for s in uidb.selfsigs()          { s.serialize(&mut self.packets)? }
-        for s in uidb.certifications()    { s.serialize(&mut self.packets)? }
-        Ok(())
-    }
 }
 
 /// Represents a search query.
@@ -151,44 +136,6 @@ pub trait Database: Sync + Send {
     /// read operations to ensure that we return something sane.
     fn lock(&self) -> MutexGuard<()>;
 
-    /// Update the data associated with `fpr` with the data in new.
-    ///
-    /// If new is None, this removes any associated data.
-    ///
-    /// This function updates the data atomically.  That is, readers
-    /// can continue to read from the associated file and they will
-    /// either have the old version or the new version, but never an
-    /// inconsistent mix or a partial version.
-    ///
-    /// Note: it is up to the caller to serialize writes.
-    fn update(
-        &self, fpr: &Fingerprint, new: Option<String>,
-    ) -> Result<()>;
-
-    /// Update the TPK associated with `fpr` with the TPK in new.
-    ///
-    /// If new is None, this removes any associated TPK.
-    ///
-    /// This function updates the TPK atomically.  That is, readers
-    /// can continue to read from the associated file and they will
-    /// either have the old version or the new version, but never an
-    /// inconsistent mix or a partial version.
-    ///
-    /// Note: it is up to the caller to serialize writes.
-    fn update_tpk(&self, fp: &Fingerprint, new: Option<TPK>) -> Result<()> {
-        self.update(fp, if let Some(tpk) = new {
-            let mut buf = Vec::new();
-            {
-                let mut armor_writer = Writer::new(&mut buf, Kind::PublicKey,
-                                                   &[][..])?;
-                tpk.serialize(&mut armor_writer)?;
-            };
-            Some(String::from_utf8_lossy(&buf).to_string())
-        } else {
-            None
-        })
-    }
-
     /// Queries the database using Fingerprint, KeyID, or
     /// email-address.
     fn lookup(&self, term: &Query) -> Result<Option<TPK>> {
@@ -218,9 +165,6 @@ pub trait Database: Sync + Send {
     fn link_email(&self, email: &Email, fpr: &Fingerprint) -> Result<()>;
     fn unlink_email(&self, email: &Email, fpr: &Fingerprint) -> Result<()>;
 
-    fn link_kid(&self, kid: &KeyID, fpr: &Fingerprint) -> Result<()>;
-    fn unlink_kid(&self, kid: &KeyID, fpr: &Fingerprint) -> Result<()>;
-
     fn link_fpr(&self, from: &Fingerprint, to: &Fingerprint) -> Result<()>;
     fn unlink_fpr(&self, from: &Fingerprint, to: &Fingerprint) -> Result<()>;
 
@@ -237,34 +181,6 @@ pub trait Database: Sync + Send {
             .map(|_| cur.into_inner())
     }
 
-    fn link_subkeys(
-        &self, fpr: &Fingerprint, subkeys: Vec<sequoia_openpgp::Fingerprint>,
-    ) -> Result<()> {
-        let _ = self.lock();
-
-        // link (subkey) kid & and subkey fpr
-        self.link_kid(&fpr.clone().into(), &fpr)?;
-
-        for sub_fpr in subkeys {
-            let sub_fpr = Fingerprint::try_from(sub_fpr)?;
-
-            self.link_kid(&sub_fpr.clone().into(), &fpr)?;
-            self.link_fpr(&sub_fpr, &fpr)?;
-        }
-
-        Ok(())
-    }
-
-    fn unlink_userids(&self, fpr: &Fingerprint, userids: Vec<Email>)
-                      -> Result<()> {
-        let _ = self.lock();
-
-        for uid in userids {
-            self.unlink_email(&uid, fpr)?;
-        }
-        Ok(())
-    }
-
     /// Complex operation that updates a TPK in the database.
     ///
     /// 1. Merge new TPK with old, full TPK
@@ -279,20 +195,17 @@ pub trait Database: Sync + Send {
     /// 4. Move full and published temporary TPK to their location
     /// 5. Update all symlinks
     /// UNLOCK
-    fn merge(&self, new_tpk: TPK) -> Result<Vec<(Email, String)>> {
+    fn merge(&self, new_tpk: TPK) -> Result<Vec<Email>> {
         let fpr_primary = Fingerprint::try_from(new_tpk.primary().fingerprint())?;
 
-        let full_tpk_new = if let Some(bytes) = self.by_fpr_full(&fpr_primary) {
-            let full_tpk_old = TPK::from_bytes(bytes.as_ref())?;
+        let full_tpk_old = self.by_fpr_full(&fpr_primary)
+            .and_then(|bytes| TPK::from_bytes(bytes.as_ref()).ok());
+        let (full_tpk_new, full_tpk_unchanged) = if let Some(full_tpk_old) = full_tpk_old {
             let full_tpk_new = new_tpk.merge(full_tpk_old.clone())?;
-            // Abort if no changes were made
-            // TODO
-            // if full_tpk_new == full_tpk_old {
-                // return Ok(vec!())
-            // }
-            full_tpk_new
+            let full_tpk_unchanged = full_tpk_new == full_tpk_old;
+            (full_tpk_new, full_tpk_unchanged)
         } else {
-            new_tpk
+            (new_tpk, false)
         };
 
         let is_revoked = full_tpk_new.revoked(None) != RevocationStatus::NotAsFarAsWeKnow;
@@ -308,23 +221,24 @@ pub trait Database: Sync + Send {
         let unpublished_emails = if is_revoked {
             vec!()
         } else {
-            let mut unpublished_emails: Vec<(Email, String)> = full_tpk_new
+            let mut unpublished_emails: Vec<Email> = full_tpk_new
                 .userids()
                 .filter(|binding| binding.revoked(None) == RevocationStatus::NotAsFarAsWeKnow)
                 .map(|binding| binding.userid().clone())
                 .filter(|uid| !published_uids.contains(uid))
                 .map(|uid| Email::try_from(&uid))
                 .flatten()
-                .map(|email| {
-                    // TODO dup this due to legacy interface
-                    let email_str = email.to_string();
-                    (email, email_str)
-                })
                 .collect();
             unpublished_emails.sort();
             unpublished_emails.dedup();
             unpublished_emails
         };
+
+        // Abort if no changes were made
+        if full_tpk_unchanged {
+            println!("tpk unchanged!");
+            return Ok(unpublished_emails);
+        }
 
         let revoked_uids: Vec<UserID> = full_tpk_new
             .userids()
@@ -384,10 +298,6 @@ pub trait Database: Sync + Send {
                 info!("Error ensuring symlink! {} {} {:?}",
                       &fpr, &fpr_primary, e);
             }
-            if let Err(e) = self.link_kid(&(&fpr).into(), &fpr_primary) {
-                info!("Error ensuring symlink! {} {} {:?}",
-                      &fpr, &fpr_primary, e);
-            }
         }
 
         for revoked_email in newly_revoked_emails {
@@ -416,7 +326,7 @@ pub trait Database: Sync + Send {
     /// 5. Move full and published temporary TPK to their location
     /// 6. Update all symlinks
     /// UNLOCK
-    fn set_verified(&self, fpr_primary: &Fingerprint, email_new: &Email) -> Result<()> {
+    fn set_email_published(&self, fpr_primary: &Fingerprint, email_new: &Email) -> Result<()> {
         let full_tpk = self.by_fpr_full(&fpr_primary)
             .ok_or_else(|| failure::err_msg("Key not in database!"))
             .and_then(|bytes| TPK::from_bytes(bytes.as_ref()))?;
@@ -481,22 +391,36 @@ pub trait Database: Sync + Send {
     /// 5. Move full and published temporary TPK to their location
     /// 6. Update all symlinks
     /// UNLOCK
-    fn set_unverified(&self, fpr_primary: &Fingerprint, email_remove: &Email) -> Result<()> {
+    fn set_email_unpublished_filter(
+        &self,
+        fpr_primary: &Fingerprint,
+        email_remove: impl Fn(&UserID) -> bool,
+    ) -> Result<()> {
         let published_tpk_old = self.by_fpr(&fpr_primary)
             .ok_or_else(|| failure::err_msg("Key not in database!"))
             .and_then(|bytes| TPK::from_bytes(bytes.as_ref()))?;
 
-        let published_uids_old: Vec<UserID> = published_tpk_old
+        let published_emails_old: Vec<Email> = published_tpk_old
             .userids()
-            .map(|binding| binding.userid().clone())
+            .map(|binding| binding.userid())
+            .map(|uid| Email::try_from(uid))
+            .flatten()
             .collect();
 
-        println!("unpublishing: {:?}", &email_remove);
-
         let published_tpk_new = {
-            filter_userids(&published_tpk_old,
-                |uid| Email::try_from(uid).unwrap() != *email_remove && published_uids_old.contains(uid))?
+            filter_userids(&published_tpk_old, |uid| email_remove(uid))?
         };
+
+        let published_emails_new: Vec<Email> = published_tpk_new
+            .userids()
+            .map(|binding| binding.userid())
+            .map(|uid| Email::try_from(uid))
+            .flatten()
+            .collect();
+
+        let unpublished_emails = published_emails_old
+            .iter()
+            .filter(|email| !published_emails_new.contains(email));
 
         let published_tpk_tmp = self.write_to_temp(&tpk_to_string(&published_tpk_new)?)?;
 
@@ -504,12 +428,31 @@ pub trait Database: Sync + Send {
 
         self.move_tmp_to_published(published_tpk_tmp, &fpr_primary)?;
 
-        if let Err(e) = self.unlink_email(&email_remove, &fpr_primary) {
-            info!("Error ensuring email symlink! {} -> {} {:?}",
-                  &email_remove, &fpr_primary, e);
+        for unpublished_email in unpublished_emails {
+            if let Err(e) = self.unlink_email(&unpublished_email, &fpr_primary) {
+                info!("Error ensuring email symlink! {} -> {} {:?}",
+                    &unpublished_email, &fpr_primary, e);
+            }
         }
 
         Ok(())
+    }
+
+    fn set_email_unpublished(
+        &self,
+        fpr_primary: &Fingerprint,
+        email_remove: &Email,
+    ) -> Result<()> {
+        self.set_email_unpublished_filter(fpr_primary,
+            |uid| Email::try_from(uid).unwrap() != *email_remove
+        )
+    }
+
+    fn set_email_unpublished_all(
+        &self,
+        fpr_primary: &Fingerprint,
+    ) -> Result<()> {
+        self.set_email_unpublished_filter(fpr_primary, |_| false)
     }
 
     fn check_link_fpr(&self, fpr: &Fingerprint, target: &Fingerprint) -> Result<Option<Fingerprint>>;
@@ -519,83 +462,6 @@ pub trait Database: Sync + Send {
     fn write_to_temp(&self, content: &[u8]) -> Result<NamedTempFile>;
     fn move_tmp_to_full(&self, content: NamedTempFile, fpr: &Fingerprint) -> Result<()>;
     fn move_tmp_to_published(&self, content: NamedTempFile, fpr: &Fingerprint) -> Result<()>;
-
-    fn merge_or_publish(&self, tpk: &TPK) -> Result<Vec<(Email, String)>> {
-        let unpublished_uids = self.merge(tpk.clone())?;
-
-        let fpr_hex = tpk.primary().fingerprint().to_hex();
-        let result = unpublished_uids
-            .into_iter()
-            .map(|(email, uid)| (email, format!("{}|{}", &fpr_hex, uid)))
-            .collect();
-        Ok(result)
-    }
-
-    fn verify_token(
-        &self, token_str: &str,
-    ) -> Result<Option<(Email, Fingerprint)>> {
-        let mut pieces = token_str.splitn(2, "|");
-        let fpr: Fingerprint = pieces.next().unwrap().parse().unwrap();
-        let email: Email = pieces.next().unwrap().parse().unwrap();
-        self.set_verified(&fpr, &email)?;
-        Ok(Some((email, fpr)))
-    }
-
-    /// Deletes all UserID packets and unlinks all email addresses.
-    fn delete_userids(&self, fpr: &Fingerprint) -> Result <()> {
-        self.filter_userids(fpr, |_| false)
-    }
-
-    /// Deletes all UserID packets matching `addr` (see [RFC2822
-    /// name-addr] and unlinks the email addresses.
-    ///
-    /// [RFC2822 name-addr]: https://tools.ietf.org/html/rfc2822#section-3.4
-    fn delete_userids_matching(&self, fpr: &Fingerprint, addr: &Email)
-                               -> Result <()> {
-        self.set_unverified(fpr, addr)
-    }
-
-    /// Deletes all user ids NOT matching fulfilling `filter`.
-    ///
-    /// I.e. we retain fulfilling `filter`.
-    fn filter_userids<F>(&self, fp: &Fingerprint, filter: F) -> Result<()>
-        where F: Fn(&UserID) -> bool
-    {
-        let _ = self.lock();
-        match self.lookup(&Query::ByFingerprint(fp.clone()))? {
-            Some(tpk) => {
-                let mut ok = true;
-
-                // First, we delete the links.
-                for uidb in tpk.userids() {
-                    if filter(uidb.userid()) {
-                        continue;
-                    }
-
-                    if let Ok(email) = uidb.userid().try_into() {
-                        if let Err(_) =
-                            self.unlink_email(&email, fp)
-                        {
-                            // XXX: We could try to detect failures, and
-                            // update the TPK accordingly.
-                            ok = false;
-                        }
-                    }
-                }
-
-                // Second, we update the TPK.
-                let tpk = filter_userids(&tpk, filter)?;
-                self.update_tpk(fp, Some(tpk))?;
-
-                if ok {
-                    Ok(())
-                } else {
-                    Err(failure::err_msg("partial update"))
-                }
-            },
-            None => Ok(()),
-        }
-    }
 }
 
 fn tpk_to_string(tpk: &TPK) -> Result<Vec<u8>> {
