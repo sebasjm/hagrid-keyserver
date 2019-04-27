@@ -7,8 +7,6 @@ use lettre_email::EmailBuilder;
 use url;
 use serde::Serialize;
 
-use sequoia_openpgp as openpgp;
-
 use database::types::Email;
 use Result;
 
@@ -73,11 +71,11 @@ impl Service {
         })
     }
 
-    pub fn send_verification(&self, tpk: &openpgp::TPK, userid: &Email,
+    pub fn send_verification(&self, tpk_name: String, userid: &Email,
                              token: &str)
                              -> Result<()> {
         let ctx = context::Verification {
-            primary_fp: tpk.fingerprint().to_string(),
+            primary_fp: tpk_name,
             uri: format!("{}/publish/{}", self.base_uri, token),
             userid: userid.to_string(),
             base_uri: self.base_uri.clone(),

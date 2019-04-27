@@ -9,10 +9,12 @@ use rocket::http::ContentType;
 use rocket::Data;
 
 use database::{Database, KeyDatabase, StatefulTokens};
+use database::types::Fingerprint;
 use mail;
 use web::MyResponse;
 
 use std::io::Read;
+use std::convert::TryFrom;
 
 const UPLOAD_LIMIT: u64 = 1024 * 1024; // 1 MiB.
 
@@ -186,13 +188,16 @@ where
 
     let mut results: Vec<String> = vec!();
     for tpk in tpks {
-        let verification_strings = db.merge_or_publish(&tpk)?;
+        let tpk_name = tpk.fingerprint().to_string();
+        let tpk_fpr = Fingerprint::try_from(tpk.fingerprint()).unwrap();
+        let unpublished_emails = db.merge(tpk)?;
 
         if let Some((ref mail_service, ref token_service)) = services {
-            for (email, data) in verification_strings {
-                let token = token_service.new_token("verify", data.as_bytes())?;
+            for email in unpublished_emails {
+                let token_content = serde_json::to_string(&(tpk_fpr.clone(), email.clone()))?;
+                let token = token_service.new_token("verify", token_content.as_bytes())?;
                 mail_service.send_verification(
-                    &tpk,
+                    tpk_name.clone(),
                     &email,
                     &token,
                 )?;

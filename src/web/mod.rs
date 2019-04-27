@@ -301,22 +301,19 @@ fn publish_verify_or_fail(
     token_service: rocket::State<StatefulTokens>,
     token: String,
 ) -> Result<MyResponse> {
-    println!("hi");
     let payload = token_service.pop_token("verify", &token)?;
+    let (fingerprint, email) = serde_json::from_str(&payload)?;
 
-    match db.verify_token(&payload)? {
-        Some((userid, _fpr)) => {
-            let context = templates::Verify {
-                verified: true,
-                userid: userid.to_string(),
-                version: env!("VERGEN_SEMVER").to_string(),
-                commit: env!("VERGEN_SHA_SHORT").to_string(),
-            };
+    db.set_email_published(&fingerprint, &email)?;
 
-            Ok(MyResponse::ok("publish-result", context))
-        }
-        None => Ok(MyResponse::not_found(Some("generic-error"), None)),
-    }
+    let context = templates::Verify {
+        verified: true,
+        userid: email.to_string(),
+        version: env!("VERGEN_SEMVER").to_string(),
+        commit: env!("VERGEN_SHA_SHORT").to_string(),
+    };
+
+    Ok(MyResponse::ok("publish-result", context))
 }
 
 #[get("/assets/<file..>")]

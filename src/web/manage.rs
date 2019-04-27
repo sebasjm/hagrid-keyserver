@@ -166,6 +166,6 @@ pub fn vks_manage_unpublish_or_fail(
 ) -> Result<MyResponse> {
     let fpr = token_service.check(&request.token)?;
     let email = request.address.parse::<Email>()?;
-    db.delete_userids_matching(&fpr, &email)?;
+    db.set_email_unpublished(&fpr, &email)?;
     Ok(vks_manage_key(state, db, request.token.to_owned(), token_service))
 }

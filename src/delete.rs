@@ -76,14 +76,12 @@ fn delete(db: &KeyDatabase, query: &Query, all_bindings: bool, mut all: bool)
     if all_bindings || all {
         results.push(
             ("all bindings".into(),
-             db.filter_userids(&fp, |_| false)));
+             db.set_email_unpublished_all(&fp)));
     } else {
         if let Query::ByEmail(ref email) = query {
-            use std::convert::TryFrom;
-            use database::types::Email;
-            results.push((email.to_string(), db.filter_userids(
-                &fp,
-                |u| Email::try_from(u).map(|e| &e != email).unwrap_or(true))));
+            results.push(
+                (email.to_string(),
+                 db.set_email_unpublished(&fp, email)));
         } else {
             unreachable!()
         }
@@ -91,7 +89,8 @@ fn delete(db: &KeyDatabase, query: &Query, all_bindings: bool, mut all: bool)
 
     // Now delete the key(s) itself.
     if all {
-        for skb in tpk.subkeys() {
+        // TODO
+        /*for skb in tpk.subkeys() {
             results.push(
                 (skb.subkey().fingerprint().to_keyid().to_string(),
                  db.unlink_kid(&skb.subkey().fingerprint().try_into()?,
@@ -109,6 +108,7 @@ fn delete(db: &KeyDatabase, query: &Query, all_bindings: bool, mut all: bool)
         results.push(
             (tpk.fingerprint().to_string(),
              db.update(&fp, None)));
+        */
     }
 
     let mut err = Ok(());
