@@ -24,7 +24,8 @@ pub struct Filesystem {
 
     tmp_dir: PathBuf,
 
-    keys_dir: PathBuf,
+    keys_internal_dir: PathBuf,
+    keys_external_dir: PathBuf,
     keys_dir_full: PathBuf,
     keys_dir_published: PathBuf,
 
@@ -51,11 +52,12 @@ impl Filesystem {
         let keys_dir = base_dir.join("keys");
         let tmp_dir = base_dir.join("tmp");
 
-        Self::new(keys_dir, tmp_dir)
+        Self::new(&keys_dir, &keys_dir, tmp_dir)
     }
 
     pub fn new(
-        keys_dir: impl Into<PathBuf>,
+        keys_internal_dir: impl Into<PathBuf>,
+        keys_external_dir: impl Into<PathBuf>,
         tmp_dir: impl Into<PathBuf>,
     ) -> Result<Self> {
 
@@ -90,25 +92,28 @@ impl Filesystem {
         let tmp_dir = tmp_dir.into();
         create_dir_all(&tmp_dir)?;
 
-        let keys_dir: PathBuf = keys_dir.into();
-        let keys_dir_full = keys_dir.join("full");
-        let keys_dir_published = keys_dir.join("published");
+        let keys_internal_dir: PathBuf = keys_internal_dir.into();
+        let keys_external_dir: PathBuf = keys_external_dir.into();
+        let keys_dir_full = keys_internal_dir.join("full");
+        let keys_dir_published = keys_external_dir.join("published");
         create_dir_all(&keys_dir_full)?;
         create_dir_all(&keys_dir_published)?;
 
-        let links_dir_by_keyid = keys_dir.join("by-keyid");
-        let links_dir_by_fingerprint = keys_dir.join("by-fpr");
-        let links_dir_by_email = keys_dir.join("by-email");
+        let links_dir_by_keyid = keys_external_dir.join("by-keyid");
+        let links_dir_by_fingerprint = keys_external_dir.join("by-fpr");
+        let links_dir_by_email = keys_external_dir.join("by-email");
         create_dir_all(&links_dir_by_keyid)?;
         create_dir_all(&links_dir_by_fingerprint)?;
         create_dir_all(&links_dir_by_email)?;
 
         info!("Opened filesystem database.");
-        info!("keys_dir: '{}'", keys_dir.display());
+        info!("keys_internal_dir: '{}'", keys_internal_dir.display());
+        info!("keys_external_dir: '{}'", keys_external_dir.display());
         info!("tmp_dir: '{}'", tmp_dir.display());
         Ok(Filesystem {
-            update_lock: FlockMutex::new(&keys_dir)?,
-            keys_dir,
+            update_lock: FlockMutex::new(&keys_internal_dir)?,
+            keys_internal_dir,
+            keys_external_dir,
             tmp_dir,
 
             keys_dir_full,
@@ -152,11 +157,12 @@ impl Filesystem {
         self.links_dir_by_email.join(path_split(&email))
     }
 
-    fn read_from_path(&self, path: &Path) -> Option<String> {
+    fn read_from_path(&self, path: &Path, allow_internal: bool) -> Option<String> {
         use std::fs;
 
-        if !path.starts_with(&self.keys_dir) {
-            panic!("Attempted to access file outside keys_dir!");
+        if !path.starts_with(&self.keys_external_dir) &&
+            !(allow_internal && path.starts_with(&self.keys_internal_dir)) {
+            panic!("Attempted to access file outside expected dirs!");
         }
 
         if path.exists() {
@@ -441,7 +447,7 @@ impl Database for Filesystem {
         };
 
         if path.exists() {
-            let x = diff_paths(&path, &self.keys_dir).expect("related paths");
+            let x = diff_paths(&path, &self.keys_external_dir).expect("related paths");
             Some(x)
         } else {
             None
@@ -516,25 +522,25 @@ impl Database for Filesystem {
     // XXX: slow
     fn by_fpr_full(&self, fpr: &Fingerprint) -> Option<String> {
         let path = self.fingerprint_to_path_full(fpr);
-        self.read_from_path(&path)
+        self.read_from_path(&path, true)
     }
 
     // XXX: slow
     fn by_fpr(&self, fpr: &Fingerprint) -> Option<String> {
         let path = self.link_by_fingerprint(fpr);
-        self.read_from_path(&path)
+        self.read_from_path(&path, false)
     }
 
     // XXX: slow
     fn by_email(&self, email: &Email) -> Option<String> {
         let path = self.link_by_email(&email);
-        self.read_from_path(&path)
+        self.read_from_path(&path, false)
     }
 
     // XXX: slow
     fn by_kid(&self, kid: &KeyID) -> Option<String> {
         let path = self.link_by_keyid(kid);
-        self.read_from_path(&path)
+        self.read_from_path(&path, false)
     }
 }
 

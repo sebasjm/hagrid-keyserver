@@ -1,8 +1,6 @@
 /Rocket.toml
 /target
+/state
 **/*.rs.bk
-/dist/public/by-*
-/dist/verification_tokens/*
-/dist/deletion_tokens/*
 **/.*.swp
 **/.*.swo

@@ -169,7 +169,7 @@ pub struct HagridState {
     assets_dir: PathBuf,
 
     /// The keys directory, where keys are located, served by hagrid or nginx
-    keys_dir: PathBuf,
+    keys_external_dir: PathBuf,
 
     /// XXX
     base_uri: String,
@@ -193,7 +193,7 @@ fn key_to_response<'a>(state: rocket::State<HagridState>,
     if machine_readable {
         if state.x_accel_redirect {
             if let Some(key_path) = db.lookup_path(&query) {
-                let x_accel_path = state.keys_dir.join(&key_path).to_string_lossy().to_string();
+                let x_accel_path = state.keys_external_dir.join(&key_path).to_string_lossy().to_string();
                 return MyResponse::x_accel_redirect(x_accel_path, &fp);
             }
         }
@@ -230,7 +230,7 @@ fn key_has_uids(state: &HagridState, db: &KeyDatabase, query: &Query)
     use sequoia_openpgp::Packet;
     use sequoia_openpgp::parse::{Parse, PacketParser, PacketParserResult};
     let mut ppr = match db.lookup_path(query) {
-        Some(path) => PacketParser::from_file(&state.keys_dir.join(path))?,
+        Some(path) => PacketParser::from_file(&state.keys_external_dir.join(path))?,
         None => return Err(failure::err_msg("key vanished")),
     };
 
@@ -389,22 +389,23 @@ fn rocket_factory(rocket: rocket::Rocket) -> Result<rocket::Rocket> {
 }
 
 fn configure_db_service(config: &Config) -> Result<KeyDatabase> {
-    let keys_dir: PathBuf = config.get_str("keys_dir")?.into();
+    let keys_internal_dir: PathBuf = config.get_str("keys_internal_dir")?.into();
+    let keys_external_dir: PathBuf = config.get_str("keys_external_dir")?.into();
     let tmp_dir: PathBuf = config.get_str("tmp_dir")?.into();
 
-    let fs_db = KeyDatabase::new(keys_dir, tmp_dir)?;
+    let fs_db = KeyDatabase::new(keys_internal_dir, keys_external_dir, tmp_dir)?;
     Ok(fs_db)
 }
 
 fn configure_hagrid_state(config: &Config) -> Result<HagridState> {
     let assets_dir: PathBuf = config.get_str("assets_dir")?.into();
-    let keys_dir: PathBuf = config.get_str("keys_dir")?.into();
+    let keys_external_dir: PathBuf = config.get_str("keys_external_dir")?.into();
 
     // State
     let base_uri = config.get_str("base-URI")?.to_string();
     Ok(HagridState {
         assets_dir,
-        keys_dir: keys_dir,
+        keys_external_dir: keys_external_dir,
         base_uri: base_uri.clone(),
         x_accel_redirect: config.get_bool("x-accel-redirect")?,
     })
@@ -495,7 +496,8 @@ pub mod tests {
             .extra("assets_dir",
                    ::std::env::current_dir().unwrap().join("dist/assets")
                    .to_str().unwrap())
-            .extra("keys_dir", base_dir.join("keys").to_str().unwrap())
+            .extra("keys_internal_dir", base_dir.join("keys_internal").to_str().unwrap())
+            .extra("keys_external_dir", base_dir.join("keys_external").to_str().unwrap())
             .extra("tmp_dir", base_dir.join("tmp").to_str().unwrap())
             .extra("token_dir", base_dir.join("tokens").to_str().unwrap())
             .extra("base-URI", BASE_URI)
