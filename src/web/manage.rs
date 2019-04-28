@@ -76,10 +76,9 @@ pub fn vks_manage_key(
                         published: true,
                     }
                 ).collect();
-                use web::get_link_by_fingerprint;
                 let context = templates::ManageKey {
                     key_fpr: fp.to_string(),
-                    key_link: get_link_by_fingerprint(&fp),
+                    key_link: format!("/pks/lookup?op=get&search={}", &fp),
                     uid_status,
                     token,
                     base_uri: state.base_uri.clone(),

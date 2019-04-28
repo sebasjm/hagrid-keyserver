@@ -244,10 +244,6 @@ fn key_has_uids(state: &HagridState, db: &KeyDatabase, query: &Query)
     Ok(false)
 }
 
-pub fn get_link_by_fingerprint(fpr: &Fingerprint) -> String {
-    uri!(vks_v1_by_fingerprint: fpr.to_string()).to_string()
-}
-
 #[get("/vks/v1/by-fingerprint/<fpr>")]
 fn vks_v1_by_fingerprint(state: rocket::State<HagridState>,
                          db: rocket::State<KeyDatabase>,

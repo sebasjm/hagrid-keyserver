@@ -1,5 +1,12 @@
 @import url(fonts/fontawesome.min.css);
 
+body {
+  text-align: center;
+  background: url("img/grey.png") repeat;
+  font-family: 'Roboto', sans-serif;
+  color: #050505;
+}
+
 .fa, .fas {
   font-family: 'FontAwesome';
   font-style: normal;
@@ -29,13 +36,6 @@
        url('fonts/roboto-v18-latin-300.woff') format('woff'),
        url('fonts/roboto-v18-latin-300.ttf') format('truetype'),
        url('fonts/roboto-v18-latin-300.svg#Roboto') format('svg');
-}
-
-body {
-  text-align: center;
-  background: url("img/grey.png") repeat;
-  font-family: 'Roboto', sans-serif;
-  color: #050505;
 }
 
 tt {
