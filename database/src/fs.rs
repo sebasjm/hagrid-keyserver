@@ -12,7 +12,7 @@ use pathdiff::diff_paths;
 
 use {Database, Query};
 use types::{Email, Fingerprint, KeyID};
-use sync::{MutexGuard, FlockMutex};
+use sync::FlockMutexGuard;
 use Result;
 
 use tempfile::NamedTempFile;
@@ -20,8 +20,6 @@ use tempfile::NamedTempFile;
 use openpgp::TPK;
 
 pub struct Filesystem {
-    update_lock: FlockMutex,
-
     tmp_dir: PathBuf,
 
     keys_internal_dir: PathBuf,
@@ -111,7 +109,6 @@ impl Filesystem {
         info!("keys_external_dir: '{}'", keys_external_dir.display());
         info!("tmp_dir: '{}'", tmp_dir.display());
         Ok(Filesystem {
-            update_lock: FlockMutex::new(&keys_internal_dir)?,
             keys_internal_dir,
             keys_external_dir,
             tmp_dir,
@@ -358,8 +355,10 @@ fn symlink(symlink_content: &Path, symlink_name: &Path) -> Result<()> {
 }
 
 impl Database for Filesystem {
-    fn lock(&self) -> MutexGuard<()> {
-        self.update_lock.lock().into()
+    type MutexGuard = FlockMutexGuard;
+
+    fn lock(&self) -> Result<Self::MutexGuard> {
+        FlockMutexGuard::lock(&self.keys_internal_dir)
     }
 
     fn write_to_temp(&self, content: &[u8]) -> Result<NamedTempFile> {

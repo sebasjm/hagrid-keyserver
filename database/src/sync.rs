@@ -3,41 +3,20 @@ use std::io;
 use std::path::Path;
 
 use fs2::FileExt;
-use parking_lot;
 
-pub enum MutexGuard<'a, T> {
-    ParkingLot(parking_lot::MutexGuard<'a, T>),
-    Flock(FlockMutexGuard<'a>),
-}
-
-impl<'a, T> From<parking_lot::MutexGuard<'a, T>> for MutexGuard<'a, T> {
-    fn from(g: parking_lot::MutexGuard<'a, T>) -> Self {
-        MutexGuard::ParkingLot(g)
-    }
-}
-
-impl<'a> From<FlockMutexGuard<'a>> for MutexGuard<'a, ()> {
-    fn from(g: FlockMutexGuard<'a>) -> Self {
-        MutexGuard::Flock(g)
-    }
-}
+use Result;
 
 /// A minimalistic flock-based mutex.
 ///
 /// This just barely implements enough what we need from a mutex.
-pub struct FlockMutex {
-    f: File,
+pub struct FlockMutexGuard {
+    file: File,
 }
 
-impl FlockMutex {
-    pub fn new<P: AsRef<Path>>(p: P) -> io::Result<Self> {
-        Ok(Self {
-            f: File::open(p)?
-        })
-    }
-
-    pub fn lock(&self) -> FlockMutexGuard {
-        while let Err(e) = self.f.lock_exclusive() {
+impl FlockMutexGuard {
+    pub fn lock(path: impl AsRef<Path>) -> Result<Self> {
+        let file = File::open(path)?;
+        while let Err(e) = file.lock_exclusive() {
             // According to flock(2), possible errors returned are:
             //
             //   EBADF  fd is not an open file descriptor.
@@ -64,22 +43,61 @@ impl FlockMutex {
             // by retrying.
             assert_eq!(e.kind(), io::ErrorKind::Interrupted);
         }
+        Ok(Self { file })
+    }
+}
 
-        FlockMutexGuard {
-            m: &self,
+impl Drop for FlockMutexGuard {
+    fn drop(&mut self) {
+        while let Err(e) = self.file.unlock() {
+            // See above.
+            assert_eq!(e.kind(), io::ErrorKind::Interrupted);
         }
     }
 }
 
-pub struct FlockMutexGuard<'a> {
-    m: &'a FlockMutex,
-}
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::{NamedTempFile, TempDir};
 
-impl<'a> Drop for FlockMutexGuard<'a> {
-    fn drop(&mut self) {
-        while let Err(e) = self.m.f.unlock() {
-            // See above.
-            assert_eq!(e.kind(), io::ErrorKind::Interrupted);
+    #[test]
+    fn flock_dir() {
+        let tempdir = TempDir::new().unwrap();
+        let file = tempdir.path();
+
+        assert!(File::open(file).unwrap().try_lock_exclusive().is_ok());
+        let _lock = FlockMutexGuard::lock(file).unwrap();
+        assert!(File::open(file).unwrap().try_lock_exclusive().is_err());
+        assert!(File::open(file).unwrap().try_lock_shared().is_err());
+    }
+
+    #[test]
+    fn flock_file() {
+        let tempfile = NamedTempFile::new().unwrap();
+        let file = tempfile.path();
+
+        assert!(File::open(file).unwrap().try_lock_exclusive().is_ok());
+        let _lock = FlockMutexGuard::lock(file).unwrap();
+        assert!(File::open(file).unwrap().try_lock_exclusive().is_err());
+        assert!(File::open(file).unwrap().try_lock_shared().is_err());
+    }
+
+    #[test]
+    fn flock_drop() {
+        let tempfile = NamedTempFile::new().unwrap();
+        let file = tempfile.path();
+
+        assert!(File::open(file).unwrap().try_lock_exclusive().is_ok());
+        {
+            let _lock = FlockMutexGuard::lock(file).unwrap();
+            assert!(File::open(file).unwrap().try_lock_exclusive().is_err());
         }
+        assert!(File::open(file).unwrap().try_lock_exclusive().is_ok());
+    }
+
+    #[test]
+    fn flock_nonexistent() {
+        FlockMutexGuard::lock("nonexistent").is_err();
     }
 }

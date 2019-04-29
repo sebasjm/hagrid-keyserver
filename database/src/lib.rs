@@ -12,7 +12,6 @@ use failure::Fallible as Result;
 extern crate fs2;
 extern crate idna;
 #[macro_use] extern crate log;
-extern crate parking_lot;
 extern crate pathdiff;
 extern crate rand;
 extern crate serde;
@@ -39,7 +38,6 @@ pub mod types;
 use types::{Email, Fingerprint, KeyID};
 
 pub mod sync;
-use sync::MutexGuard;
 
 mod fs;
 pub use self::fs::Filesystem as KeyDatabase;
@@ -77,11 +75,13 @@ impl FromStr for Query {
 }
 
 pub trait Database: Sync + Send {
+    type MutexGuard;
+
     /// Lock the DB for a complex update.
     ///
     /// All basic write operations are atomic so we don't need to lock
     /// read operations to ensure that we return something sane.
-    fn lock(&self) -> MutexGuard<()>;
+    fn lock(&self) -> Result<Self::MutexGuard>;
 
     /// Queries the database using Fingerprint, KeyID, or
     /// email-address.
