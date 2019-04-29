@@ -3,9 +3,7 @@
 #![feature(try_from)]
 
 use std::convert::TryFrom;
-use std::io::Cursor;
 use std::path::PathBuf;
-use std::result;
 use std::str::FromStr;
 
 extern crate failure;
@@ -30,15 +28,12 @@ use tempfile::NamedTempFile;
 extern crate sequoia_openpgp as openpgp;
 use openpgp::{
     TPK,
-    tpk::UserIDBinding,
     RevocationStatus,
     armor::{Writer, Kind},
     packet::{UserID, Tag},
     parse::Parse,
     serialize::Serialize as OpenPgpSerialize,
 };
-
-use serde::{Serialize, Deserialize, Deserializer, Serializer};
 
 pub mod types;
 use types::{Email, Fingerprint, KeyID};
@@ -54,55 +49,6 @@ pub use stateful_tokens::StatefulTokens;
 
 #[cfg(test)]
 mod test;
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct Verify {
-    created: i64,
-    #[serde(serialize_with = "as_base64", deserialize_with = "from_base64")]
-    packets: Vec<u8>,
-    fpr: Fingerprint,
-    email: Email,
-}
-
-fn as_base64<S>(d: &Vec<u8>, serializer: S) -> result::Result<S::Ok, S::Error>
-where
-    S: Serializer,
-{
-    serializer.serialize_str(&base64::encode(&d))
-}
-
-fn from_base64<'de, D>(deserializer: D) -> result::Result<Vec<u8>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    use serde::de::Error;
-    String::deserialize(deserializer)
-        .and_then(|string| {
-            base64::decode(&string)
-                .map_err(|err| Error::custom(err.to_string()))
-        })
-}
-
-impl Verify {
-    pub fn new(uidb: &UserIDBinding, fpr: Fingerprint) -> Result<Self> {
-        use openpgp::serialize::Serialize;
-
-        let mut cur = Cursor::new(Vec::default());
-        uidb.userid().serialize(&mut cur)?;
-
-        // Serialize selfsigs and certifications, revocations are
-        // never stripped from the TPKs in the first place.
-        for s in uidb.selfsigs()          { s.serialize(&mut cur)? }
-        for s in uidb.certifications()    { s.serialize(&mut cur)? }
-
-        Ok(Verify {
-            created: time::now().to_timespec().sec,
-            packets: cur.into_inner(),
-            fpr: fpr,
-            email: Email::try_from(uidb.userid())?,
-        })
-    }
-}
 
 /// Represents a search query.
 #[derive(Clone, Debug, PartialEq, Eq)]
