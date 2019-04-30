@@ -136,14 +136,14 @@ pub trait Database: Sync + Send {
     ///    - retrieve UserIDs from old published TPK
     ///    - create new TPK from full TPK by keeping only published UserIDs
     /// 3. Write full and published TPK to temporary files
-    /// LOCK
-    /// 3. Check for fingerprint and long key id collisions for published TPK
+    /// 4. Check for fingerprint and long key id collisions for published TPK
     ///    - abort if any problems come up!
-    /// 4. Move full and published temporary TPK to their location
-    /// 5. Update all symlinks
-    /// UNLOCK
+    /// 5. Move full and published temporary TPK to their location
+    /// 6. Update all symlinks
     fn merge(&self, new_tpk: TPK) -> Result<Vec<Email>> {
         let fpr_primary = Fingerprint::try_from(new_tpk.primary().fingerprint())?;
+
+        let _lock = self.lock()?;
 
         let full_tpk_old = self.by_fpr_full(&fpr_primary)
             .and_then(|bytes| TPK::from_bytes(bytes.as_ref()).ok());
@@ -226,8 +226,6 @@ pub trait Database: Sync + Send {
         let full_tpk_tmp = self.write_to_temp(&tpk_to_string(&full_tpk_new)?)?;
         let published_tpk_tmp = self.write_to_temp(&tpk_to_string(&published_tpk_new)?)?;
 
-        let _lock = self.lock();
-
         let fpr_checks = fingerprints
             .map(|fpr| self.check_link_fpr(&fpr, &fpr_primary))
             .collect::<Vec<_>>()
@@ -266,14 +264,13 @@ pub trait Database: Sync + Send {
     /// 3. Prepare new published TPK
     ///    - retrieve UserIDs from old published TPK
     ///    - create new TPK from full TPK by keeping only published UserIDs
-    ///
-    /// LOCK
     /// 4. Check for fingerprint and long key id collisions for published TPK
     ///    - abort if any problems come up!
     /// 5. Move full and published temporary TPK to their location
     /// 6. Update all symlinks
-    /// UNLOCK
     fn set_email_published(&self, fpr_primary: &Fingerprint, email_new: &Email) -> Result<()> {
+        let _lock = self.lock()?;
+
         let full_tpk = self.by_fpr_full(&fpr_primary)
             .ok_or_else(|| failure::err_msg("Key not in database!"))
             .and_then(|bytes| TPK::from_bytes(bytes.as_ref()))?;
@@ -310,8 +307,6 @@ pub trait Database: Sync + Send {
 
         let published_tpk_tmp = self.write_to_temp(&tpk_to_string(&published_tpk_new)?)?;
 
-        let _lock = self.lock();
-
         self.move_tmp_to_published(published_tpk_tmp, &fpr_primary)?;
 
         if let Err(e) = self.link_email(&email_new, &fpr_primary) {
@@ -331,18 +326,17 @@ pub trait Database: Sync + Send {
     /// 3. Prepare new published TPK
     ///    - retrieve UserIDs from old published TPK
     ///    - create new TPK from full TPK by keeping only published UserIDs
-    ///
-    /// LOCK
     /// 4. Check for fingerprint and long key id collisions for published TPK
     ///    - abort if any problems come up!
     /// 5. Move full and published temporary TPK to their location
     /// 6. Update all symlinks
-    /// UNLOCK
     fn set_email_unpublished_filter(
         &self,
         fpr_primary: &Fingerprint,
         email_remove: impl Fn(&UserID) -> bool,
     ) -> Result<()> {
+        let _lock = self.lock()?;
+
         let published_tpk_old = self.by_fpr(&fpr_primary)
             .ok_or_else(|| failure::err_msg("Key not in database!"))
             .and_then(|bytes| TPK::from_bytes(bytes.as_ref()))?;
@@ -370,8 +364,6 @@ pub trait Database: Sync + Send {
             .filter(|email| !published_emails_new.contains(email));
 
         let published_tpk_tmp = self.write_to_temp(&tpk_to_string(&published_tpk_new)?)?;
-
-        let _lock = self.lock();
 
         self.move_tmp_to_published(published_tpk_tmp, &fpr_primary)?;
 
