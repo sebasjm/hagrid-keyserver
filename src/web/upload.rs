@@ -20,6 +20,14 @@ const UPLOAD_LIMIT: u64 = 1024 * 1024; // 1 MiB.
 
 mod template {
     #[derive(Serialize)]
+    pub struct Verify {
+        pub verified: bool,
+        pub userid: String,
+        pub commit: String,
+        pub version: String,
+    }
+
+    #[derive(Serialize)]
     pub struct Publish {
         pub commit: String,
         pub version: String,
@@ -42,7 +50,7 @@ pub fn publish(guide: bool) -> MyResponse {
         show_help: guide,
     };
 
-    MyResponse::ok("publish", context)
+    MyResponse::ok("publish/publish", context)
 }
 
 #[post("/vks/v1/publish", data = "<data>")]
@@ -77,7 +85,7 @@ pub fn handle_upload(
             match cont_type.params().find(|&(k, _)| k == "boundary") {
                 Some(v) => v,
                 None => return Ok(MyResponse::bad_request(
-                    "publish",
+                    "publish/publish",
                     failure::err_msg("`Content-Type: multipart/form-data` \
                                       boundary param not provided"))),
             };
@@ -112,10 +120,10 @@ pub fn handle_upload(
             }
         }
 
-        Ok(MyResponse::bad_request("publish",
+        Ok(MyResponse::bad_request("publish/publish",
                                    failure::err_msg("No keytext found")))
     } else {
-        Ok(MyResponse::bad_request("publish",
+        Ok(MyResponse::bad_request("publish/publish",
                                    failure::err_msg("Bad Content-Type")))
     }
 }
@@ -149,10 +157,10 @@ fn process_multipart(
         }
         Some(_) =>
             Ok(MyResponse::bad_request(
-                "publish", failure::err_msg("Multiple keytexts found"))),
+                "publish/publish", failure::err_msg("Multiple keytexts found"))),
         None =>
             Ok(MyResponse::bad_request(
-                "publish", failure::err_msg("No keytext found"))),
+                "publish/publish", failure::err_msg("No keytext found"))),
     }
 }
 
@@ -170,19 +178,19 @@ where
     // First, parse all TPKs and error out if one fails.
     let parser = match TPKParser::from_reader(reader) {
         Ok(p) => p,
-        Err(e) => return Ok(MyResponse::bad_request("publish", e)),
+        Err(e) => return Ok(MyResponse::bad_request("publish/publish", e)),
     };
     let mut tpks = Vec::new();
     for tpk in parser {
         tpks.push(match tpk {
             Ok(t) => t,
-            Err(e) => return Ok(MyResponse::bad_request("publish", e)),
+            Err(e) => return Ok(MyResponse::bad_request("publish/publish", e)),
         });
     }
 
     if tpks.is_empty() {
         return Ok(MyResponse::bad_request(
-            "publish",
+            "publish/publish",
             failure::err_msg("No key submitted")));
     }
 
@@ -213,5 +221,37 @@ where
         commit: env!("VERGEN_SHA_SHORT").to_string(),
     };
 
-    Ok(MyResponse::ok("publish_ok", context))
+    Ok(MyResponse::ok("publish/publish_ok", context))
+}
+
+#[get("/publish/<token>")]
+pub fn publish_verify(
+    db: rocket::State<KeyDatabase>,
+    token_service: rocket::State<StatefulTokens>,
+    token: String,
+) -> MyResponse {
+    match publish_verify_or_fail(db, token_service, token) {
+        Ok(response) => response,
+        Err(e) => MyResponse::ise(e),
+    }
+}
+
+fn publish_verify_or_fail(
+    db: rocket::State<KeyDatabase>,
+    token_service: rocket::State<StatefulTokens>,
+    token: String,
+) -> Result<MyResponse> {
+    let payload = token_service.pop_token("verify", &token)?;
+    let (fingerprint, email) = serde_json::from_str(&payload)?;
+
+    db.set_email_published(&fingerprint, &email)?;
+
+    let context = template::Verify {
+        verified: true,
+        userid: email.to_string(),
+        version: env!("VERGEN_SEMVER").to_string(),
+        commit: env!("VERGEN_SHA_SHORT").to_string(),
+    };
+
+    Ok(MyResponse::ok("publish/publish-result", context))
 }

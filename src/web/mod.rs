@@ -13,7 +13,7 @@ pub mod upload;
 use mail;
 use tokens;
 
-use database::{Database, KeyDatabase, Query, StatefulTokens};
+use database::{Database, KeyDatabase, Query};
 use database::types::{Email, Fingerprint, KeyID};
 use Result;
 
@@ -115,14 +115,6 @@ impl MyResponse {
 }
 
 mod templates {
-    #[derive(Serialize)]
-    pub struct Verify {
-        pub verified: bool,
-        pub userid: String,
-        pub commit: String,
-        pub version: String,
-    }
-
     #[derive(Serialize)]
     pub struct Search {
         pub query: String,
@@ -280,38 +272,6 @@ fn vks_v1_by_keyid(state: rocket::State<HagridState>,
     key_to_response(state, db, kid, query, true)
 }
 
-#[get("/publish/<token>")]
-fn publish_verify(
-    db: rocket::State<KeyDatabase>,
-    token_service: rocket::State<StatefulTokens>,
-    token: String,
-) -> MyResponse {
-    match publish_verify_or_fail(db, token_service, token) {
-        Ok(response) => response,
-        Err(e) => MyResponse::ise(e),
-    }
-}
-
-fn publish_verify_or_fail(
-    db: rocket::State<KeyDatabase>,
-    token_service: rocket::State<StatefulTokens>,
-    token: String,
-) -> Result<MyResponse> {
-    let payload = token_service.pop_token("verify", &token)?;
-    let (fingerprint, email) = serde_json::from_str(&payload)?;
-
-    db.set_email_published(&fingerprint, &email)?;
-
-    let context = templates::Verify {
-        verified: true,
-        userid: email.to_string(),
-        version: env!("VERGEN_SEMVER").to_string(),
-        commit: env!("VERGEN_SHA_SHORT").to_string(),
-    };
-
-    Ok(MyResponse::ok("publish-result", context))
-}
-
 #[get("/assets/<file..>")]
 fn files(file: PathBuf, state: rocket::State<HagridState>) -> Option<NamedFile> {
     NamedFile::open(state.assets_dir.join(file)).ok()
@@ -356,7 +316,7 @@ fn rocket_factory(rocket: rocket::Rocket) -> Result<rocket::Rocket> {
         upload::vks_v1_publish_post,
         // User interaction.
         upload::publish,
-        publish_verify,
+        upload::publish_verify,
         // HKP
         hkp::pks_lookup,
         hkp::pks_add,
