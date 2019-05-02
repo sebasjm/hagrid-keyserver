@@ -4,6 +4,9 @@ use serde_json;
 use serde::{Serialize,de::DeserializeOwned};
 use Result;
 
+pub trait StatelessSerializable : Serialize + DeserializeOwned {
+}
+
 pub struct Service {
     sealed_state: SealedState,
     validity: u64,
@@ -23,7 +26,7 @@ impl Service {
         Service { sealed_state, validity }
     }
 
-    pub fn create(&self, payload_content: impl Serialize) -> String {
+    pub fn create(&self, payload_content: impl StatelessSerializable) -> String {
         let payload = serde_json::to_string(&payload_content).unwrap();
         let creation = current_time();
         let token = Token { creation, payload };
@@ -35,7 +38,7 @@ impl Service {
     }
 
     pub fn check<T>(&self, token_encoded: &str) -> Result<T>
-            where T: DeserializeOwned {
+            where T: StatelessSerializable {
         let token_sealed = base64::decode_config(&token_encoded, base64::URL_SAFE_NO_PAD)
             .map_err(|_| failure::err_msg("invalid b64"))?;
         let token_str = self.sealed_state.unseal(token_sealed)
@@ -71,38 +74,62 @@ fn current_time() -> u64 {
 mod tests {
     use super::*;
 
+    #[derive(Debug,Serialize,Deserialize,Clone,PartialEq)]
+    struct TestStruct1 {
+        payload: String,
+    }
+    impl StatelessSerializable for TestStruct1 {
+    }
+
+    #[derive(Debug,Serialize,Deserialize,Clone,PartialEq)]
+    struct TestStruct2 {
+        something: String,
+    }
+    impl StatelessSerializable for TestStruct2 {
+    }
+
     #[test]
     fn test_create_check() {
-        let fpr = "D4AB192964F76A7F8F8A9B357BD18320DEADFA11".parse().unwrap();
+        let payload = TestStruct1 { payload: "hello".to_owned() };
         let mt = Service::init("secret", 60);
-        let token = mt.create(&fpr);
+        let token = mt.create(payload.clone());
         // println!("{}", &token);
         // assert!(false);
 
         let check_result = mt.check(&token);
 
-        assert_eq!(fpr, check_result.unwrap());
+        assert_eq!(payload, check_result.unwrap());
     }
 
     #[test]
     fn test_ok() {
-        // {"f":"D4AB192964F76A7F8F8A9B357BD18320DEADFA11","c":12345658,"r":1}
-        let fpr = "D4AB192964F76A7F8F8A9B357BD18320DEADFA11".parse::<Fingerprint>().unwrap();
-        let token = "KkhDt1quo1I1l3OPazSXKAmuNL6LLluhnRR6eQPsLruJ4URo-AKp4YGMsVlkDvj3NLvALt6Omp7vLzMbdv_DCus6oL3X-CSyQs9AFO6f5QMaseyAPtafKMDtDW2c1_Q";
+        let payload = TestStruct1 { payload: "hello".to_owned() };
+        let token = "rwM_S9gZaRQaf6DLvmWtZSipQhH_G5ronSIJv2FrMdwGBPSYYQ-1jaP58dTHU5WuC14vb8jxmz2Xf_b3pqzpCGTEJj9drm4t";
         let mt = Service::init("secret", 60);
 
         let check_result = mt.check(token);
 
-        assert_eq!(fpr, check_result.unwrap());
+        assert_eq!(payload, check_result.unwrap());
+    }
+
+    #[test]
+    fn test_bad_type() {
+        let payload = TestStruct1 { payload: "hello".to_owned() };
+        let mt = Service::init("secret", 60);
+
+        let token = mt.create(payload);
+        let check_result = mt.check::<TestStruct2>(&token);
+
+        assert!(check_result.is_err());
     }
 
     #[test]
     fn test_expired() {
-        // {"f":"D4AB192964F76A7F8F8A9B357BD18320DEADFA11","c":12345078,"r":1}
+        // {"c":12345078,"f":"D4AB192964F76A7F8F8A9B357BD18320DEADFA11"}
         let token = "tqDOpM5mdNSTCDzyyy6El_Chpj1k-ozzw4AHy-3KJhxkXs8A17GJYVq7CHbgsYMc7n5irdzOJ-IvForV_HiVSnZYpnS_BiORWN6FISVmnwlMxDBIGUqa1XDiBLD7UW8";
         let mt = Service::init("secret", 60);
 
-        let check_result = mt.check(token);
+        let check_result = mt.check::<TestStruct1>(token);
 
         assert!(check_result.is_err());
     }

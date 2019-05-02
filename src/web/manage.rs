@@ -7,7 +7,14 @@ use failure::Fallible as Result;
 use web::{HagridState, MyResponse, templates::General};
 use database::{Database, KeyDatabase, types::Email, types::Fingerprint};
 use mail;
-use tokens;
+use tokens::{self, StatelessSerializable};
+
+#[derive(Debug,Serialize,Deserialize)]
+struct StatelessVerifyToken {
+   fpr: Fingerprint,
+}
+impl StatelessSerializable for StatelessVerifyToken {
+}
 
 mod templates {
     #[derive(Serialize)]
@@ -60,8 +67,8 @@ pub fn vks_manage_key(
 ) -> MyResponse {
     use database::types::Fingerprint;
     use std::convert::TryFrom;
-    if let Ok(fingerprint) = token_service.check(&token) {
-        match db.lookup(&database::Query::ByFingerprint(fingerprint)) {
+    if let Ok(StatelessVerifyToken { fpr }) = token_service.check(&token) {
+        match db.lookup(&database::Query::ByFingerprint(fpr)) {
             Ok(Some(tpk)) => {
                 let fp = Fingerprint::try_from(tpk.fingerprint()).unwrap();
                 let mut emails: Vec<Email> = tpk.userids()
@@ -122,7 +129,7 @@ pub fn vks_manage_post(
     };
 
     let fpr: Fingerprint = tpk.fingerprint().try_into().unwrap();
-    let token = token_service.create(&fpr);
+    let token = token_service.create(StatelessVerifyToken { fpr });
     let token_uri = uri!(vks_manage_key: token).to_string();
     if let Some(mail_service) = mail_service {
       for binding in tpk.userids() {
@@ -163,8 +170,8 @@ pub fn vks_manage_unpublish_or_fail(
     token_service: rocket::State<tokens::Service>,
     request: Form<forms::ManageDelete>,
 ) -> Result<MyResponse> {
-    let fpr = token_service.check(&request.token)?;
+    let verify_token = token_service.check::<StatelessVerifyToken>(&request.token)?;
     let email = request.address.parse::<Email>()?;
-    db.set_email_unpublished(&fpr, &email)?;
+    db.set_email_unpublished(&verify_token.fpr, &email)?;
     Ok(vks_manage_key(state, db, request.token.to_owned(), token_service))
 }
