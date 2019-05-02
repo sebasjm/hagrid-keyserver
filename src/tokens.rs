@@ -1,10 +1,8 @@
 use sealed_state::SealedState;
 
-use database::types::{Fingerprint};
 use serde_json;
+use serde::{Serialize,de::DeserializeOwned};
 use Result;
-
-const REVISION: u8 = 1;
 
 pub struct Service {
     sealed_state: SealedState,
@@ -13,12 +11,10 @@ pub struct Service {
 
 #[derive(Serialize,Deserialize)]
 struct Token {
-    #[serde(rename = "f")]
-    fpr: Fingerprint,
     #[serde(rename = "c")]
     creation: u64,
-    #[serde(rename = "r")]
-    revision: u8,
+    #[serde(rename = "p")]
+    payload: String,
 }
 
 impl Service {
@@ -27,9 +23,10 @@ impl Service {
         Service { sealed_state, validity }
     }
 
-    pub fn create(&self, fpr: &Fingerprint) -> String {
+    pub fn create(&self, payload_content: impl Serialize) -> String {
+        let payload = serde_json::to_string(&payload_content).unwrap();
         let creation = current_time();
-        let token = Token { fpr: fpr.clone(), creation, revision: REVISION };
+        let token = Token { creation, payload };
         let token_serialized = serde_json::to_string(&token).unwrap();
 
         let token_sealed = self.sealed_state.seal(&token_serialized);
@@ -37,7 +34,8 @@ impl Service {
         base64::encode_config(&token_sealed, base64::URL_SAFE_NO_PAD)
     }
 
-    pub fn check(&self, token_encoded: &str) -> Result<Fingerprint> {
+    pub fn check<T>(&self, token_encoded: &str) -> Result<T>
+            where T: DeserializeOwned {
         let token_sealed = base64::decode_config(&token_encoded, base64::URL_SAFE_NO_PAD)
             .map_err(|_| failure::err_msg("invalid b64"))?;
         let token_str = self.sealed_state.unseal(token_sealed)
@@ -50,7 +48,10 @@ impl Service {
             Err(failure::err_msg("Token has expired!"))?;
         }
 
-        Ok(token.fpr)
+        let payload: T = serde_json::from_str(&token.payload)
+            .map_err(|_| failure::err_msg("failed to deserialize payload"))?;
+
+        Ok(payload)
     }
 
 }

@@ -5,7 +5,7 @@ use rocket::request::Form;
 use failure::Fallible as Result;
 
 use web::{HagridState, MyResponse, templates::General};
-use database::{Database, KeyDatabase, types::Email};
+use database::{Database, KeyDatabase, types::Email, types::Fingerprint};
 use mail;
 use tokens;
 
@@ -121,7 +121,7 @@ pub fn vks_manage_post(
         Err(e) => return MyResponse::ise(e),
     };
 
-    let fpr = tpk.fingerprint().try_into().unwrap();
+    let fpr: Fingerprint = tpk.fingerprint().try_into().unwrap();
     let token = token_service.create(&fpr);
     let token_uri = uri!(vks_manage_key: token).to_string();
     if let Some(mail_service) = mail_service {
