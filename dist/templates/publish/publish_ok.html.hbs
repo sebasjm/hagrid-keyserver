@@ -1,16 +1,49 @@
 {{#> layout }}
-  <h2>Email verification</h2>
-  <p style="line-height: 2em;">
-    Your key was successfully uploaded, and can now be retrieved by fingerprint.<br />
+  <p>
+    Your key <span class="fingerprint"><a href="{{key_link}}" target="_blank">{{key_fpr}}</a></span> was successfully uploaded.
   </p>
-  We also sent verification emails to the following addresses:
-  <div class="verificationEmails">
-    <ul>
-      {{#each emails}}
-      <li><span class="email">{{this}}</span></li>
+
+  {{#if is_revoked}}
+    <p>
+      This key is revoked. It can not be searched by email address.
+    </p>
+  {{else}}
+    {{#if uid_status}}
+      <p>
+        You can make the key available for search by address:
+      </p>
+
+      {{#each uid_status}}
+      <div class="publishedUid">
+        <div>
+        {{#if revoked}}
+        Revoked
+        {{else}}
+          {{#if published}}
+          Published
+          {{else}}
+            {{#if requested}}
+            Verification Pending
+            {{else}}
+            <form action="/publish/verify" method="post">
+              <input type="hidden" name="token" value="{{../token}}" />
+              <input type="hidden" name="address" value="{{address}}" />
+              <input type="submit" class="link" value="Send Verification Mail">
+            </form>
+            {{/if}}
+          {{/if}}
+        {{/if}}
+        </div>
+        <p>
+          <span class="email">{{address}}</span>
+        </p>
+      </div>
       {{/each}}
-    </ul>
-  </div>
-    To make the key available for search by address, follow the link sent to
-    each address.
+    {{else}}
+      <p>
+        This key contains no email addresses.
+      </p>
+    {{/if}}
+  {{/if}}
+
 {{/layout}}

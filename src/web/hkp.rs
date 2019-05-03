@@ -9,6 +9,8 @@ use rocket::http::uri::Uri;
 use database::{Database, Query, KeyDatabase};
 use database::types::{Email, Fingerprint, KeyID};
 
+use tokens;
+
 use web::{
     HagridState,
     MyResponse,
@@ -118,10 +120,11 @@ impl<'a, 'r> FromRequest<'a, 'r> for Hkp {
 #[post("/pks/add", data = "<data>")]
 pub fn pks_add(
     db: rocket::State<KeyDatabase>,
+    tokens_stateless: rocket::State<tokens::Service>,
     cont_type: &ContentType,
     data: Data,
 ) -> MyResponse {
-    match upload::handle_upload_without_verify(db, cont_type, data) {
+    match upload::handle_upload(&db, &tokens_stateless, cont_type, data) {
         Ok(_) => MyResponse::plain("Ok".into()),
         Err(err) => MyResponse::ise(err),
     }

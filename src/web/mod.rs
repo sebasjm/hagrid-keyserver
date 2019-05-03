@@ -317,6 +317,7 @@ fn rocket_factory(rocket: rocket::Rocket) -> Result<rocket::Rocket> {
         // User interaction.
         upload::publish,
         upload::publish_verify,
+        upload::vks_publish_verify,
         // HKP
         hkp::pks_lookup,
         hkp::pks_add,
@@ -524,7 +525,7 @@ pub mod tests {
     }
 
     #[test]
-    fn upload_single() {
+    fn upload_verify_single() {
         let (tmpdir, client) = client().unwrap();
         let filemail_into = tmpdir.path().join("filemail");
 
@@ -535,7 +536,7 @@ pub mod tests {
 
         let mut tpk_serialized = Vec::new();
         tpk.serialize(&mut tpk_serialized).unwrap();
-        vks_publish_submit(&client, &tpk_serialized);
+        let token = vks_publish_submit_get_token(&client, &tpk_serialized);
 
         // Prior to email confirmation, we should not be able to look
         // it up by email address.
@@ -547,6 +548,9 @@ pub mod tests {
 
         // And check that we can see the human-readable result page.
         check_hr_responses_by_fingerprint(&client, &tpk, 0);
+
+        // Check the verification link
+        check_verify_link(&client, &token, "foo@invalid.example.com");
 
         // Now check for the verification mail.
         check_mails_and_verify_email(&client, filemail_into.as_path());
@@ -578,8 +582,7 @@ pub mod tests {
 
     #[test]
     fn upload_two() {
-        let (tmpdir, config) = configuration().unwrap();
-        let filemail_into = tmpdir.path().join("filemail");
+        let (_tmpdir, config) = configuration().unwrap();
 
         let rocket = rocket_factory(rocket::custom(config)).unwrap();
         let client = Client::new(rocket).expect("valid rocket instance");
@@ -595,7 +598,7 @@ pub mod tests {
         let mut tpk_serialized = Vec::new();
         tpk_0.serialize(&mut tpk_serialized).unwrap();
         tpk_1.serialize(&mut tpk_serialized).unwrap();
-        vks_publish_submit(&client, &tpk_serialized);
+        vks_publish_submit_multiple(&client, &tpk_serialized);
 
         // Prior to email confirmation, we should not be able to look
         // them up by email address.
@@ -610,14 +613,57 @@ pub mod tests {
         // And check that we can see the human-readable result page.
         check_hr_responses_by_fingerprint(&client, &tpk_0, 0);
         check_hr_responses_by_fingerprint(&client, &tpk_1, 0);
+    }
+
+    #[test]
+    fn upload_verify_two() {
+        let (tmpdir, config) = configuration().unwrap();
+        let filemail_into = tmpdir.path().join("filemail");
+
+        let rocket = rocket_factory(rocket::custom(config)).unwrap();
+        let client = Client::new(rocket).expect("valid rocket instance");
+
+        // Generate two keys and upload them.
+        let tpk_1 = TPKBuilder::autocrypt(
+            None, Some("foo@invalid.example.com".into()))
+            .generate().unwrap().0;
+        let tpk_2 = TPKBuilder::autocrypt(
+            None, Some("bar@invalid.example.com".into()))
+            .generate().unwrap().0;
+
+        let mut tpk_serialized_1 = Vec::new();
+        tpk_1.serialize(&mut tpk_serialized_1).unwrap();
+        let token_1 = vks_publish_submit_get_token(&client, &tpk_serialized_1);
+
+        let mut tpk_serialized_2 = Vec::new();
+        tpk_2.serialize(&mut tpk_serialized_2).unwrap();
+        let token_2 = vks_publish_submit_get_token(&client, &tpk_serialized_2);
+
+        // Prior to email confirmation, we should not be able to look
+        // them up by email address.
+        check_null_responses_by_email(&client, "foo@invalid.example.com");
+        check_null_responses_by_email(&client, "bar@invalid.example.com");
+
+        // And check that we can get them back via the machine readable
+        // interface.
+        check_mr_responses_by_fingerprint(&client, &tpk_1, 0);
+        check_mr_responses_by_fingerprint(&client, &tpk_2, 0);
+
+        // And check that we can see the human-readable result page.
+        check_hr_responses_by_fingerprint(&client, &tpk_1, 0);
+        check_hr_responses_by_fingerprint(&client, &tpk_2, 0);
+
+        // Check the verification link
+        check_verify_link(&client, &token_1, "foo@invalid.example.com");
+        check_verify_link(&client, &token_2, "bar@invalid.example.com");
 
         // Now check for the verification mails.
         check_mails_and_verify_email(&client, &filemail_into);
         check_mails_and_verify_email(&client, &filemail_into);
 
         // Now lookups using the mail address should work.
-        check_responses_by_email(&client, "foo@invalid.example.com", &tpk_0, 1);
-        check_responses_by_email(&client, "bar@invalid.example.com", &tpk_1, 1);
+        check_responses_by_email(&client, "foo@invalid.example.com", &tpk_1, 1);
+        check_responses_by_email(&client, "bar@invalid.example.com", &tpk_2, 1);
 
         // Request deletion of the bindings.
         vks_manage(&client, "foo@invalid.example.com");
@@ -631,12 +677,12 @@ pub mod tests {
         check_null_responses_by_email(&client, "bar@invalid.example.com");
 
         // But lookup by fingerprint should still work.
-        check_mr_responses_by_fingerprint(&client, &tpk_0, 0);
         check_mr_responses_by_fingerprint(&client, &tpk_1, 0);
+        check_mr_responses_by_fingerprint(&client, &tpk_2, 0);
 
         // And check that we can see the human-readable result page.
-        check_hr_responses_by_fingerprint(&client, &tpk_0, 0);
         check_hr_responses_by_fingerprint(&client, &tpk_1, 0);
+        check_hr_responses_by_fingerprint(&client, &tpk_2, 0);
 
         assert_consistency(client.rocket());
     }
@@ -782,6 +828,19 @@ pub mod tests {
             &tpk, nr_uids);
     }
 
+    fn check_verify_link(client: &Client, token: &str, address: &str) {
+        let encoded = ::url::form_urlencoded::Serializer::new(String::new())
+            .append_pair("token", token)
+            .append_pair("address", address)
+            .finish();
+
+        let response = client.post("/publish/verify")
+            .header(ContentType::Form)
+            .body(encoded.as_bytes())
+            .dispatch();
+        assert_eq!(response.status(), Status::Ok);
+    }
+
     fn check_mails_and_verify_email(client: &Client, filemail_path: &Path) {
         let pattern = format!("{}(/publish/[^ \t\n]*)", BASE_URI);
         let confirm_uri = pop_mail_capture_pattern(filemail_path, &pattern);
@@ -822,9 +881,26 @@ pub mod tests {
         Ok(None)
     }
 
-    fn vks_publish_submit<'a>(client: &'a Client, data: &[u8]) {
-        let response = vks_publish_submit_response(client, data);
+    fn vks_publish_submit_multiple<'a>(client: &'a Client, data: &[u8]) {
+        let mut response = vks_publish_submit_response(client, data);
+        let response_body = response.body_string().unwrap();
+
         assert_eq!(response.status(), Status::Ok);
+        assert!(response_body.contains("you must upload them individually"));
+    }
+
+    fn vks_publish_submit_get_token<'a>(client: &'a Client, data: &[u8]) -> String {
+        let mut response = vks_publish_submit_response(client, data);
+        let response_body = response.body_string().unwrap();
+
+        let pattern = "name=\"token\" value=\"([^\"]*)\"";
+        let capture_re = regex::bytes::Regex::new(pattern).unwrap();
+        let capture_content = capture_re .captures(response_body.as_bytes()).unwrap()
+            .get(1).unwrap().as_bytes();
+        let token = String::from_utf8_lossy(capture_content).to_string();
+
+        assert_eq!(response.status(), Status::Ok);
+        token
     }
 
     fn vks_publish_submit_response<'a>(client: &'a Client, data: &[u8]) ->
