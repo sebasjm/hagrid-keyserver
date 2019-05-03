@@ -166,8 +166,10 @@ pub struct HagridState {
     /// XXX
     base_uri: String,
 
-    /// Controls the use of NGINX'es XAccelRedirect feature.
+    /// 
     x_accel_redirect: bool,
+    x_accel_prefix: Option<PathBuf>,
+
 }
 
 fn key_to_response<'a>(state: rocket::State<HagridState>,
@@ -185,7 +187,11 @@ fn key_to_response<'a>(state: rocket::State<HagridState>,
     if machine_readable {
         if state.x_accel_redirect {
             if let Some(key_path) = db.lookup_path(&query) {
-                let x_accel_path = state.keys_external_dir.join(&key_path).to_string_lossy().to_string();
+                let mut x_accel_path = state.keys_external_dir.join(&key_path);
+                if let Some(prefix) = state.x_accel_prefix.as_ref() {
+                    x_accel_path = x_accel_path.strip_prefix(&prefix).unwrap().to_path_buf();
+                }
+                let x_accel_path = format!("/{}", x_accel_path.to_string_lossy());
                 return MyResponse::x_accel_redirect(x_accel_path, &fp);
             }
         }
@@ -357,6 +363,8 @@ fn configure_db_service(config: &Config) -> Result<KeyDatabase> {
 fn configure_hagrid_state(config: &Config) -> Result<HagridState> {
     let assets_dir: PathBuf = config.get_str("assets_dir")?.into();
     let keys_external_dir: PathBuf = config.get_str("keys_external_dir")?.into();
+    let x_accel_prefix: Option<PathBuf> =
+        config.get_string("x_accel_prefix").map(|prefix| prefix.into()).ok();
 
     // State
     let base_uri = config.get_str("base-URI")?.to_string();
@@ -365,6 +373,7 @@ fn configure_hagrid_state(config: &Config) -> Result<HagridState> {
         keys_external_dir: keys_external_dir,
         base_uri: base_uri.clone(),
         x_accel_redirect: config.get_bool("x-accel-redirect")?,
+        x_accel_prefix,
     })
 }
 
