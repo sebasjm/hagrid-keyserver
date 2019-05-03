@@ -74,6 +74,19 @@ impl FromStr for Query {
     }
 }
 
+#[derive(Debug,PartialEq,Eq)]
+pub enum EmailAddressStatus {
+    Revoked,
+    NotPublished,
+    Published,
+}
+
+#[derive(Debug,PartialEq)]
+pub struct TpkStatus {
+    pub is_revoked: bool,
+    pub email_status: Vec<(Email,EmailAddressStatus)>,
+}
+
 pub trait Database: Sync + Send {
     type MutexGuard;
 
@@ -140,10 +153,15 @@ pub trait Database: Sync + Send {
     ///    - abort if any problems come up!
     /// 5. Move full and published temporary TPK to their location
     /// 6. Update all symlinks
-    fn merge(&self, new_tpk: TPK) -> Result<Vec<Email>> {
+    fn merge(&self, new_tpk: TPK) -> Result<TpkStatus> {
         let fpr_primary = Fingerprint::try_from(new_tpk.primary().fingerprint())?;
 
         let _lock = self.lock()?;
+
+        let known_uids: Vec<UserID> = new_tpk
+            .userids()
+            .map(|binding| binding.userid().clone())
+            .collect();
 
         let full_tpk_old = self.by_fpr_full(&fpr_primary)
             .and_then(|bytes| TPK::from_bytes(bytes.as_ref()).ok());
@@ -165,26 +183,29 @@ pub trait Database: Sync + Send {
                  .collect()
                 ).unwrap_or_default();
 
-        let unpublished_emails = if is_revoked {
-            vec!()
-        } else {
-            let mut unpublished_emails: Vec<Email> = full_tpk_new
-                .userids()
-                .filter(|binding| binding.revoked(None) == RevocationStatus::NotAsFarAsWeKnow)
-                .map(|binding| binding.userid().clone())
-                .filter(|uid| !published_uids.contains(uid))
-                .map(|uid| Email::try_from(&uid))
-                .flatten()
-                .collect();
-            unpublished_emails.sort();
-            unpublished_emails.dedup();
-            unpublished_emails
-        };
+        let email_status = full_tpk_new
+            .userids()
+            .filter(|binding| known_uids.contains(binding.userid()))
+            .flat_map(|binding| {
+                let uid = binding.userid();
+                if let Ok(email) = Email::try_from(uid) {
+                    if binding.revoked(None) != RevocationStatus::NotAsFarAsWeKnow {
+                        Some((email, EmailAddressStatus::Revoked))
+                    } else if published_uids.contains(uid) {
+                        Some((email, EmailAddressStatus::Published))
+                    } else {
+                        Some((email, EmailAddressStatus::NotPublished))
+                    }
+                } else {
+                    None
+                }
+            })
+            .collect();
 
         // Abort if no changes were made
         if full_tpk_unchanged {
             println!("tpk unchanged!");
-            return Ok(unpublished_emails);
+            return Ok(TpkStatus { is_revoked, email_status });
         }
 
         let revoked_uids: Vec<UserID> = full_tpk_new
@@ -252,7 +273,45 @@ pub trait Database: Sync + Send {
             }
         }
 
-        Ok(unpublished_emails)
+        Ok(TpkStatus { is_revoked, email_status })
+    }
+
+    fn get_tpk_status(&self, fpr_primary: &Fingerprint, known_addresses: &[Email]) -> Result<TpkStatus> {
+        let tpk_full = self.by_fpr_full(&fpr_primary)
+            .ok_or_else(|| failure::err_msg("Key not in database!"))
+            .and_then(|bytes| TPK::from_bytes(bytes.as_ref()))?;
+
+        let is_revoked = tpk_full.revoked(None) != RevocationStatus::NotAsFarAsWeKnow;
+
+        let published_uids: Vec<UserID> = self
+            .by_fpr(&fpr_primary)
+            .and_then(|bytes| TPK::from_bytes(bytes.as_ref()).ok())
+            .map(|tpk| tpk.userids()
+                 .map(|binding| binding.userid().clone())
+                 .collect()
+                ).unwrap_or_default();
+
+        let email_status = tpk_full
+            .userids()
+            .flat_map(|binding| {
+                let uid = binding.userid();
+                if let Ok(email) = Email::try_from(uid) {
+                    if !known_addresses.contains(&email) {
+                        None
+                    } else if binding.revoked(None) != RevocationStatus::NotAsFarAsWeKnow {
+                        Some((email, EmailAddressStatus::Revoked))
+                    } else if published_uids.contains(uid) {
+                        Some((email, EmailAddressStatus::Published))
+                    } else {
+                        Some((email, EmailAddressStatus::NotPublished))
+                    }
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        Ok(TpkStatus { is_revoked, email_status })
     }
 
     /// Complex operation that publishes some user id for a TPK already in the database.
