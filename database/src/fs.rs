@@ -361,7 +361,7 @@ impl Database for Filesystem {
         FlockMutexGuard::lock(&self.keys_internal_dir)
     }
 
-    fn write_to_temp(&self, content: &[u8]) -> Result<NamedTempFile> {
+    fn write_to_temp(&self, content: &[u8], public: bool) -> Result<NamedTempFile> {
         let mut tempfile = tempfile::Builder::new()
             .prefix("key")
             .rand_bytes(16)
@@ -369,12 +369,12 @@ impl Database for Filesystem {
 
         tempfile.write_all(content).unwrap();
 
-        // fix permissions to 640
+        // fix permissions to 644 or 640, depending on "public" value
         if cfg!(unix) {
             use std::fs::{set_permissions, Permissions};
             use std::os::unix::fs::PermissionsExt;
 
-            let perm = Permissions::from_mode(0o640);
+            let perm = Permissions::from_mode(if public { 0o644 } else { 0o640 });
             set_permissions(tempfile.path(), perm)?;
         }
 
