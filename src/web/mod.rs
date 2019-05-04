@@ -3,6 +3,7 @@ use rocket::http::Header;
 use rocket::response::NamedFile;
 use rocket::config::Config;
 use rocket_contrib::templates::Template;
+use rocket::http::uri::Uri;
 
 use serde::Serialize;
 use handlebars::Handlebars;
@@ -69,6 +70,8 @@ impl MyResponse {
     pub fn x_accel_redirect(x_accel_path: String, fp: &Fingerprint) -> Self {
         use rocket::http::hyper::header::{ContentDisposition, DispositionType,
                                           DispositionParam, Charset};
+        // nginx expects percent-encoded URIs
+        let x_accel_path = Uri::percent_encode(&x_accel_path).into_owned();
         MyResponse::XAccelRedirect(
             "",
             Header::new("X-Accel-Redirect", x_accel_path),
@@ -191,6 +194,7 @@ fn key_to_response<'a>(state: rocket::State<HagridState>,
                 if let Some(prefix) = state.x_accel_prefix.as_ref() {
                     x_accel_path = x_accel_path.strip_prefix(&prefix).unwrap().to_path_buf();
                 }
+                // prepend a / to make path relative to nginx root
                 let x_accel_path = format!("/{}", x_accel_path.to_string_lossy());
                 return MyResponse::x_accel_redirect(x_accel_path, &fp);
             }
