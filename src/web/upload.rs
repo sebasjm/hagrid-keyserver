@@ -14,6 +14,7 @@ use database::types::{Fingerprint,Email};
 use mail;
 use tokens::{self, StatelessSerializable};
 use web::MyResponse;
+use rate_limiter::RateLimiter;
 
 use sequoia_openpgp::TPK;
 
@@ -326,29 +327,44 @@ pub fn vks_publish_verify(
     token_stateful: rocket::State<StatefulTokens>,
     token_stateless: rocket::State<tokens::Service>,
     mail_service: rocket::State<mail::Service>,
+    rate_limiter: rocket::State<RateLimiter>,
 ) -> Result<MyResponse> {
     let verify_state = token_stateless.check::<VerifyTpkState>(&request.token)?;
     let tpk_status = db.get_tpk_status(&verify_state.fpr, &verify_state.addresses)?;
 
+    if tpk_status.is_revoked {
+        return Ok(show_publish_verify(
+                &token_stateless, tpk_status, verify_state, None))
+    }
+
     let email_requested = request.address.parse::<Email>()
         .ok()
         .filter(|email| verify_state.addresses.contains(email))
-        .filter(|email| !verify_state.requested.contains(email));
-    let request_ok = !tpk_status.is_revoked && email_requested.is_some();
+        .filter(|email| !verify_state.requested.contains(email))
+        .filter(|email| tpk_status.email_status.iter()
+            .any(|(uid_email, status)|
+                uid_email == email && *status == EmailAddressStatus::NotPublished
+            ));
 
-    if request_ok {
-        let token_content = (verify_state.fpr.clone(), request.address.clone());
-        let token_str = serde_json::to_string(&token_content)?;
-        let token = token_stateful.new_token("verify", token_str.as_bytes())?;
+    if let Some(email) = email_requested {
+        let rate_limit_ok = rate_limiter.action_perform(format!("verify-{}", &email));
+        if rate_limit_ok {
+            let token_content = (verify_state.fpr.clone(), email.clone());
+            let token_str = serde_json::to_string(&token_content)?;
+            let token = token_stateful.new_token("verify", token_str.as_bytes())?;
 
-        mail_service.send_verification(
-            verify_state.fpr.to_string(),
-            email_requested.as_ref().unwrap(),
-            &token,
-        )?;
+            mail_service.send_verification(
+                verify_state.fpr.to_string(),
+                &email,
+                &token,
+            )?;
+        }
+
+        Ok(show_publish_verify(&token_stateless, tpk_status, verify_state, Some(email)))
+    } else {
+        Ok(show_publish_verify(&token_stateless, tpk_status, verify_state, None))
     }
 
-    Ok(show_publish_verify(&token_stateless, tpk_status, verify_state, email_requested))
 }
 
 fn show_publish_verify(
