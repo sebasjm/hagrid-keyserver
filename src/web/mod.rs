@@ -24,6 +24,9 @@ use std::convert::TryInto;
 
 mod hkp;
 mod manage;
+mod maintenance;
+
+use web::maintenance::MaintenanceMode;
 
 use rocket::http::hyper::header::ContentDisposition;
 
@@ -338,6 +341,8 @@ fn rocket_factory(rocket: rocket::Rocket) -> Result<rocket::Rocket> {
         manage::vks_manage_key,
         manage::vks_manage_post,
         manage::vks_manage_unpublish,
+        // Maintenance error page
+        maintenance::maintenance_error,
     ];
 
     let db_service = configure_db_service(rocket.config())?;
@@ -346,9 +351,11 @@ fn rocket_factory(rocket: rocket::Rocket) -> Result<rocket::Rocket> {
     let stateless_token_service = configure_stateless_token_service(rocket.config())?;
     let mail_service = configure_mail_service(rocket.config())?;
     let rate_limiter = configure_rate_limiter(rocket.config())?;
+    let maintenance_mode = configure_maintenance_mode(rocket.config())?;
 
     Ok(rocket
        .attach(Template::fairing())
+       .attach(maintenance_mode)
        .manage(hagrid_state)
        .manage(stateless_token_service)
        .manage(stateful_token_service)
@@ -429,6 +436,12 @@ fn configure_rate_limiter(config: &Config) -> Result<RateLimiter> {
     let timeout_secs = config.get_int("mail_rate_limit").unwrap_or(60);
     let timeout_secs = timeout_secs.try_into()?;
     Ok(RateLimiter::new(timeout_secs))
+}
+
+fn configure_maintenance_mode(config: &Config) -> Result<MaintenanceMode> {
+    let maintenance_file: PathBuf = config.get_str("maintenance_file")
+        .unwrap_or("maintenance").into();
+    Ok(MaintenanceMode::new(maintenance_file))
 }
 
 #[cfg(test)]

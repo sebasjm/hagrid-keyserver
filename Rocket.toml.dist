@@ -15,6 +15,7 @@ keys_external_dir = "state/keys-external"
 token_dir = "state/tokens"
 tmp_dir = "state/tmp"
 mail_rate_limit = 60
+maintenance_file = "state/maintenance"
 
 [staging]
 base-URI = "https://keys.openpgp.org"
@@ -29,6 +30,7 @@ assets_dir = "public/assets"
 token_dir = "tokens"
 tmp_dir = "tmp"
 mail_rate_limit = 60
+maintenance_file = "maintenance"
 
 [production]
 base-URI = "https://keys.openpgp.org"
@@ -43,3 +45,4 @@ assets_dir = "public/assets"
 token_dir = "tokens"
 tmp_dir = "tmp"
 mail_rate_limit = 3600
+maintenance_file = "maintenance"
