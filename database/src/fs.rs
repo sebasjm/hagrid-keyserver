@@ -1,8 +1,9 @@
 use std::collections::HashMap;
 use std::convert::TryFrom;
-use std::fs::{create_dir_all, read_link, remove_file, rename};
+use std::fs::{create_dir_all, read_link, remove_file, rename, set_permissions, Permissions};
 use std::io::Write;
 use std::path::{Path, PathBuf};
+use std::os::unix::fs::PermissionsExt;
 
 use tempfile;
 use url;
@@ -361,31 +362,24 @@ impl Database for Filesystem {
         FlockMutexGuard::lock(&self.keys_internal_dir)
     }
 
-    fn write_to_temp(&self, content: &[u8], public: bool) -> Result<NamedTempFile> {
+    fn write_to_temp(&self, content: &[u8]) -> Result<NamedTempFile> {
         let mut tempfile = tempfile::Builder::new()
             .prefix("key")
             .rand_bytes(16)
             .tempfile_in(&self.tmp_dir)?;
-
         tempfile.write_all(content).unwrap();
-
-        // fix permissions to 644 or 640, depending on "public" value
-        if cfg!(unix) {
-            use std::fs::{set_permissions, Permissions};
-            use std::os::unix::fs::PermissionsExt;
-
-            let perm = Permissions::from_mode(if public { 0o644 } else { 0o640 });
-            set_permissions(tempfile.path(), perm)?;
-        }
-
         Ok(tempfile)
     }
+
     fn move_tmp_to_full(&self, file: NamedTempFile, fpr: &Fingerprint) -> Result<()> {
+        set_permissions(file.path(), Permissions::from_mode(0o640))?;
         let target = self.fingerprint_to_path_full(fpr);
         file.persist(ensure_parent(&target)?)?;
         Ok(())
     }
+
     fn move_tmp_to_published(&self, file: NamedTempFile, fpr: &Fingerprint) -> Result<()> {
+        set_permissions(file.path(), Permissions::from_mode(0o644))?;
         let target = self.fingerprint_to_path_published(fpr);
         file.persist(ensure_parent(&target)?)?;
         Ok(())

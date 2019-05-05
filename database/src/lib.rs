@@ -244,15 +244,15 @@ pub trait Database: Sync + Send {
             .map(|fpr| Fingerprint::try_from(fpr))
             .flatten();
 
-        let full_tpk_tmp = self.write_to_temp(&tpk_to_string(&full_tpk_new)?, false)?;
-        let published_tpk_tmp = self.write_to_temp(&tpk_to_string(&published_tpk_new)?, true)?;
-
         let fpr_checks = fingerprints
             .map(|fpr| self.check_link_fpr(&fpr, &fpr_primary))
             .collect::<Vec<_>>()
             .into_iter()
             .collect::<Result<Vec<_>>>()?;
         let fpr_not_linked = fpr_checks.into_iter().flatten();
+
+        let full_tpk_tmp = self.write_to_temp(&tpk_to_string(&full_tpk_new)?)?;
+        let published_tpk_tmp = self.write_to_temp(&tpk_to_string(&published_tpk_new)?)?;
 
         // these are very unlikely to fail. but if it happens,
         // database consistency might be compromised!
@@ -364,7 +364,7 @@ pub trait Database: Sync + Send {
                 return Err(failure::err_msg("Requested UserID not found!"));
         }
 
-        let published_tpk_tmp = self.write_to_temp(&tpk_to_string(&published_tpk_new)?, false)?;
+        let published_tpk_tmp = self.write_to_temp(&tpk_to_string(&published_tpk_new)?)?;
 
         self.move_tmp_to_published(published_tpk_tmp, &fpr_primary)?;
 
@@ -422,7 +422,7 @@ pub trait Database: Sync + Send {
             .iter()
             .filter(|email| !published_emails_new.contains(email));
 
-        let published_tpk_tmp = self.write_to_temp(&tpk_to_string(&published_tpk_new)?, false)?;
+        let published_tpk_tmp = self.write_to_temp(&tpk_to_string(&published_tpk_new)?)?;
 
         self.move_tmp_to_published(published_tpk_tmp, &fpr_primary)?;
 
@@ -457,7 +457,7 @@ pub trait Database: Sync + Send {
 
     fn by_fpr_full(&self, fpr: &Fingerprint) -> Option<String>;
 
-    fn write_to_temp(&self, content: &[u8], public: bool) -> Result<NamedTempFile>;
+    fn write_to_temp(&self, content: &[u8]) -> Result<NamedTempFile>;
     fn move_tmp_to_full(&self, content: NamedTempFile, fpr: &Fingerprint) -> Result<()>;
     fn move_tmp_to_published(&self, content: NamedTempFile, fpr: &Fingerprint) -> Result<()>;
 }
