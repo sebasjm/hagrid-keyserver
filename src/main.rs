@@ -34,6 +34,7 @@ mod mail;
 mod web;
 mod tokens;
 mod sealed_state;
+mod rate_limiter;
 
 fn main() {
     if let Err(e) = web::serve() {
