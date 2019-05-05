@@ -93,7 +93,7 @@ impl MyResponse {
     pub fn ise(e: failure::Error) -> Self {
         println!("Internal error: {:?}", e);
         let ctx = templates::FiveHundred{
-            error: format!("{}", e),
+            internal_error: e.to_string(),
             version: env!("VERGEN_SEMVER").to_string(),
             commit: env!("VERGEN_SHA_SHORT").to_string(),
         };
@@ -135,7 +135,7 @@ mod templates {
 
     #[derive(Serialize)]
     pub struct FiveHundred {
-        pub error: String,
+        pub internal_error: String,
         pub commit: String,
         pub version: String,
     }
