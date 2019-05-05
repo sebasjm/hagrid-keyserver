@@ -14,6 +14,7 @@ keys_internal_dir = "state/keys-internal"
 keys_external_dir = "state/keys-external"
 token_dir = "state/tokens"
 tmp_dir = "state/tmp"
+mail_rate_limit = 60
 
 [staging]
 base-URI = "https://keys.openpgp.org"
@@ -27,6 +28,7 @@ keys_external_dir = "public/keys"
 assets_dir = "public/assets"
 token_dir = "tokens"
 tmp_dir = "tmp"
+mail_rate_limit = 60
 
 [production]
 base-URI = "https://keys.openpgp.org"
@@ -40,3 +42,4 @@ keys_external_dir = "public/keys"
 assets_dir = "public/assets"
 token_dir = "tokens"
 tmp_dir = "tmp"
+mail_rate_limit = 3600

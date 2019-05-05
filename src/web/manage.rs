@@ -7,6 +7,7 @@ use failure::Fallible as Result;
 use web::{HagridState, MyResponse, templates::General};
 use database::{Database, KeyDatabase, types::Email, types::Fingerprint};
 use mail;
+use rate_limiter::RateLimiter;
 use tokens::{self, StatelessSerializable};
 
 #[derive(Debug,Serialize,Deserialize)]
@@ -107,9 +108,10 @@ pub fn vks_manage_key(
 #[post("/manage", data="<request>")]
 pub fn vks_manage_post(
     db: State<KeyDatabase>,
+    mail_service: rocket::State<mail::Service>,
+    rate_limiter: rocket::State<RateLimiter>,
     request: Form<forms::ManageRequest>,
     token_service: rocket::State<tokens::Service>,
-    mail_service: Option<rocket::State<mail::Service>>,
 ) -> MyResponse {
     use std::convert::TryInto;
 
@@ -117,34 +119,39 @@ pub fn vks_manage_post(
         Ok(email) => email,
         Err(_) => return MyResponse::not_found(
             Some("manage/manage"),
-            Some(format!("Malformed email address: {:?}", request.search_term)))
+            Some(format!("Malformed email address: {}", request.search_term)))
     };
 
     let tpk = match db.lookup(&database::Query::ByEmail(email.clone())) {
         Ok(Some(tpk)) => tpk,
         Ok(None) => return MyResponse::not_found(
             Some("manage/manage"),
-            Some(format!("No key for address {:?}", request.search_term))),
+            Some(format!("No key for address {}", request.search_term))),
         Err(e) => return MyResponse::ise(e),
     };
+
+    let email_exists = tpk.userids()
+        .flat_map(|binding| binding.userid().to_string().parse::<Email>())
+        .any(|candidate| candidate == email);
+
+    if !email_exists {
+        return MyResponse::ise(failure::err_msg("Address check failed!"));
+    }
+
+    if !rate_limiter.action_perform(format!("manage-{}", &email)) {
+        return MyResponse::not_found(
+            Some("manage/manage"),
+            Some("A request was already sent for this address recently.".to_owned()));
+    }
 
     let fpr: Fingerprint = tpk.fingerprint().try_into().unwrap();
     let token = token_service.create(StatelessVerifyToken { fpr });
     let token_uri = uri!(vks_manage_key: token).to_string();
-    if let Some(mail_service) = mail_service {
-      for binding in tpk.userids() {
-         let email_candidate = binding.userid().to_string().parse::<Email>();
-         if let Ok(email_candidate) = email_candidate {
-            if &email_candidate != &email {
-               continue;
-            }
-            if let Err(e) = mail_service.send_manage_token(
-               &[email_candidate], &token_uri) {
-               return MyResponse::ise(e);
-            }
-         }
-      }
+
+    if let Err(e) = mail_service.send_manage_token(&email, &token_uri) {
+        return MyResponse::ise(e);
     }
+
     let ctx = templates::ManageLinkSent {
         address: email.to_string(),
     };

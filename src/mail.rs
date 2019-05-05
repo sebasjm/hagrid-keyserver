@@ -83,14 +83,14 @@ impl Service {
         };
 
         self.send(
-            &vec![userid.clone()],
+            &vec![userid],
             "Please verify your email address",
             "verify",
             ctx,
         )
     }
 
-    pub fn send_manage_token(&self, recipients: &[Email], uri: &str)
+    pub fn send_manage_token(&self, recipient: &Email, uri: &str)
                              -> Result<()> {
         let ctx = context::Manage {
             uri: uri.to_string(),
@@ -99,14 +99,14 @@ impl Service {
         };
 
         self.send(
-            recipients,
+            &[recipient],
             &format!("{}: Manage your key", &self.domain),
             "manage",
             ctx,
         )
     }
 
-    fn send<T>(&self, to: &[Email], subject: &str, template: &str, ctx: T)
+    fn send<T>(&self, to: &[&Email], subject: &str, template: &str, ctx: T)
                -> Result<()>
         where T: Serialize + Clone,
     {

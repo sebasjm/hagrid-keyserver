@@ -13,12 +13,14 @@ use std::path::PathBuf;
 pub mod upload;
 use mail;
 use tokens;
+use rate_limiter::RateLimiter;
 
 use database::{Database, KeyDatabase, Query};
 use database::types::{Email, Fingerprint, KeyID};
 use Result;
 
 use std::str::FromStr;
+use std::convert::TryInto;
 
 mod hkp;
 mod manage;
@@ -343,6 +345,7 @@ fn rocket_factory(rocket: rocket::Rocket) -> Result<rocket::Rocket> {
     let stateful_token_service = configure_stateful_token_service(rocket.config())?;
     let stateless_token_service = configure_stateless_token_service(rocket.config())?;
     let mail_service = configure_mail_service(rocket.config())?;
+    let rate_limiter = configure_rate_limiter(rocket.config())?;
 
     Ok(rocket
        .attach(Template::fairing())
@@ -351,6 +354,7 @@ fn rocket_factory(rocket: rocket::Rocket) -> Result<rocket::Rocket> {
        .manage(stateful_token_service)
        .manage(mail_service)
        .manage(db_service)
+       .manage(rate_limiter)
        .mount("/", routes)
       )
 }
@@ -419,6 +423,12 @@ fn configure_mail_service(config: &Config) -> Result<mail::Service> {
     } else {
         mail::Service::sendmail(from, base_uri, handlebars)
     }
+}
+
+fn configure_rate_limiter(config: &Config) -> Result<RateLimiter> {
+    let timeout_secs = config.get_int("mail_rate_limit").unwrap_or(60);
+    let timeout_secs = timeout_secs.try_into()?;
+    Ok(RateLimiter::new(timeout_secs))
 }
 
 #[cfg(test)]
