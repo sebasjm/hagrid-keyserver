@@ -175,7 +175,7 @@ pub trait Database: Sync + Send {
                  .collect()
                 ).unwrap_or_default();
 
-        let email_status = full_tpk_new
+        let mut email_status: Vec<_> = full_tpk_new
             .userids()
             .filter(|binding| known_uids.contains(binding.userid()))
             .flat_map(|binding| {
@@ -193,6 +193,8 @@ pub trait Database: Sync + Send {
                 }
             })
             .collect();
+        email_status.sort_by(|(e1,_),(e2,_)| e1.cmp(e2));
+        email_status.dedup();
 
         // Abort if no changes were made
         if full_tpk_unchanged {
@@ -284,7 +286,7 @@ pub trait Database: Sync + Send {
                  .collect()
                 ).unwrap_or_default();
 
-        let email_status = tpk_full
+        let mut email_status: Vec<_> = tpk_full
             .userids()
             .flat_map(|binding| {
                 let uid = binding.userid();
@@ -303,6 +305,8 @@ pub trait Database: Sync + Send {
                 }
             })
             .collect();
+        email_status.sort_by(|(e1,_),(e2,_)| e1.cmp(e2));
+        email_status.dedup();
 
         Ok(TpkStatus { is_revoked, email_status })
     }
