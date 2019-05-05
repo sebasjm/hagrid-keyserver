@@ -28,10 +28,8 @@ extern crate sequoia_openpgp as openpgp;
 use openpgp::{
     TPK,
     RevocationStatus,
-    armor::{Writer, Kind},
-    packet::{UserID, Tag},
+    packet::UserID,
     parse::Parse,
-    serialize::Serialize as OpenPgpSerialize,
 };
 
 pub mod types;
@@ -44,6 +42,9 @@ pub use self::fs::Filesystem as KeyDatabase;
 
 mod stateful_tokens;
 pub use stateful_tokens::StatefulTokens;
+
+mod openpgp_utils;
+use openpgp_utils::{tpk_filter_userids, tpk_to_string, tpk_clean};
 
 #[cfg(test)]
 mod test;
@@ -132,15 +133,6 @@ pub trait Database: Sync + Send {
     fn by_kid(&self, kid: &KeyID) -> Option<String>;
     fn by_email(&self, email: &Email) -> Option<String>;
 
-    fn tpk_into_bytes(tpk: &TPK) -> Result<Vec<u8>> {
-        use openpgp::serialize::Serialize;
-        use std::io::Cursor;
-
-        let mut cur = Cursor::new(Vec::default());
-        tpk.serialize(&mut cur)
-            .map(|_| cur.into_inner())
-    }
-
     /// Complex operation that updates a TPK in the database.
     ///
     /// 1. Merge new TPK with old, full TPK
@@ -218,7 +210,7 @@ pub trait Database: Sync + Send {
             .filter(|uid| revoked_uids.contains(uid))
             .collect();
 
-        let published_tpk_new = filter_userids(
+        let published_tpk_new = tpk_filter_userids(
             &full_tpk_new, |uid| {
                 published_uids.contains(uid) && !newly_revoked_uids.contains(&uid)
             })?;
@@ -252,7 +244,8 @@ pub trait Database: Sync + Send {
         let fpr_not_linked = fpr_checks.into_iter().flatten();
 
         let full_tpk_tmp = self.write_to_temp(&tpk_to_string(&full_tpk_new)?)?;
-        let published_tpk_tmp = self.write_to_temp(&tpk_to_string(&published_tpk_new)?)?;
+        let published_tpk_clean = tpk_clean(&published_tpk_new)?;
+        let published_tpk_tmp = self.write_to_temp(&tpk_to_string(&published_tpk_clean)?)?;
 
         // these are very unlikely to fail. but if it happens,
         // database consistency might be compromised!
@@ -353,7 +346,7 @@ pub trait Database: Sync + Send {
         }
 
         let published_tpk_new = {
-            filter_userids(&full_tpk,
+            tpk_filter_userids(&full_tpk,
                 |uid| Email::try_from(uid).unwrap() == *email_new || published_uids_old.contains(uid))?
         };
 
@@ -364,7 +357,8 @@ pub trait Database: Sync + Send {
                 return Err(failure::err_msg("Requested UserID not found!"));
         }
 
-        let published_tpk_tmp = self.write_to_temp(&tpk_to_string(&published_tpk_new)?)?;
+        let published_tpk_clean = tpk_clean(&published_tpk_new)?;
+        let published_tpk_tmp = self.write_to_temp(&tpk_to_string(&published_tpk_clean)?)?;
 
         self.move_tmp_to_published(published_tpk_tmp, &fpr_primary)?;
 
@@ -408,7 +402,7 @@ pub trait Database: Sync + Send {
             .collect();
 
         let published_tpk_new = {
-            filter_userids(&published_tpk_old, |uid| email_remove(uid))?
+            tpk_filter_userids(&published_tpk_old, |uid| email_remove(uid))?
         };
 
         let published_emails_new: Vec<Email> = published_tpk_new
@@ -422,7 +416,8 @@ pub trait Database: Sync + Send {
             .iter()
             .filter(|email| !published_emails_new.contains(email));
 
-        let published_tpk_tmp = self.write_to_temp(&tpk_to_string(&published_tpk_new)?)?;
+        let published_tpk_clean = tpk_clean(&published_tpk_new)?;
+        let published_tpk_tmp = self.write_to_temp(&tpk_to_string(&published_tpk_clean)?)?;
 
         self.move_tmp_to_published(published_tpk_tmp, &fpr_primary)?;
 
@@ -460,53 +455,4 @@ pub trait Database: Sync + Send {
     fn write_to_temp(&self, content: &[u8]) -> Result<NamedTempFile>;
     fn move_tmp_to_full(&self, content: NamedTempFile, fpr: &Fingerprint) -> Result<()>;
     fn move_tmp_to_published(&self, content: NamedTempFile, fpr: &Fingerprint) -> Result<()>;
-}
-
-fn tpk_to_string(tpk: &TPK) -> Result<Vec<u8>> {
-    let mut buf = Vec::new();
-    {
-        let mut armor_writer = Writer::new(&mut buf, Kind::PublicKey, &[][..])?;
-        tpk.serialize(&mut armor_writer)?;
-    }
-    Ok(buf)
-}
-
-/// Filters the TPK, keeping only those UserIDs that fulfill the
-/// predicate `filter`.
-fn filter_userids<F>(tpk: &TPK, filter: F) -> Result<TPK>
-    where F: Fn(&UserID) -> bool
-{
-    // Iterate over the TPK, pushing packets we want to merge
-    // into the accumulator.
-    let mut acc = Vec::new();
-
-    // The primary key and related signatures.
-    acc.push(tpk.primary().clone().into_packet(Tag::PublicKey)?);
-    for s in tpk.selfsigs()          { acc.push(s.clone().into()) }
-    for s in tpk.certifications()    { acc.push(s.clone().into()) }
-    for s in tpk.self_revocations()  { acc.push(s.clone().into()) }
-    for s in tpk.other_revocations() { acc.push(s.clone().into()) }
-
-    // The subkeys and related signatures.
-    for skb in tpk.subkeys() {
-        acc.push(skb.subkey().clone().into_packet(Tag::PublicSubkey)?);
-        for s in skb.selfsigs()          { acc.push(s.clone().into()) }
-        for s in skb.certifications()    { acc.push(s.clone().into()) }
-        for s in skb.self_revocations()  { acc.push(s.clone().into()) }
-        for s in skb.other_revocations() { acc.push(s.clone().into()) }
-    }
-
-    // Updates for UserIDs fulfilling `filter`.
-    for uidb in tpk.userids() {
-        // Only include userids matching filter
-        if filter(uidb.userid()) {
-            acc.push(uidb.userid().clone().into());
-            for s in uidb.selfsigs()          { acc.push(s.clone().into()) }
-            for s in uidb.certifications()    { acc.push(s.clone().into()) }
-            for s in uidb.self_revocations()  { acc.push(s.clone().into()) }
-            for s in uidb.other_revocations() { acc.push(s.clone().into()) }
-        }
-    }
-
-    TPK::from_packet_pile(acc.into())
 }
