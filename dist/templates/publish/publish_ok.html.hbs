@@ -1,6 +1,6 @@
 {{#> layout }}
   <p>
-    Your key <span class="fingerprint"><a href="{{key_link}}" target="_blank">{{key_fpr}}</a></span> was successfully uploaded.
+    The key <span class="fingerprint"><a href="{{key_link}}" target="_blank">{{key_fpr}}</a></span> was successfully uploaded.
   </p>
 
   {{#if is_revoked}}
@@ -10,7 +10,8 @@
   {{else}}
     {{#if uid_status}}
       <p>
-        You can make the key available for search by address:
+        To make this key available for search by an e-mail address, you must
+        verify it belongs to you:
       </p>
 
       {{#each uid_status}}

@@ -382,7 +382,7 @@ fn show_publish_verify(
     } else {
         verify_state
     };
-    let uid_status: Vec<_> = tpk_status.email_status.iter()
+    let mut uid_status: Vec<_> = tpk_status.email_status.iter()
         .map(|(email, status)|
             template::PublishUidStatus {
                 address: email.to_string(),
@@ -391,6 +391,9 @@ fn show_publish_verify(
                 revoked: *status == EmailAddressStatus::Revoked,
             })
         .collect();
+    uid_status.sort_by(|fst,snd| {
+        fst.revoked.cmp(&snd.revoked).then(fst.address.cmp(&snd.address))
+    });
 
     MyResponse::publish_ok(&token_stateless, verify_state, uid_status)
 }

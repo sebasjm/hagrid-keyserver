@@ -1,14 +1,13 @@
 {{#> layout }}
   <center><h2>Upload</h2></center>
 
-  <p>After uploading your key we will send a verification link to each email
-    address we find inside.
-    Clicking that link will make your key searchable by that email address.
+  <p style="line-height: 1.8em;">
+    An uploaded key can be retrieved by its fingerprint.<br />
+    After upload, you can also make it searchable by e-mail address.
   </p>
 
   <form action="/vks/v1/publish" method="POST" enctype="multipart/form-data">
     <div class="upload">
-      <input type="hidden" name="csrf" value="{{csrf}}" />
       <input type="file" id="keytext" name="keytext" autofocus class="fileUpload" placeholder="Your public key"/>
       <button type="submit" class="uploadButton button smallButton">
         <img src="/assets/upload.svg" style="width: 1em;">
