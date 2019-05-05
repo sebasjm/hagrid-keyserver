@@ -386,15 +386,30 @@ impl Database for Filesystem {
     }
 
     fn check_link_fpr(&self, fpr: &Fingerprint, fpr_target: &Fingerprint) -> Result<Option<Fingerprint>> {
-        let link = self.link_by_fingerprint(&fpr);
-        let target = diff_paths(&self.fingerprint_to_path_published(fpr_target),
-                                link.parent().unwrap()).unwrap();
+        let link_keyid = self.link_by_keyid(&fpr.into());
+        let link_fpr = self.link_by_fingerprint(&fpr);
 
-        if link == target {
-            return Ok(None);
+        let path_published = self.fingerprint_to_path_published(fpr_target);
+
+        if let Ok(link_keyid_target) = link_keyid.canonicalize() {
+            if link_keyid_target != path_published {
+                info!("KeyID points to different key for {}", fpr);
+                Err(failure::err_msg("Collision with a different key!"))?;
+            }
         }
 
-        Ok(Some(fpr.clone()))
+        if let Ok(link_fpr_target) = link_keyid.canonicalize() {
+             if link_fpr_target != path_published {
+                 info!("Fingerprint points to different key for {}", fpr);
+                 Err(failure::err_msg("Collision with a different key!"))?;
+             }
+        }
+
+        if !link_fpr.exists() || link_keyid.exists() {
+            Ok(Some(fpr.clone()))
+        } else {
+            Ok(None)
+        }
     }
 
     fn lookup_primary_fingerprint(&self, term: &Query) -> Option<Fingerprint> {
