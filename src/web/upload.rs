@@ -260,7 +260,13 @@ where
     let mut tpks = Vec::new();
     for tpk in parser {
         tpks.push(match tpk {
-            Ok(t) => t,
+            Ok(t) => {
+                if t.is_tsk() {
+                    return Ok(MyResponse::bad_request("publish/publish",
+                        failure::err_msg("Whoops, please don't upload secret keys!")));
+                }
+                t
+            },
             Err(e) => return Ok(MyResponse::bad_request("publish/publish", e)),
         });
     }
