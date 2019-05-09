@@ -194,7 +194,7 @@ pub trait Database: Sync + Send {
             })
             .collect();
         email_status.sort_by(|(e1,_),(e2,_)| e1.cmp(e2));
-        email_status.dedup();
+        email_status.dedup_by(|(e1, _), (e2, _)| e1 == e2);
 
         // Abort if no changes were made
         if full_tpk_unchanged {
@@ -306,7 +306,7 @@ pub trait Database: Sync + Send {
             })
             .collect();
         email_status.sort_by(|(e1,_),(e2,_)| e1.cmp(e2));
-        email_status.dedup();
+        email_status.dedup_by(|(e1, _), (e2, _)| e1 == e2);
 
         Ok(TpkStatus { is_revoked, email_status })
     }

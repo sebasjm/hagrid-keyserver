@@ -680,8 +680,7 @@ pub fn test_same_email_2<D: Database>(db: &mut D) {
         .0;
     let uid1 = UserID::from(str_uid1);
     let uid2 = UserID::from(str_uid2);
-    let email1 = Email::from_str(str_uid1).unwrap();
-    let email2 = Email::from_str(str_uid2).unwrap();
+    let email = Email::from_str(str_uid1).unwrap();
     let fpr = Fingerprint::try_from(tpk.fingerprint()).unwrap();
 
     // upload key
@@ -691,16 +690,13 @@ pub fn test_same_email_2<D: Database>(db: &mut D) {
     assert_eq!(TpkStatus {
         is_revoked: false,
         email_status: vec!(
-            (email1.clone(), EmailAddressStatus::NotPublished),
-            (email2.clone(), EmailAddressStatus::NotPublished),
+            (email.clone(), EmailAddressStatus::NotPublished),
         )
     }, tpk_status);
     db.set_email_published(&fpr, &tpk_status.email_status[0].0).unwrap();
 
     // fetch by both user ids.
-    assert_eq!(get_userids(&db.by_email(&email1).unwrap()[..]),
-               vec![ uid1.clone(), uid2.clone() ]);
-    assert_eq!(get_userids(&db.by_email(&email2).unwrap()[..]),
+    assert_eq!(get_userids(&db.by_email(&email).unwrap()[..]),
                vec![ uid1.clone(), uid2.clone() ]);
 
     thread::sleep(time::Duration::from_secs(2));
@@ -724,15 +720,14 @@ pub fn test_same_email_2<D: Database>(db: &mut D) {
     assert_eq!(TpkStatus {
         is_revoked: false,
         email_status: vec!(
-            (email1.clone(), EmailAddressStatus::Published),
-            (email2.clone(), EmailAddressStatus::Revoked),
+            (email.clone(), EmailAddressStatus::Published),
         )
     }, tpk_status);
 
     // fetch by both user ids.  We should still get both user ids.
     // TODO should this still deliver uid2.clone()?
-    assert_eq!(get_userids(&db.by_email(&email1).unwrap()[..]),
+    assert_eq!(get_userids(&db.by_email(&email).unwrap()[..]),
                vec![ uid1.clone() ]);
-    assert_eq!(get_userids(&db.by_email(&email2).unwrap()[..]),
+    assert_eq!(get_userids(&db.by_email(&email).unwrap()[..]),
                vec![ uid1.clone() ]);
 }
