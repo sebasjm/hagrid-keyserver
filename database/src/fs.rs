@@ -392,15 +392,17 @@ impl Database for Filesystem {
         let path_published = self.fingerprint_to_path_published(fpr_target);
 
         if let Ok(link_keyid_target) = link_keyid.canonicalize() {
-            if link_keyid_target != path_published {
-                info!("KeyID points to different key for {}", fpr);
+            if !link_keyid_target.ends_with(&path_published) {
+                info!("KeyID points to different key for {} (expected {:?} to be suffix of {:?})",
+                    fpr, &path_published, &link_keyid_target);
                 Err(failure::err_msg("Collision with a different key!"))?;
             }
         }
 
         if let Ok(link_fpr_target) = link_keyid.canonicalize() {
-             if link_fpr_target != path_published {
-                 info!("Fingerprint points to different key for {}", fpr);
+             if !link_fpr_target.ends_with(&path_published) {
+                info!("Fingerprint points to different key for {} (expected {:?} to be suffix of {:?})",
+                    fpr, &path_published, &link_fpr_target);
                  Err(failure::err_msg("Collision with a different key!"))?;
              }
         }
