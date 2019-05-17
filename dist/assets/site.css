@@ -30,8 +30,26 @@ p {
   padding-bottom: 0.5em;
 }
 
+.ui p {
+  line-height: 1.8em;
+}
+
 a, a:visited {
   color: #0057B3;
+  text-decoration: none;
+}
+
+a.brand {
+  color: #050505;
+}
+
+span.brand {
+  font-family: monospace;
+  font-size: large;
+}
+
+a:hover {
+  text-decoration: underline;
 }
 
 code {
@@ -79,15 +97,6 @@ li {
 abbr {
   text-decoration: none;
   color: #444;
-}
-
-a {
-  text-decoration: none;
-}
-
-a.brand {
-  text-decoration: none;
-  color: #050505;
 }
 
 .search, .upload, .manage {
@@ -139,6 +148,10 @@ a.brand {
   margin-bottom: 0.3em;
 }
 .verificationEmails li {
+  line-height: 1.5em;
+}
+
+.usage li {
   line-height: 1.5em;
 }
 

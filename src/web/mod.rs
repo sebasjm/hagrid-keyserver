@@ -274,6 +274,11 @@ fn about() -> Template {
     Template::render("about/about", templates::General::default())
 }
 
+#[get("/about/usage")]
+fn usage() -> Template {
+    Template::render("about/usage", templates::General::default())
+}
+
 #[get("/about/privacy")]
 fn privacy() -> Template {
     Template::render("about/privacy", templates::General::default())
@@ -295,6 +300,7 @@ fn rocket_factory(rocket: rocket::Rocket) -> Result<rocket::Rocket> {
         about,
         privacy,
         apidoc,
+        usage,
         files,
         // VKSv1
         vks_v1_by_email,

@@ -1,0 +1,64 @@
+{{#> layout }}
+<div class="about usage">
+    <center><h2><a href="/about">About</a> | Usage | <a href="/about/privacy">Privacy Policy</a> | <a href="/about/api">API Docs</a></h2></center>
+
+    <p>
+        On this page, we collect information on how to use
+        <span class="brand">keys.openpgp.org</span> with different OpenPGP
+        software products.<br />
+        We are still in the process of adding more. If you are missing some, please
+        write to us and we'll try to add it.
+    </p>
+
+    <h2 style="margin-left: 3%;"><img src="/assets/img/enigmail.svg" style="display: inline; height: 2em; vertical-align: -30%; padding-right: 10px;" /> Enigmail</h2>
+    <p>
+        Enigmail uses <span class="brand">keys.openpgp.org</span> by default,
+        since version X.XX.
+        <ul>
+            <li>During creation, you can optionally upload and verify your key.</li>
+            <li>Key material will be kept up to date automatically.</li>
+        </ul>
+    </p>
+
+    <h2 style="margin-left: 3%;"><img src="/assets/img/openkeychain.svg" style="display: inline; height: 2em; vertical-align: -30%; padding-right: 10px;" /> OpenKeychain</h2>
+    <p>
+        OpenKeychain uses <span class="brand">keys.openpgp.org</span> by
+        default, since June 2019.
+        <ul>
+            <li>During creation, you can optionally upload and verify your key.</li>
+            <li>Key material will be kept up to date automatically.</li>
+        </ul>
+    </p>
+
+    <h2 style="margin-left: 3%;"><img src="/assets/img/gnupg.svg" style="display: inline; height: 2em; vertical-align: -30%; padding-right: 10px;" /> GnuPG</h2>
+    <p>
+        To configure GnuPG to use <span class="brand">keys.openpgp.org</span>
+        as keyserver, add this line to your <tt>gpg.conf</tt> file:
+        <blockquote>
+            keyserver hkps://keys.openpgp.org
+        </blockquote>
+        Alternatively, commands can be run with an extra parameter
+        <tt>--keyserver keys.openpgp.org</tt>.
+
+        <ul>
+            <li>
+                To locate the key of a user, by email address:
+                <blockquote>gpg --locate-keys user@example.net</blockquote>
+            </li>
+            <li>To refresh all your keys (e.g. new revocation certificates and subkeys):
+                <blockquote>gpg --refresh</blockquote>
+            </li>
+        </ul>
+    </p>
+
+    <h2 style="margin-left: 3%;">Others</h2>
+
+    <p>
+        Missing a guide for your favorite implementation?  This site is
+        a work-in-progress, and we are looking to improve. Drop us a line at
+        <span class="email">support at keys dot openpgp dot org</span> if you
+        want to help out!
+    </p>
+
+</div>
+{{/layout}}

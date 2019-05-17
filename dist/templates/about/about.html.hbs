@@ -1,6 +1,6 @@
 {{#> layout }}
 <div class="about">
-    <center><h2>About | <a href="/about/privacy">Privacy Policy</a> | <a href="/about/api">API Docs</a></h2></center>
+    <center><h2>About | <a href="/about/usage">Usage</a> | <a href="/about/privacy">Privacy Policy</a> | <a href="/about/api">API Docs</a></h2></center>
 
     <p>
         The <tt>keys.openpgp.org</tt> website is a public service for the
@@ -9,19 +9,23 @@
     </p>
 
     <p>
-        As a user, <tt>hkps://keys.openpgp.org</tt> can be used as a drop-in
-        replacement for other keyservers, offering fast and reliable response
-        times. All typical workflows for key updates and discovery by e-mail
-        address are supported. Keys which are discoverable by e-mail must be
-        verified by their owner, and can also be deleted by them. See below for
-        details.
+        <strong>For instructions, see our <a href="/about/usage">usage guide</a>.</strong>
     </p>
 
     <p>
-        This service is run as a community effort. You can talk to us in #hagrid
-        on Freenode IRC, also reachable as #hagrid:stratum0.org on Matrix. The
-        folks who made this come from various projects in the OpenPGP ecosystem
-        including Sequoia-PGP, OpenKeychain, and Enigmail.
+        As a user, <span class="brand">keys.openpgp.org</span> can be used as
+        a drop-in replacement for other keyservers, offering fast and reliable
+        response times. All typical workflows for key updates and discovery by
+        e-mail address are supported. Keys which are discoverable by e-mail must
+        be verified by their owner, and can also be deleted by them. See below
+        for details.
+    </p>
+
+    <p>
+        This service is run as a community effort. You can talk to us in
+        ##hagrid on Freenode IRC, also reachable as #hagrid:stratum0.org on
+        Matrix. The folks who are running this come from various projects in the
+        OpenPGP ecosystem including Sequoia-PGP, OpenKeychain, and Enigmail.
     </p>
 
     <p>
@@ -39,13 +43,14 @@
     <ul>
         <li><b>Fast and reliable key distribution</b>
             <p>The primary function of <tt>keys.openpgp.org</tt> is the
-                distribution of updates for OpenPGP public keys. Keys can be
-                uploaded by anyone, and can then be retrieved by fingerprint.
-                This allows OpenPGP clients to update keys they already know, in
+                distribution of updates for OpenPGP public keys.  OpenPGP
+                clients can retrieve updates for keys they already know, in
                 particular revocations and new subkeys.
             </p>
-            <p>Keys can also be discovered by e-mail, if published by their
-                owner (see below).</p>
+            <p>While cryptographic key material is distributed with no
+                authentication, <strong>e-mail addresses are only distributed
+                    with their owner's consent.</strong> See next point for
+                details.</p>
             <p>We make it a priority to keep the service fast and reliable.</p>
         </li>
 

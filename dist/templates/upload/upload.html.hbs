@@ -1,7 +1,8 @@
 {{#> layout }}
+<div class="ui">
   <center><h2>Upload</h2></center>
 
-  <p style="line-height: 1.8em;">
+  <p>
     An uploaded key can be retrieved by its fingerprint.<br />
     After upload, you can also make it searchable by e-mail address.
   </p>
@@ -15,22 +16,9 @@
     </div>
   </form>
 
-  {{#if show_help}}
   <p>
-    You can delete an uploaded key <a href="/manage">here</a>.
+    Don't know what to do? Check our <a target="_blank" href="/about/usage">usage guide</a>.
   </p>
-
-  <p>If you're using GnuPG you can use the following snippet to export your
-    public key.<br />
-    This will create a file called mykey.pgp that you can upload here.
-  </p>
-  <center><pre><code class="snippet">gpg --export your_address@example.org &gt; mykey.pgp</code></pre></center>
-  {{else}}
-  <p>
-    You can delete an uploaded key <a href="/manage">here</a>.
-    Need help <a href="/publish?guide=true">exporting your key to a file</a>?
-  </p>
-  {{/if}}
 
   <script>
     var body = document.getElementsByTagName("body")[0];
@@ -48,4 +36,5 @@
         }
     }, false);
   </script>
+</div>
 {{/layout}}
