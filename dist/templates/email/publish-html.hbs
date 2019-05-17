@@ -2,13 +2,15 @@
 <html lang=en>
   <head>
     <meta charset=utf-8>
-    <title>Please verify your email address</title>
+    <title>Verify your address: {{userid}}</title>
   </head>
   <body>
     <p>
-      Someone, presumably you, has uploaded a key
-      to <a href="{{base_uri}}">{{domain}}</a>.  The key has the
-      following fingerprint:
+      Hi there,
+
+      someone, presumably you, has uploaded an OpenPGP key on
+        <a href="{{base_uri}}">{{domain}}</a> for the address "{{userid}}".
+      The key has the following fingerprint:
     </p>
     <p>
       <pre>{{primary_fp}}</pre>
@@ -18,15 +20,15 @@
       email.
     </p>
     <p>
-      To make your key available when searching for "{{userid}}" on
-      <a href="{{base_uri}}">{{domain}}</a>, follow this link:
+      To allow others to find this OpenPGP key from your email address "{{userid}}",
+      click the link below:
     </p>
     <p>
       <a href="{{uri}}">{{uri}}</a>
     </p>
     <p>
-      If you don't want to make the key available when searching for
-      "{{userid}}", please ignore this email.
+      You can find more info about the keys.openpgp.org keyserver at
+      <a href="{{base_uri}}/about/help">{{base_uri}}/about/help</a>.
     </p>
   </body>
 </html>
