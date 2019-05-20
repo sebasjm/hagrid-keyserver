@@ -145,7 +145,7 @@ pub fn vks_manage_post(
     }
 
     let fpr: Fingerprint = tpk.fingerprint().try_into().unwrap();
-    let token = token_service.create(StatelessVerifyToken { fpr });
+    let token = token_service.create(&StatelessVerifyToken { fpr });
     let token_uri = uri!(vks_manage_key: token).to_string();
 
     if let Err(e) = mail_service.send_manage_token(&email, &token_uri) {

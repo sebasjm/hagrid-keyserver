@@ -9,6 +9,8 @@ use rocket::http::ContentType;
 use rocket::request::Form;
 use rocket::Data;
 
+use rocket_contrib::json::Json;
+
 use database::{Database, KeyDatabase, StatefulTokens, EmailAddressStatus, TpkStatus};
 use database::types::{Fingerprint,Email};
 use mail;
@@ -20,6 +22,7 @@ use sequoia_openpgp::TPK;
 
 use std::io::Read;
 use std::convert::TryFrom;
+use std::collections::HashMap;
 
 const UPLOAD_LIMIT: u64 = 1024 * 1024; // 1 MiB.
 
@@ -33,7 +36,7 @@ mod template {
     }
 
     #[derive(Serialize)]
-    pub struct Publish {
+    pub struct Upload {
         pub commit: String,
         pub version: String,
         pub show_help: bool,
@@ -47,7 +50,7 @@ mod template {
         pub key_link: String,
         pub is_revoked: bool,
         pub token: String,
-        pub uid_status: Vec<PublishUidStatus>,
+        pub uid_status: Vec<UploadUidStatus>,
     }
 
     #[derive(Serialize)]
@@ -64,7 +67,7 @@ mod template {
     }
 
     #[derive(Serialize)]
-    pub struct PublishUidStatus {
+    pub struct UploadUidStatus {
         pub address: String,
         pub requested: bool,
         pub published: bool,
@@ -74,33 +77,105 @@ mod template {
 }
 
 mod forms {
-    #[derive(FromForm)]
+    #[derive(FromForm,Deserialize)]
     pub struct VerifyRequest {
         pub token: String,
         pub address: String,
     }
+
+    #[derive(Deserialize)]
+    pub struct UploadRequest {
+        pub keytext: String,
+    }
+}
+
+#[derive(Debug,Serialize,Deserialize,PartialEq,Eq)]
+pub enum EmailStatus {
+    #[serde(rename = "unpublished")]
+    Unpublished,
+    #[serde(rename = "pending")]
+    Pending,
+    #[serde(rename = "published")]
+    Published,
+    #[serde(rename = "revoked")]
+    Revoked,
+}
+
+pub mod json {
+    use std::collections::HashMap;
+    use super::EmailStatus;
+
+    #[derive(Deserialize)]
+    pub struct VerifyRequest {
+        pub token: String,
+        pub addresses: Vec<String>,
+    }
+
+    #[derive(Serialize,Deserialize)]
+    pub struct UploadResult {
+        pub token: String,
+        pub key_fpr: String,
+        pub status: HashMap<String,EmailStatus>,
+    }
+}
+
+pub enum OutputType {
+    HumanReadable,
+    Json,
 }
 
 impl MyResponse {
-    fn publish_ok(
-        token_stateless: &tokens::Service,
+    fn upload_ok(
+        token: String,
         verify_state: VerifyTpkState,
-        uid_status: Vec<template::PublishUidStatus>
+        uid_status: HashMap<String,EmailStatus>,
+        output_type: OutputType,
     ) -> Self {
         let key_fpr = verify_state.fpr.to_string();
         let key_link = format!("/pks/lookup?op=get&search={}", &verify_state.fpr);
-        let token = token_stateless.create(verify_state);
+
+        match output_type {
+            OutputType::HumanReadable =>
+                Self::upload_ok_hr(token, key_fpr, key_link, uid_status),
+            OutputType::Json =>
+                Self::upload_ok_json(token, key_fpr, uid_status),
+        }
+    }
+
+    fn upload_ok_json(
+        token: String,
+        key_fpr: String,
+        uid_status: HashMap<String,EmailStatus>,
+    ) -> MyResponse {
+        let result = json::UploadResult { token, key_fpr, status: uid_status };
+        MyResponse::Json(serde_json::to_string(&result).unwrap())
+    }
+
+    fn upload_ok_hr(
+        token: String,
+        key_fpr: String,
+        key_link: String,
+        uid_status: HashMap<String,EmailStatus>,
+    ) -> MyResponse {
+        let mut uid_status: Vec<_> = uid_status
+            .into_iter()
+            .map(|(email,status)|
+                template::UploadUidStatus {
+                    address: email.to_string(),
+                    requested: status == EmailStatus::Pending,
+                    published: status == EmailStatus::Published,
+                    revoked: status == EmailStatus::Revoked,
+                })
+            .collect();
+        uid_status.sort_by(|fst,snd| {
+            fst.revoked.cmp(&snd.revoked).then(fst.address.cmp(&snd.address))
+        });
 
         let context = template::VerificationSent {
             version: env!("VERGEN_SEMVER").to_string(),
             commit: env!("VERGEN_SHA_SHORT").to_string(),
-            is_revoked: false,
-            key_fpr,
-            key_link,
-            token: token,
-            uid_status,
+            is_revoked: false, key_fpr, key_link, token, uid_status,
         };
-
         MyResponse::ok("publish/publish_ok", context)
     }
 }
@@ -115,17 +190,9 @@ struct VerifyTpkState {
 impl StatelessSerializable for VerifyTpkState {
 }
 
-impl VerifyTpkState {
-    fn with_requested(self, requested_address: Email) -> Self {
-        let VerifyTpkState { fpr, addresses, mut requested } = self;
-        requested.push(requested_address);
-        VerifyTpkState { fpr, addresses, requested }
-    }
-}
-
 #[get("/publish?<guide>")]
 pub fn publish(guide: bool) -> MyResponse {
-    let context = template::Publish {
+    let context = template::Upload {
         version: env!("VERGEN_SEMVER").to_string(),
         commit: env!("VERGEN_SHA_SHORT").to_string(),
         show_help: guide,
@@ -134,103 +201,113 @@ pub fn publish(guide: bool) -> MyResponse {
     MyResponse::ok("publish/publish", context)
 }
 
-#[post("/vks/v1/publish", data = "<data>")]
-pub fn vks_v1_publish_post(
+#[post("/vks/v1/publish", format = "json", data = "<data>")]
+pub fn vks_v1_upload_post_json(
     db: rocket::State<KeyDatabase>,
     tokens_stateless: rocket::State<tokens::Service>,
-    cont_type: &ContentType,
-    data: Data,
-) -> MyResponse {
-    match handle_upload(&db, &tokens_stateless, cont_type, data) {
-        Ok(ok) => ok,
-        Err(err) => MyResponse::ise(err),
-    }
+    rate_limiter: rocket::State<RateLimiter>,
+    data: Json<forms::UploadRequest>,
+) -> Result<MyResponse> {
+    use std::io::Cursor;
+    let data_reader = Cursor::new(data.keytext.as_bytes());
+    process_key(&db, &tokens_stateless, &rate_limiter, data_reader, OutputType::Json)
 }
 
-// signature requires the request to have a `Content-Type`
-pub fn handle_upload(
-    db: &KeyDatabase,
-    tokens_stateless: &tokens::Service,
+#[post("/vks/v1/publish", format = "multipart/form-data", data = "<data>")]
+pub fn vks_v1_upload_post_form_data(
+    db: rocket::State<KeyDatabase>,
+    tokens_stateless: rocket::State<tokens::Service>,
+    rate_limiter: rocket::State<RateLimiter>,
     cont_type: &ContentType,
     data: Data,
 ) -> Result<MyResponse> {
-    if cont_type.is_form_data() {
-        // multipart/form-data
-        let (_, boundary) =
-            match cont_type.params().find(|&(k, _)| k == "boundary") {
-                Some(v) => v,
-                None => return Ok(MyResponse::bad_request(
-                    "publish/publish",
-                    failure::err_msg("`Content-Type: multipart/form-data` \
-                                      boundary param not provided"))),
-            };
+    // multipart/form-data
+    let (_, boundary) =
+        match cont_type.params().find(|&(k, _)| k == "boundary") {
+            Some(v) => v,
+            None => return Ok(MyResponse::bad_request(
+                "publish/publish",
+                failure::err_msg("`Content-Type: multipart/form-data` \
+                                    boundary param not provided"))),
+        };
 
-        process_upload(db, tokens_stateless, data, boundary)
-    } else if cont_type.is_form() {
-        use rocket::request::FormItems;
-        use std::io::Cursor;
+    process_upload(&db, &tokens_stateless, &rate_limiter, data, boundary, OutputType::HumanReadable)
+}
 
-        // application/x-www-form-urlencoded
-        let mut buf = Vec::default();
+#[post("/vks/v1/publish", format = "application/x-www-form-urlencoded", data = "<data>")]
+pub fn vks_v1_upload_post_form(
+    db: rocket::State<KeyDatabase>,
+    tokens_stateless: rocket::State<tokens::Service>,
+    rate_limiter: rocket::State<RateLimiter>,
+    data: Data,
+) -> Result<MyResponse> {
+    use rocket::request::FormItems;
+    use std::io::Cursor;
 
-        std::io::copy(&mut data.open().take(UPLOAD_LIMIT), &mut buf)?;
+    // application/x-www-form-urlencoded
+    let mut buf = Vec::default();
 
-        for item in FormItems::from(&*String::from_utf8_lossy(&buf)) {
-            let (key, value) = item.key_value();
-            let decoded_value = value.url_decode().or_else(|_| {
-                Err(failure::err_msg(
-                    "`Content-Type: application/x-www-form-urlencoded` \
-                     not valid"))
-            })?;
+    std::io::copy(&mut data.open().take(UPLOAD_LIMIT), &mut buf)?;
 
-            match key.as_str() {
-                "keytext" => {
-                    return process_key(
-                        db,
-                        tokens_stateless,
-                        Cursor::new(decoded_value.as_bytes()),
-                    );
-                }
-                _ => { /* skip */ }
+    for item in FormItems::from(&*String::from_utf8_lossy(&buf)) {
+        let (key, value) = item.key_value();
+        let decoded_value = value.url_decode().or_else(|_| {
+            Err(failure::err_msg(
+                "`Content-Type: application/x-www-form-urlencoded` \
+                    not valid"))
+        })?;
+
+        match key.as_str() {
+            "keytext" => {
+                return process_key(
+                    &db,
+                    &tokens_stateless,
+                    &rate_limiter,
+                    Cursor::new(decoded_value.as_bytes()),
+                    OutputType::HumanReadable,
+                );
             }
+            _ => { /* skip */ }
         }
-
-        Ok(MyResponse::bad_request("publish/publish",
-                                   failure::err_msg("No keytext found")))
-    } else {
-        Ok(MyResponse::bad_request("publish/publish",
-                                   failure::err_msg("Bad Content-Type")))
     }
+
+    Ok(MyResponse::bad_request("publish/publish",
+                                failure::err_msg("No keytext found")))
 }
 
 fn process_upload(
     db: &KeyDatabase,
     tokens_stateless: &tokens::Service,
+    rate_limiter: &RateLimiter,
     data: Data,
     boundary: &str,
+    output_type: OutputType,
 ) -> Result<MyResponse> {
     // saves all fields, any field longer than 10kB goes to a temporary directory
     // Entries could implement FromData though that would give zero control over
     // how the files are saved; Multipart would be a good impl candidate though
     match Multipart::with_body(data.open().take(UPLOAD_LIMIT), boundary).save().temp() {
         Full(entries) => {
-            process_multipart(entries, db, tokens_stateless)
+            process_multipart(db, tokens_stateless, rate_limiter, entries, output_type)
         }
         Partial(partial, _) => {
-            process_multipart(partial.entries, db, tokens_stateless)
+            process_multipart(db, tokens_stateless, rate_limiter, partial.entries, output_type)
         }
         Error(err) => Err(err.into())
     }
 }
 
 fn process_multipart(
-    entries: Entries, db: &KeyDatabase,
+    db: &KeyDatabase,
     tokens_stateless: &tokens::Service,
+    rate_limiter: &RateLimiter,
+    entries: Entries,
+    output_type: OutputType,
 ) -> Result<MyResponse> {
     match entries.fields.get("keytext") {
         Some(ent) if ent.len() == 1 => {
             let reader = ent[0].data.readable()?;
-            process_key(db, tokens_stateless, reader)
+            process_key(db, tokens_stateless, rate_limiter, reader, output_type)
         }
         Some(_) =>
             Ok(MyResponse::bad_request(
@@ -241,14 +318,13 @@ fn process_multipart(
     }
 }
 
-fn process_key<R>(
+fn process_key(
     db: &KeyDatabase,
     tokens_stateless: &tokens::Service,
-    reader: R,
-) -> Result<MyResponse>
-where
-    R: Read,
-{
+    rate_limiter: &RateLimiter,
+    reader: impl Read,
+    output_type: OutputType,
+) -> Result<MyResponse> {
     use sequoia_openpgp::parse::Parse;
     use sequoia_openpgp::tpk::TPKParser;
 
@@ -274,7 +350,7 @@ where
     match tpks.len() {
         0 => Ok(MyResponse::bad_request("publish/publish",
                                         failure::err_msg("No key submitted"))),
-        1 => process_key_single(db, tokens_stateless, tpks.into_iter().next().unwrap()),
+        1 => process_key_single(db, tokens_stateless, rate_limiter, tpks.into_iter().next().unwrap(), output_type),
         _ => process_key_multiple(db, tpks),
     }
 }
@@ -282,7 +358,9 @@ where
 fn process_key_single(
     db: &KeyDatabase,
     tokens_stateless: &tokens::Service,
+    rate_limiter: &RateLimiter,
     tpk: TPK,
+    output_type: OutputType,
 ) -> Result<MyResponse> {
     let fp = Fingerprint::try_from(tpk.fingerprint()).unwrap();
 
@@ -299,7 +377,9 @@ fn process_key_single(
         }
     };
 
-    Ok(show_publish_verify(tokens_stateless, tpk_status, verify_state, None))
+    let token = tokens_stateless.create(&verify_state);
+
+    Ok(show_upload_verify(rate_limiter, token, tpk_status, verify_state, output_type))
 }
 
 fn process_key_multiple(
@@ -326,82 +406,122 @@ fn process_key_multiple(
     Ok(MyResponse::ok("publish/publish-ok-multiple", context))
 }
 
-#[post("/publish/verify", data="<request>")]
-pub fn vks_publish_verify(
+#[post("/vks/v1/request-verify", format = "json", data="<request>")]
+pub fn vks_upload_verify_json(
     db: rocket::State<KeyDatabase>,
-    request: Form<forms::VerifyRequest>,
     token_stateful: rocket::State<StatefulTokens>,
     token_stateless: rocket::State<tokens::Service>,
     mail_service: rocket::State<mail::Service>,
     rate_limiter: rocket::State<RateLimiter>,
+    request: Json<json::VerifyRequest>,
 ) -> Result<MyResponse> {
-    let verify_state = token_stateless.check::<VerifyTpkState>(&request.token)?;
+    let json::VerifyRequest { token, addresses } = request.into_inner();
+    vks_upload_verify(db, token_stateful, token_stateless, mail_service,
+                       rate_limiter, token, addresses, OutputType::Json)
+}
+
+#[post("/vks/v1/request-verify", format = "application/x-www-form-urlencoded", data="<request>")]
+pub fn vks_upload_verify_form(
+    db: rocket::State<KeyDatabase>,
+    token_stateful: rocket::State<StatefulTokens>,
+    token_stateless: rocket::State<tokens::Service>,
+    mail_service: rocket::State<mail::Service>,
+    rate_limiter: rocket::State<RateLimiter>,
+    request: Form<forms::VerifyRequest>,
+) -> Result<MyResponse> {
+    let forms::VerifyRequest { token, address } = request.into_inner();
+    vks_upload_verify(db, token_stateful, token_stateless, mail_service,
+                       rate_limiter, token, vec!(address),
+                       OutputType::HumanReadable)
+}
+
+#[post("/vks/v1/request-verify", format = "multipart/form-data", data="<request>")]
+pub fn vks_upload_verify_form_data(
+    db: rocket::State<KeyDatabase>,
+    token_stateful: rocket::State<StatefulTokens>,
+    token_stateless: rocket::State<tokens::Service>,
+    mail_service: rocket::State<mail::Service>,
+    rate_limiter: rocket::State<RateLimiter>,
+    request: Form<forms::VerifyRequest>,
+) -> Result<MyResponse> {
+    let forms::VerifyRequest { token, address } = request.into_inner();
+    vks_upload_verify(db, token_stateful, token_stateless, mail_service,
+                       rate_limiter, token, vec!(address),
+                       OutputType::HumanReadable)
+}
+
+fn vks_upload_verify(
+    db: rocket::State<KeyDatabase>,
+    token_stateful: rocket::State<StatefulTokens>,
+    token_stateless: rocket::State<tokens::Service>,
+    mail_service: rocket::State<mail::Service>,
+    rate_limiter: rocket::State<RateLimiter>,
+    token: String,
+    addresses: Vec<String>,
+    output_type: OutputType,
+) -> Result<MyResponse> {
+    let verify_state = token_stateless.check::<VerifyTpkState>(&token)?;
     let tpk_status = db.get_tpk_status(&verify_state.fpr, &verify_state.addresses)?;
 
     if tpk_status.is_revoked {
-        return Ok(show_publish_verify(
-                &token_stateless, tpk_status, verify_state, None))
+        return Ok(show_upload_verify(
+                &rate_limiter, token, tpk_status, verify_state, output_type))
     }
 
-    let email_requested = request.address.parse::<Email>()
-        .ok()
+    let emails_requested: Vec<_> = addresses.into_iter()
+        .map(|address| address.parse::<Email>())
+        .flatten()
         .filter(|email| verify_state.addresses.contains(email))
-        .filter(|email| !verify_state.requested.contains(email))
         .filter(|email| tpk_status.email_status.iter()
             .any(|(uid_email, status)|
                 uid_email == email && *status == EmailAddressStatus::NotPublished
-            ));
+            ))
+        .collect();
 
-    if let Some(email) = email_requested {
+    for email in emails_requested {
         let rate_limit_ok = rate_limiter.action_perform(format!("verify-{}", &email));
         if rate_limit_ok {
             let token_content = (verify_state.fpr.clone(), email.clone());
             let token_str = serde_json::to_string(&token_content)?;
-            let token = token_stateful.new_token("verify", token_str.as_bytes())?;
+            let token_verify = token_stateful.new_token("verify", token_str.as_bytes())?;
 
             mail_service.send_verification(
                 verify_state.fpr.to_string(),
                 &email,
-                &token,
+                &token_verify,
             )?;
         }
-
-        Ok(show_publish_verify(&token_stateless, tpk_status, verify_state, Some(email)))
-    } else {
-        Ok(show_publish_verify(&token_stateless, tpk_status, verify_state, None))
     }
 
+    Ok(show_upload_verify(&rate_limiter, token, tpk_status, verify_state, output_type))
 }
 
-fn show_publish_verify(
-    token_stateless: &tokens::Service,
+fn show_upload_verify(
+    rate_limiter: &RateLimiter,
+    token: String,
     tpk_status: TpkStatus,
     verify_state: VerifyTpkState,
-    email_requested: Option<Email>,
+    output_type: OutputType,
 ) -> MyResponse {
     if tpk_status.is_revoked {
-        return MyResponse::publish_ok(&token_stateless, verify_state, vec!())
+        return MyResponse::upload_ok(token, verify_state, HashMap::new(), output_type)
     }
 
-    let verify_state = if let Some(email_requested) = email_requested {
-        verify_state.with_requested(email_requested)
-    } else {
-        verify_state
-    };
-    let mut uid_status: Vec<_> = tpk_status.email_status.iter()
-        .map(|(email, status)|
-            template::PublishUidStatus {
-                address: email.to_string(),
-                requested: verify_state.requested.contains(&email),
-                published: *status == EmailAddressStatus::Published,
-                revoked: *status == EmailAddressStatus::Revoked,
-            })
+    let uid_status: HashMap<_,_> = tpk_status.email_status.iter()
+        .map(|(email,status)|
+                (email.to_string(),
+                if !rate_limiter.action_check(format!("verify-{}", &email)) {
+                    EmailStatus::Pending
+                } else {
+                    match status {
+                        EmailAddressStatus::NotPublished => EmailStatus::Unpublished,
+                        EmailAddressStatus::Published => EmailStatus::Published,
+                        EmailAddressStatus::Revoked => EmailStatus::Revoked,
+                    }
+                }))
         .collect();
-    uid_status.sort_by(|fst,snd| {
-        fst.revoked.cmp(&snd.revoked).then(fst.address.cmp(&snd.address))
-    });
 
-    MyResponse::publish_ok(&token_stateless, verify_state, uid_status)
+    MyResponse::upload_ok(token, verify_state, uid_status, output_type)
 }
 
 #[get("/publish/<token>")]

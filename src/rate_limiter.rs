@@ -33,6 +33,14 @@ impl RateLimiter {
         action_ok
     }
 
+    pub fn action_check(&self, identifier: String) -> bool {
+        let locked_map = self.locked_map.lock().unwrap();
+        locked_map.get(&identifier)
+            .map(|instant| instant.elapsed())
+            .map(|duration| duration >= self.timeout)
+            .unwrap_or(true)
+    }
+
     fn maybe_cleanup(&self) {
         let mut cleanup_last = self.cleanup_last.lock().unwrap();
         if cleanup_last.elapsed() > self.cleanup_delay {

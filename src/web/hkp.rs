@@ -9,6 +9,8 @@ use rocket::http::uri::Uri;
 use database::{Database, Query, KeyDatabase};
 use database::types::{Email, Fingerprint, KeyID};
 
+use rate_limiter::RateLimiter;
+
 use tokens;
 
 use web::{
@@ -117,14 +119,28 @@ impl<'a, 'r> FromRequest<'a, 'r> for Hkp {
     }
 }
 
-#[post("/pks/add", data = "<data>")]
-pub fn pks_add(
+#[post("/pks/add", format = "multipart/form-data", data = "<data>")]
+pub fn pks_add_form_data(
     db: rocket::State<KeyDatabase>,
     tokens_stateless: rocket::State<tokens::Service>,
+    rate_limiter: rocket::State<RateLimiter>,
     cont_type: &ContentType,
     data: Data,
 ) -> MyResponse {
-    match upload::handle_upload(&db, &tokens_stateless, cont_type, data) {
+    match upload::vks_v1_upload_post_form_data(db, tokens_stateless, rate_limiter, cont_type, data) {
+        Ok(_) => MyResponse::plain("Ok".into()),
+        Err(err) => MyResponse::ise(err),
+    }
+}
+
+#[post("/pks/add", format = "application/x-www-form-urlencoded", data = "<data>")]
+pub fn pks_add_form(
+    db: rocket::State<KeyDatabase>,
+    tokens_stateless: rocket::State<tokens::Service>,
+    rate_limiter: rocket::State<RateLimiter>,
+    data: Data,
+) -> MyResponse {
+    match upload::vks_v1_upload_post_form(db, tokens_stateless, rate_limiter, data) {
         Ok(_) => MyResponse::plain("Ok".into()),
         Err(err) => MyResponse::ise(err),
     }

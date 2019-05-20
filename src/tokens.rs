@@ -26,8 +26,8 @@ impl Service {
         Service { sealed_state, validity }
     }
 
-    pub fn create(&self, payload_content: impl StatelessSerializable) -> String {
-        let payload = serde_json::to_string(&payload_content).unwrap();
+    pub fn create(&self, payload_content: &impl StatelessSerializable) -> String {
+        let payload = serde_json::to_string(payload_content).unwrap();
         let creation = current_time();
         let token = Token { creation, payload };
         let token_serialized = serde_json::to_string(&token).unwrap();
@@ -92,7 +92,7 @@ mod tests {
     fn test_create_check() {
         let payload = TestStruct1 { payload: "hello".to_owned() };
         let mt = Service::init("secret", 60);
-        let token = mt.create(payload.clone());
+        let token = mt.create(&payload);
         // println!("{}", &token);
         // assert!(false);
 
@@ -117,7 +117,7 @@ mod tests {
         let payload = TestStruct1 { payload: "hello".to_owned() };
         let mt = Service::init("secret", 60);
 
-        let token = mt.create(payload);
+        let token = mt.create(&payload);
         let check_result = mt.check::<TestStruct2>(&token);
 
         assert!(check_result.is_err());

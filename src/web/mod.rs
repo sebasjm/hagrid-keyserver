@@ -36,6 +36,8 @@ pub enum MyResponse {
     Success(Template),
      #[response(status = 200, content_type = "plain")]
     Plain(String),
+     #[response(status = 200, content_type = "application/json")]
+    Json(String),
      #[response(status = 200, content_type = "application/pgp-keys")]
     Key(String, ContentDisposition),
     #[response(status = 200, content_type = "application/pgp-keys")]
@@ -328,14 +330,19 @@ fn rocket_factory(rocket: rocket::Rocket) -> Result<rocket::Rocket> {
         vks_v1_by_email,
         vks_v1_by_fingerprint,
         vks_v1_by_keyid,
-        upload::vks_v1_publish_post,
+        upload::vks_v1_upload_post_form,
+        upload::vks_v1_upload_post_form_data,
+        upload::vks_v1_upload_post_json,
         // User interaction.
         upload::publish,
         upload::publish_verify,
-        upload::vks_publish_verify,
+        upload::vks_upload_verify_json,
+        upload::vks_upload_verify_form,
+        upload::vks_upload_verify_form_data,
         // HKP
         hkp::pks_lookup,
-        hkp::pks_add,
+        hkp::pks_add_form,
+        hkp::pks_add_form_data,
         // EManage
         manage::vks_manage,
         manage::vks_manage_key,
@@ -673,7 +680,7 @@ pub mod tests {
 
         let mut tpk_serialized_2 = Vec::new();
         tpk_2.serialize(&mut tpk_serialized_2).unwrap();
-        let token_2 = vks_publish_submit_get_token(&client, &tpk_serialized_2);
+        let token_2 = vks_publish_json_get_token(&client, &tpk_serialized_2);
 
         // Prior to email confirmation, we should not be able to look
         // them up by email address.
@@ -691,7 +698,7 @@ pub mod tests {
 
         // Check the verification link
         check_verify_link(&client, &token_1, "foo@invalid.example.com");
-        check_verify_link(&client, &token_2, "bar@invalid.example.com");
+        check_verify_link_json(&client, &token_2, "bar@invalid.example.com");
 
         // Now check for the verification mails.
         check_mails_and_verify_email(&client, &filemail_into);
@@ -870,12 +877,24 @@ pub mod tests {
             .append_pair("address", address)
             .finish();
 
-        let response = client.post("/publish/verify")
+        let response = client.post("/vks/v1/request-verify")
             .header(ContentType::Form)
             .body(encoded.as_bytes())
             .dispatch();
         assert_eq!(response.status(), Status::Ok);
     }
+
+    fn check_verify_link_json(client: &Client, token: &str, address: &str) {
+        let json = format!(r#"{{"token":"{}","address":"{}"}}"#, token, address);
+
+        let mut response = client.post("/vks/v1/request-verify")
+            .header(ContentType::JSON)
+            .body(json.as_bytes())
+            .dispatch();
+        assert_eq!(response.status(), Status::Ok);
+        assert!(response.body_string().unwrap().contains("pending"));
+    }
+
 
     fn check_mails_and_verify_email(client: &Client, filemail_path: &Path) {
         let pattern = format!("{}(/publish/[^ \t\n]*)", BASE_URI);
@@ -964,6 +983,18 @@ pub mod tests {
             .header(ct)
             .body(&body[..])
             .dispatch()
+    }
+
+    fn vks_publish_json_get_token<'a>(client: &'a Client, data: &[u8]) -> String {
+        let mut response = client.post("/vks/v1/publish")
+            .header(ContentType::JSON)
+            .body(format!(r#"{{ "keytext": "{}" }}"#, base64::encode(data)))
+            .dispatch();
+        let response_body = response.body_string().unwrap();
+        let result: upload::json::PublishResult = serde_json::from_str(&response_body).unwrap();
+
+        assert_eq!(response.status(), Status::Ok);
+        result.token
     }
 
     fn vks_manage<'a>(client: &'a Client, search_term: &str) {

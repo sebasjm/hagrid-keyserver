@@ -42,7 +42,7 @@ features = ["file-transport", "sendmail-transport"]
 [dependencies.rocket_contrib]
 version = "0"
 default-features = false
-features = ["handlebars_templates"]
+features = ["handlebars_templates", "json"]
 
 [build-dependencies]
 vergen = "3"
