@@ -10,6 +10,7 @@ default-run = "hagrid"
 [workspace]
 members = [
     "database",
+    "hagridctl",
 ]
 
 [dependencies]

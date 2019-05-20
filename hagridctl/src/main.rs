@@ -1,0 +1,93 @@
+#![feature(proc_macro_hygiene, plugin, decl_macro)]
+#![recursion_limit = "1024"]
+#![feature(try_from)]
+
+extern crate clap;
+extern crate failure;
+extern crate tempfile;
+extern crate sequoia_openpgp as openpgp;
+extern crate hagrid_database as database;
+#[macro_use]
+extern crate serde_derive;
+extern crate toml;
+extern crate indicatif;
+
+use std::fs;
+use std::path::PathBuf;
+use std::str::FromStr;
+
+use failure::Fallible as Result;
+
+use clap::{Arg, App, SubCommand};
+
+mod import;
+
+#[derive(Deserialize)]
+pub struct HagridConfigs {
+    development: HagridConfig,
+    staging: HagridConfig,
+    production: HagridConfig,
+}
+
+// this is not an exact match - Rocket config has more complicated semantics
+// than a plain toml file.
+// see also https://github.com/SergioBenitez/Rocket/issues/228
+#[derive(Deserialize)]
+pub struct HagridConfig {
+    _template_dir: Option<PathBuf>,
+    keys_internal_dir: Option<PathBuf>,
+    keys_external_dir: Option<PathBuf>,
+    _assets_dir: Option<PathBuf>,
+    _token_dir: Option<PathBuf>,
+    tmp_dir: Option<PathBuf>,
+    _maintenance_file: Option<PathBuf>,
+}
+
+fn main() -> Result<()> {
+    let matches = App::new("Hagrid Control")
+                          .version("0.1")
+                          .about("Control hagrid database externally")
+                          .arg(Arg::with_name("config")
+                               .short("c")
+                               .long("config")
+                               .value_name("FILE")
+                               .help("Sets a custom config file")
+                               .takes_value(true))
+                          .arg(Arg::with_name("env")
+                               .short("e")
+                               .long("env")
+                               .value_name("ENVIRONMENT")
+                               .takes_value(true)
+                               .default_value("prod")
+                               .possible_values(&["dev","stage","prod"]))
+                          .subcommand(SubCommand::with_name("import")
+                                      .about("Import keys into Hagrid")
+                                      .arg(Arg::with_name("keyring files")
+                                           .required(true)
+                                           .multiple(true)))
+                          .get_matches();
+
+    let config_file = matches.value_of("config").unwrap_or("Rocket.toml");
+    let config_data = fs::read_to_string(config_file).unwrap();
+    let configs: HagridConfigs = toml::from_str(&config_data).unwrap();
+    let config = match matches.value_of("env").unwrap() {
+        "dev" => configs.development,
+        "stage" => configs.staging,
+        "prod" => configs.production,
+        _ => configs.development,
+    };
+
+    if let Some(matches) = matches.subcommand_matches("import") {
+        let keyrings: Vec<PathBuf> = matches
+            .values_of_lossy("keyring files")
+            .unwrap()
+            .iter()
+            .map(|arg| PathBuf::from_str(arg).unwrap())
+            .collect();
+        import::do_import(&config, keyrings)?;
+    } else {
+        println!("{}", matches.usage());
+    }
+
+    Ok(())
+}
