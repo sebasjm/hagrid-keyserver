@@ -6,50 +6,146 @@
     Hagrid implements both the legacy HKP interface, as well as our
     native interface, VKS.
   </p>
-  <h3>VKS interface</h3>
+
+  <h2>Verifying Keyserver (VKS) Interface</h2>
 
   <p>Hagrid has its own URL scheme to fetch keys.</p>
 
-  <h4><code>GET /vks/v1/by-fingerprint/&lt;FINGERPRINT&gt;</code></h4>
+  <ul>
+    <li>
+      <tt>GET /vks/v1/by-fingerprint/&lt;FINGERPRINT&gt;</tt>
+      <p>
+        Retrieves the key with the given <tt>Fingerprint</tt>.
+        The <tt>Fingerprint</tt> may refer to the primary key, or any subkey.
+        Hexadecimal digits MUST be uppercase,
+        and MUST NOT be prefixed with <code>0x</code>.
+        The returned key is ASCII Armored, and has a content-type of <code>application/pgp-keys</code>.
+      </p>
+    </li>
 
-  <p>
-    Retrieves the key with the
-    given <em>Fingerprint</em>.  <em>Fingerprint</em> may refer to the
-    primary key, or any subkey.  Hexadecimal digits MUST be uppercase,
-    and MUST NOT be prefixed with <code>0x</code>.  The returned key
-    is <em>ASCII Armored</em>.
-  </p>
+    <li>
+      <tt>GET /vks/v1/by-keyid/&lt;KEY-ID&gt;</tt>
+      <p>
+        Retrieves the key with the given long <tt>KeyID</tt>.
+        The <tt>KeyID</tt> may refer to the primary key, or any subkey.
+        Hexadecimal digits MUST be uppercase,
+        and MUST NOT be prefixed with <code>0x</code>.
+        The returned key is ASCII Armored, and has a content-type of <code>application/pgp-keys</code>.
+      </p>
+    </li>
 
-  <h4><code>GET /vks/v1/by-keyid/&lt;KEY-ID&gt;</code></h4>
+    <li>
+      <tt>GET /vks/v1/by-email/&lt;URI-ENCODED EMAIL-ADDRESS&gt;</tt>
+      <p>
+        Retrieves the key with the given <tt>E-Mail Address</tt>.
+        Only exact matches are accepted.
+        Lookup by e-mail address requires opt-in by the key's owner.
+        The returned key is ASCII Armored, and has a content-type of <code>application/pgp-keys</code>.
+      </p>
+    </li>
 
-  <p>
-    Retrieves the key with the given
-    long <em>KeyID</em>.  <em>KeyID</em> may refer to the primary key,
-    or any subkey.  Hexadecimal digits MUST be uppercase, and MUST NOT
-    be prefixed with <code>0x</code>.  returned key is <em>ASCII
-    Armored</em>.
-  </p>
+    <li>
+      <tt>POST /vks/v1/upload</tt>
+      <p>
+        Keys may be submitted using a POST request to <tt>/vks/v1/upload</tt>.
+        The body of the request must be <code>application/json</code>.
+        The JSON data must contain a single field <code>keytext</code>,
+        which must contain the keys to submit.
+        Key data can be formatted in ASCII Armor, or base64.
+      </p>
 
-  <h4><code>GET /vks/v1/by-email/&lt;URL-encoded user ID&gt;</code></h4>
+      <p>
+        The returned JSON data
+        contains the fields <code>token</code>, <code>key_fpr</code>,
+        and <code>status</code>.
+        The <code>token</code> field contains an opaque value,
+        which can be used to perform <tt>request-verify</tt> requests
+        (see below).
+        The <code>key_fpr</code> field contains the uploaded key's fingerprint.
+        The <code>status</code> token contains a map of email addresses
+        contained in the key, with one of the values
+        <code>unpublished</code>,
+        <code>published</code>,
+        <code>revoked</code>, or
+        <code>pending</code>,
+        indicating the status of this e-mail address.
+      </p>
 
-  <p>
-    Retrieves the key with the given <em>User ID</em>.  Only exact
-    matches are accepted.  Lookup by <em>User ID</em> requires opt-in
-    by the key's owner.  The returned key is <em>ASCII Armored</em>.
-  </p>
+      <div class="example">
+        <div>
+          Example request:
+          <pre>
+{
+  "keytext": "&lt;ASCII ARMORED KEY&gt;"
+}
+          </pre>
+        </div>
+        <div>
+          Example response:
+          <pre>
+{
+  "key_fpr": "&lt;FINGERPRINT&gt;"
+  "status": {
+    "address@example.org": "unpublished"
+  },
+  "token": "..."
+}
+          </pre>
+        </div>
+      </div>
+    </li>
 
-  <h4><code>POST /vks/v1/publish</code></h4>
+    <li>
+      <tt>POST /vks/v1/request-verify</tt>
+      <p>
+        A key that has been uploaded
+        can be made discoverable by one or more of its e-mail addresses
+        by proving ownership of the address
+        via a verification e-mail.
+        This endpoint requests verification
+        for one or more e-mail addresses.
+      </p>
+      <p>
+        The call must include an opaque <code>token</code> value
+        (obtained via <tt>/vks/v1/upload</tt>)
+        and an <code>addresses</code> field,
+        which is a list of e-mail addresses (not full User IDs)
+        to request verification mails for.
+        The reply will be the same as for the <tt>/vks/v1/upload</tt> endpoint,
+        with addresses marked as <code>pending</code> where a verification email
+        has been sent.
+      </p>
 
-  <p>
-    Keys may be submitted using a POST request
-    to <code>/vks/v1/publish</code>, the body of the request being
-    a <code>multipart/form-data</code> query.  <code>keytext</code>
-    must be the keys to submit, either <em>ASCII Armored</em> or not.
-    More than one key may be submitted in one request.  Hagrid will
-    send verification emails to every non-expired <em>User ID</em>.
-  </p>
+      <div class="example">
+        <div>
+          Example request:
+          <pre>
+{
+  "token": "...",
+  "addresses": [
+    "address@example.org"
+  ]
+}
+          </pre>
+        </div>
+        <div>
+          Example response:
+          <pre>
+{
+  "key_fpr": "&lt;FINGERPRINT&gt;"
+  "status": {
+    "address@example.org": "pending"
+  },
+  "token": "..."
+}
+          </pre>
+        <div>
+        </div>
+      </div>
+    </li>
+  </ul>
 
-  <h3>HPK interface</h3>
+  <h2>HTTP Keyserver Protocol (HKP) Interface</h2>
   <p>
     Hagrid implements a subset of
     the <a href="https://tools.ietf.org/html/draft-shaw-openpgp-hkp-00">HKP</a>
@@ -57,54 +153,64 @@
     without modification.
   </p>
 
-  <h4><code>GET /pks/lookup?op=get&amp;options=mr&amp;search=&lt;QUERY&gt;</code></h4>
-
-  <p>Returns an <em>ASCII Armored</em> key matching the query.  Query may be:</p>
-
   <ul>
-    <li>An exact email address query of the form <code>localpart@example.org</code>.</li>
     <li>
-      A hexadecimal representation of a long <em>KeyID</em> of either a primary
-      key, or a subkey (<code>069C0C348DD82C19</code>, optionally prefixed by <code>0x</code>).
+      <tt>GET /pks/lookup?op=get&amp;options=mr&amp;search=&lt;QUERY&gt;</tt>
+
+      <p>Returns an ASCII Armored key matching the query.  Query may be:</p>
+
+      <ul>
+        <li>An exact email address query of the form <code>localpart@example.org</code>.</li>
+        <li>
+          A hexadecimal representation of a long <tt>KeyID</tt> of either a primary
+          key, or a subkey (<code>069C0C348DD82C19</code>, optionally prefixed by <code>0x</code>).
+        </li>
+        <li>
+          A hexadecimal representation of a <tt>Fingerprint</tt> of either a primary
+          key, or a subkey (<code>8E8C33FA4626337976D97978069C0C348DD82C19</code>,
+          optionally prefixed by <code>0x</code>).
+        </li>
+      </ul>
+
+      <p>
+        Note that while the hexadecimal digits may use either case, using
+        upper case letters is slightly more efficient with Hagrid.
+      </p>
     </li>
+
     <li>
-      A hexadecimal representation of a <em>Fingerprint</em> of either a primary
-      key, or a subkey (<code>8E8C33FA4626337976D97978069C0C348DD82C19</code>,
-      optionally prefixed by <code>0x</code>).
+      <tt>GET /pks/lookup?op=index&amp;options=mr&amp;search=&lt;QUERY&gt;</tt>
+      <p>
+        Returns
+        a <a href="https://tools.ietf.org/html/draft-shaw-openpgp-hkp-00#section-5.2">machine-readable
+        list</a> of keys matching the query.  Query may have the forms
+        detailed above.  Hagrid always returns either one or no keys at
+        all.
+      </p>
+    </li>
+
+    <li>
+      <tt>POST /pks/add</tt>
+
+      <p>
+        Keys may be submitted using a POST request to <tt>/pks/add</tt>,
+        the body of the request being
+        a <code>application/x-www-form-urlencoded</code> query.
+        <code>keytext</code> must be the keys to submit,
+        which must be ASCII Armored.
+        More than one key may be submitted in one request.
+        For verification of e-mail addresses,
+        the <tt>/vks/v1/upload</tt> endpoint
+        must be used instead.
+      </p>
     </li>
   </ul>
-
-  <p>
-    Note that while the hexadecimal digits may use either case, using
-    upper case letters is more efficient with Hagrid.
-  </p>
-
-  <h4><code>GET /pks/lookup?op=index&amp;options=mr&amp;search=&lt;QUERY&gt;</code></h4>
-
-  <p>
-    Returns
-    a <a href="https://tools.ietf.org/html/draft-shaw-openpgp-hkp-00#section-5.2">machine-readable
-    list</a> of keys matching the query.  Query may have the forms
-    detailed above.  Hagrid always returns either one or no keys at
-    all.
-  </p>
-
-  <h4><code>POST /pks/add</code></h4>
-
-  <p>
-    Keys may be submitted using a POST request
-    to <code>/pks/add</code>, the body of the request being
-    a <code>application/x-www-form-urlencoded</code> query.
-    <code>keytext</code> must be the keys to submit, which must
-    be <em>ASCII Armored</em>.  More than one key may be submitted in
-    one request.</p>
-  </p>
 
   <h4>Limitations</h4>
 
   <p>
-    By design, Hagrid cannot (or intentionally chooses not to) implement,
-    the full HKP protocol.  The main limitations are:
+    By design, Hagrid does not implement the full HKP protocol.  The specific
+    limitations are:
   </p>
 
   <ul>
@@ -117,8 +223,6 @@
     <li>uploads are restricted to 1 MiB,</li>
     <li>all packets that aren't public keys, user IDs or signatures are filtered out.</li>
   </ul>
-  <p>
-    <strong><a href="/">&laquo; Back</a></strong>
-  </p>
+
 </div>
 {{/layout}}
