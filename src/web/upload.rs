@@ -507,18 +507,21 @@ fn show_upload_verify(
         return MyResponse::upload_ok(token, verify_state, HashMap::new(), output_type)
     }
 
-    let uid_status: HashMap<_,_> = tpk_status.email_status.iter()
-        .map(|(email,status)|
-                (email.to_string(),
-                if !rate_limiter.action_check(format!("verify-{}", &email)) {
-                    EmailStatus::Pending
-                } else {
-                    match status {
-                        EmailAddressStatus::NotPublished => EmailStatus::Unpublished,
-                        EmailAddressStatus::Published => EmailStatus::Published,
-                        EmailAddressStatus::Revoked => EmailStatus::Revoked,
-                    }
-                }))
+    let uid_status: HashMap<_,_> = tpk_status.email_status
+        .iter()
+        .map(|(email,status)| {
+            let is_pending = (*status == EmailAddressStatus::NotPublished) &&
+                !rate_limiter.action_check(format!("verify-{}", &email));
+            if is_pending {
+                (email.to_string(), EmailStatus::Pending)
+            } else {
+                (email.to_string(), match status {
+                    EmailAddressStatus::NotPublished => EmailStatus::Unpublished,
+                    EmailAddressStatus::Published => EmailStatus::Published,
+                    EmailAddressStatus::Revoked => EmailStatus::Revoked,
+                })
+            }
+        })
         .collect();
 
     MyResponse::upload_ok(token, verify_state, uid_status, output_type)
