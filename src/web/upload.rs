@@ -176,7 +176,7 @@ impl MyResponse {
             commit: env!("VERGEN_SHA_SHORT").to_string(),
             is_revoked: false, key_fpr, key_link, token, uid_status,
         };
-        MyResponse::ok("publish/publish_ok", context)
+        MyResponse::ok("upload/upload-ok", context)
     }
 }
 
@@ -190,18 +190,18 @@ struct VerifyTpkState {
 impl StatelessSerializable for VerifyTpkState {
 }
 
-#[get("/publish?<guide>")]
-pub fn publish(guide: bool) -> MyResponse {
+#[get("/upload?<guide>")]
+pub fn upload(guide: bool) -> MyResponse {
     let context = template::Upload {
         version: env!("VERGEN_SEMVER").to_string(),
         commit: env!("VERGEN_SHA_SHORT").to_string(),
         show_help: guide,
     };
 
-    MyResponse::ok("publish/publish", context)
+    MyResponse::ok("upload/upload", context)
 }
 
-#[post("/vks/v1/publish", format = "json", data = "<data>")]
+#[post("/vks/v1/upload", format = "json", data = "<data>")]
 pub fn vks_v1_upload_post_json(
     db: rocket::State<KeyDatabase>,
     tokens_stateless: rocket::State<tokens::Service>,
@@ -213,7 +213,7 @@ pub fn vks_v1_upload_post_json(
     process_key(&db, &tokens_stateless, &rate_limiter, data_reader, OutputType::Json)
 }
 
-#[post("/vks/v1/publish", format = "multipart/form-data", data = "<data>")]
+#[post("/vks/v1/upload", format = "multipart/form-data", data = "<data>")]
 pub fn vks_v1_upload_post_form_data(
     db: rocket::State<KeyDatabase>,
     tokens_stateless: rocket::State<tokens::Service>,
@@ -226,7 +226,7 @@ pub fn vks_v1_upload_post_form_data(
         match cont_type.params().find(|&(k, _)| k == "boundary") {
             Some(v) => v,
             None => return Ok(MyResponse::bad_request(
-                "publish/publish",
+                "upload/upload",
                 failure::err_msg("`Content-Type: multipart/form-data` \
                                     boundary param not provided"))),
         };
@@ -234,7 +234,7 @@ pub fn vks_v1_upload_post_form_data(
     process_upload(&db, &tokens_stateless, &rate_limiter, data, boundary, OutputType::HumanReadable)
 }
 
-#[post("/vks/v1/publish", format = "application/x-www-form-urlencoded", data = "<data>")]
+#[post("/vks/v1/upload", format = "application/x-www-form-urlencoded", data = "<data>")]
 pub fn vks_v1_upload_post_form(
     db: rocket::State<KeyDatabase>,
     tokens_stateless: rocket::State<tokens::Service>,
@@ -271,7 +271,7 @@ pub fn vks_v1_upload_post_form(
         }
     }
 
-    Ok(MyResponse::bad_request("publish/publish",
+    Ok(MyResponse::bad_request("upload/upload",
                                 failure::err_msg("No keytext found")))
 }
 
@@ -311,10 +311,10 @@ fn process_multipart(
         }
         Some(_) =>
             Ok(MyResponse::bad_request(
-                "publish/publish", failure::err_msg("Multiple keytexts found"))),
+                "upload/upload", failure::err_msg("Multiple keytexts found"))),
         None =>
             Ok(MyResponse::bad_request(
-                "publish/publish", failure::err_msg("No keytext found"))),
+                "upload/upload", failure::err_msg("No keytext found"))),
     }
 }
 
@@ -331,24 +331,24 @@ fn process_key(
     // First, parse all TPKs and error out if one fails.
     let parser = match TPKParser::from_reader(reader) {
         Ok(p) => p,
-        Err(e) => return Ok(MyResponse::bad_request("publish/publish", e)),
+        Err(e) => return Ok(MyResponse::bad_request("upload/upload", e)),
     };
     let mut tpks = Vec::new();
     for tpk in parser {
         tpks.push(match tpk {
             Ok(t) => {
                 if t.is_tsk() {
-                    return Ok(MyResponse::bad_request("publish/publish",
+                    return Ok(MyResponse::bad_request("upload/upload",
                         failure::err_msg("Whoops, please don't upload secret keys!")));
                 }
                 t
             },
-            Err(e) => return Ok(MyResponse::bad_request("publish/publish", e)),
+            Err(e) => return Ok(MyResponse::bad_request("upload/upload", e)),
         });
     }
 
     match tpks.len() {
-        0 => Ok(MyResponse::bad_request("publish/publish",
+        0 => Ok(MyResponse::bad_request("upload/upload",
                                         failure::err_msg("No key submitted"))),
         1 => process_key_single(db, tokens_stateless, rate_limiter, tpks.into_iter().next().unwrap(), output_type),
         _ => process_key_multiple(db, tpks),
@@ -403,7 +403,7 @@ fn process_key_multiple(
         keys: merged_keys,
     };
 
-    Ok(MyResponse::ok("publish/publish-ok-multiple", context))
+    Ok(MyResponse::ok("upload/upload-ok-multiple", context))
 }
 
 #[post("/vks/v1/request-verify", format = "json", data="<request>")]
@@ -553,5 +553,5 @@ fn publish_verify_or_fail(
         commit: env!("VERGEN_SHA_SHORT").to_string(),
     };
 
-    Ok(MyResponse::ok("publish/publish-result", context))
+    Ok(MyResponse::ok("upload/publish-result", context))
 }

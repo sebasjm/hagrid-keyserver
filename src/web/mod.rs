@@ -334,11 +334,11 @@ fn rocket_factory(rocket: rocket::Rocket) -> Result<rocket::Rocket> {
         upload::vks_v1_upload_post_form_data,
         upload::vks_v1_upload_post_json,
         // User interaction.
-        upload::publish,
-        upload::publish_verify,
+        upload::upload,
         upload::vks_upload_verify_json,
         upload::vks_upload_verify_form,
         upload::vks_upload_verify_form_data,
+        upload::publish_verify,
         // HKP
         hkp::pks_lookup,
         hkp::pks_add_form,
