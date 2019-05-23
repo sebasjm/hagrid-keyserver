@@ -76,7 +76,7 @@ impl Service {
                              -> Result<()> {
         let ctx = context::Verification {
             primary_fp: tpk_name,
-            uri: format!("{}/publish/{}", self.base_uri, token),
+            uri: format!("{}/verify/{}", self.base_uri, token),
             userid: userid.to_string(),
             base_uri: self.base_uri.clone(),
             domain: self.domain.clone(),

@@ -16,6 +16,7 @@ extern crate url;
 #[macro_use]
 extern crate rocket;
 extern crate multipart;
+#[macro_use]
 extern crate rocket_contrib;
 
 extern crate sequoia_openpgp;

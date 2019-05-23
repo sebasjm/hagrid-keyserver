@@ -1,0 +1,282 @@
+use failure::Fallible as Result;
+
+use database::{Database, KeyDatabase, StatefulTokens, EmailAddressStatus, TpkStatus};
+use database::types::{Fingerprint,Email};
+use mail;
+use tokens::{self, StatelessSerializable};
+use rate_limiter::RateLimiter;
+
+use sequoia_openpgp::TPK;
+
+use std::io::Read;
+use std::convert::TryFrom;
+use std::collections::HashMap;
+
+use self::response::*;
+
+pub mod request {
+    #[derive(Deserialize)]
+    pub struct UploadRequest {
+        pub keytext: String,
+    }
+
+    #[derive(Deserialize)]
+    pub struct VerifyRequest {
+        pub token: String,
+        pub addresses: Vec<String>,
+    }
+}
+
+pub mod response {
+    #[derive(Debug,Serialize,Deserialize,PartialEq,Eq)]
+    pub enum EmailStatus {
+        #[serde(rename = "unpublished")]
+        Unpublished,
+        #[serde(rename = "pending")]
+        Pending,
+        #[serde(rename = "published")]
+        Published,
+        #[serde(rename = "revoked")]
+        Revoked,
+    }
+
+    use std::collections::HashMap;
+
+    pub enum UploadResponse {
+        Ok {
+            token: String,
+            key_fpr: String,
+            status: HashMap<String,EmailStatus>,
+        },
+        OkMulti { key_fprs: Vec<String> },
+        Error(String),
+    }
+
+    impl UploadResponse {
+        pub fn err(err: &str) -> Self {
+            UploadResponse::Error(err.to_owned())
+        }
+    }
+
+    pub enum PublishResponse {
+        Ok { email: String },
+        Error(String),
+    }
+
+    impl PublishResponse {
+        pub fn err(err: &str) -> Self {
+            PublishResponse::Error(err.to_owned())
+        }
+    }
+}
+
+#[derive(Serialize,Deserialize)]
+struct VerifyTpkState {
+    fpr: Fingerprint,
+    addresses: Vec<Email>,
+    requested: Vec<Email>,
+}
+
+impl StatelessSerializable for VerifyTpkState {
+}
+
+pub fn process_key(
+    db: &KeyDatabase,
+    tokens_stateless: &tokens::Service,
+    rate_limiter: &RateLimiter,
+    reader: impl Read,
+) -> response::UploadResponse {
+    use sequoia_openpgp::parse::Parse;
+    use sequoia_openpgp::tpk::TPKParser;
+
+    // First, parse all TPKs and error out if one fails.
+    let parser = match TPKParser::from_reader(reader) {
+        Ok(p) => p,
+        Err(_) => return UploadResponse::err("Failed parsing key"),
+    };
+    let mut tpks = Vec::new();
+    for tpk in parser {
+        tpks.push(match tpk {
+            Ok(t) => {
+                if t.is_tsk() {
+                    return UploadResponse::err("Whoops, please don't upload secret keys!");
+                }
+                t
+            },
+            Err(_) => return UploadResponse::err("No keys uploaded"),
+        });
+    }
+
+    match tpks.len() {
+        0 => UploadResponse::err("No key submitted"),
+        1 => process_key_single(db, tokens_stateless, rate_limiter, tpks.into_iter().next().unwrap()),
+        _ => process_key_multiple(db, tpks),
+    }
+}
+
+fn process_key_multiple(
+    db: &KeyDatabase,
+    tpks: Vec<TPK>,
+) -> response::UploadResponse {
+    let key_fprs: Vec<_> = tpks
+        .into_iter()
+        .flat_map(|tpk| Fingerprint::try_from(tpk.fingerprint())
+                .map(|fpr| (fpr, tpk)))
+        .flat_map(|(fpr, tpk)| db.merge(tpk).map(|_| fpr.to_string()))
+        .collect();
+
+    response::UploadResponse::OkMulti { key_fprs }
+}
+
+fn process_key_single(
+    db: &KeyDatabase,
+    tokens_stateless: &tokens::Service,
+    rate_limiter: &RateLimiter,
+    tpk: TPK,
+) -> response::UploadResponse {
+    let fp = Fingerprint::try_from(tpk.fingerprint()).unwrap();
+
+    let tpk_status = match db.merge(tpk) {
+        Ok(tpk_status) => tpk_status,
+        Err(_) => return UploadResponse::err("internal error"),
+    };
+
+    let verify_state = {
+        let emails = tpk_status.email_status.iter()
+            .map(|(email,_)| email.clone())
+            .collect();
+        VerifyTpkState {
+            fpr: fp.clone(),
+            addresses: emails,
+            requested: vec!(),
+        }
+    };
+
+    let token = tokens_stateless.create(&verify_state);
+
+    show_upload_verify(rate_limiter, token, tpk_status, verify_state)
+}
+
+pub fn request_verify(
+    db: rocket::State<KeyDatabase>,
+    token_stateful: rocket::State<StatefulTokens>,
+    token_stateless: rocket::State<tokens::Service>,
+    mail_service: rocket::State<mail::Service>,
+    rate_limiter: rocket::State<RateLimiter>,
+    token: String,
+    addresses: Vec<String>,
+) -> response::UploadResponse {
+    let (verify_state, tpk_status) = match check_tpk_state(&db, &token_stateless, &token) {
+        Ok(ok) => ok,
+        Err(e) => return UploadResponse::err(&e.to_string()),
+    };
+
+    if tpk_status.is_revoked {
+        return show_upload_verify(
+                &rate_limiter, token, tpk_status, verify_state);
+    }
+
+    let emails_requested: Vec<_> = addresses.into_iter()
+        .map(|address| address.parse::<Email>())
+        .flatten()
+        .filter(|email| verify_state.addresses.contains(email))
+        .filter(|email| tpk_status.email_status.iter()
+            .any(|(uid_email, status)|
+                uid_email == email && *status == EmailAddressStatus::NotPublished
+            ))
+        .collect();
+
+    for email in emails_requested {
+        let rate_limit_ok = rate_limiter.action_perform(format!("verify-{}", &email));
+        if rate_limit_ok {
+            if send_verify_email(&mail_service, &token_stateful, &verify_state.fpr, &email).is_err() {
+                return UploadResponse::err(&format!("error sending email to {}", &email));
+            }
+        }
+    }
+
+    show_upload_verify(&rate_limiter, token, tpk_status, verify_state)
+}
+
+fn check_tpk_state(
+    db: &KeyDatabase,
+    token_stateless: &tokens::Service,
+    token: &str,
+) -> Result<(VerifyTpkState,TpkStatus)> {
+    let verify_state = token_stateless.check::<VerifyTpkState>(token)?;
+    let tpk_status = db.get_tpk_status(&verify_state.fpr, &verify_state.addresses)?;
+    Ok((verify_state, tpk_status))
+}
+
+fn send_verify_email(
+    mail_service: &mail::Service,
+    token_stateful: &StatefulTokens,
+    fpr: &Fingerprint,
+    email: &Email,
+) -> Result<()> {
+    let token_content = (fpr.clone(), email.clone());
+    let token_str = serde_json::to_string(&token_content)?;
+    let token_verify = token_stateful.new_token("verify", token_str.as_bytes())?;
+
+    mail_service.send_verification(
+        fpr.to_string(),
+        &email,
+        &token_verify,
+    )
+}
+
+pub fn verify_confirm(
+    db: rocket::State<KeyDatabase>,
+    token_service: rocket::State<StatefulTokens>,
+    token: String,
+) -> response::PublishResponse {
+    let email = match check_publish_token(&db, &token_service, token) {
+        Ok(email) => email,
+        Err(_) => return PublishResponse::err("token verification failed"),
+    };
+
+    response::PublishResponse::Ok { email: email.to_string() }
+}
+
+fn check_publish_token(
+    db: &KeyDatabase,
+    token_service: &StatefulTokens,
+    token: String,
+) -> Result<Email> {
+    let payload = token_service.pop_token("verify", &token)?;
+    let (fingerprint, email) = serde_json::from_str(&payload)?;
+    db.set_email_published(&fingerprint, &email)?;
+
+    Ok(email)
+}
+
+fn show_upload_verify(
+    rate_limiter: &RateLimiter,
+    token: String,
+    tpk_status: TpkStatus,
+    verify_state: VerifyTpkState,
+) -> response::UploadResponse {
+    let key_fpr = verify_state.fpr.to_string();
+    if tpk_status.is_revoked {
+        return response::UploadResponse::Ok { token, key_fpr, status: HashMap::new() };
+    }
+
+    let status: HashMap<_,_> = tpk_status.email_status
+        .iter()
+        .map(|(email,status)| {
+            let is_pending = (*status == EmailAddressStatus::NotPublished) &&
+                !rate_limiter.action_check(format!("verify-{}", &email));
+            if is_pending {
+                (email.to_string(), EmailStatus::Pending)
+            } else {
+                (email.to_string(), match status {
+                    EmailAddressStatus::NotPublished => EmailStatus::Unpublished,
+                    EmailAddressStatus::Published => EmailStatus::Published,
+                    EmailAddressStatus::Revoked => EmailStatus::Revoked,
+                })
+            }
+        })
+        .collect();
+
+    response::UploadResponse::Ok { token, key_fpr, status }
+}

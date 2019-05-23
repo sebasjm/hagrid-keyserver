@@ -17,7 +17,7 @@ use web::{
     HagridState,
     MyResponse,
     key_to_response,
-    upload,
+    vks_web,
 };
 
 #[derive(Debug)]
@@ -127,7 +127,7 @@ pub fn pks_add_form_data(
     cont_type: &ContentType,
     data: Data,
 ) -> MyResponse {
-    match upload::vks_v1_upload_post_form_data(db, tokens_stateless, rate_limiter, cont_type, data) {
+    match vks_web::upload_post_form_data(db, tokens_stateless, rate_limiter, cont_type, data) {
         Ok(_) => MyResponse::plain("Ok".into()),
         Err(err) => MyResponse::ise(err),
     }
@@ -140,7 +140,7 @@ pub fn pks_add_form(
     rate_limiter: rocket::State<RateLimiter>,
     data: Data,
 ) -> MyResponse {
-    match upload::vks_v1_upload_post_form(db, tokens_stateless, rate_limiter, data) {
+    match vks_web::upload_post_form(db, tokens_stateless, rate_limiter, data) {
         Ok(_) => MyResponse::plain("Ok".into()),
         Err(err) => MyResponse::ise(err),
     }

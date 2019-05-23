@@ -10,7 +10,6 @@ use handlebars::Handlebars;
 
 use std::path::PathBuf;
 
-pub mod upload;
 use mail;
 use tokens;
 use rate_limiter::RateLimiter;
@@ -25,6 +24,9 @@ use std::convert::TryInto;
 mod hkp;
 mod manage;
 mod maintenance;
+mod vks;
+mod vks_web;
+mod vks_api;
 
 use web::maintenance::MaintenanceMode;
 
@@ -34,11 +36,9 @@ use rocket::http::hyper::header::ContentDisposition;
 pub enum MyResponse {
     #[response(status = 200, content_type = "html")]
     Success(Template),
-     #[response(status = 200, content_type = "plain")]
+    #[response(status = 200, content_type = "plain")]
     Plain(String),
-     #[response(status = 200, content_type = "application/json")]
-    Json(String),
-     #[response(status = 200, content_type = "application/pgp-keys")]
+    #[response(status = 200, content_type = "application/pgp-keys")]
     Key(String, ContentDisposition),
     #[response(status = 200, content_type = "application/pgp-keys")]
     XAccelRedirect(&'static str, Header<'static>, ContentDisposition),
@@ -330,15 +330,17 @@ fn rocket_factory(rocket: rocket::Rocket) -> Result<rocket::Rocket> {
         vks_v1_by_email,
         vks_v1_by_fingerprint,
         vks_v1_by_keyid,
-        upload::vks_v1_upload_post_form,
-        upload::vks_v1_upload_post_form_data,
-        upload::vks_v1_upload_post_json,
+        vks_api::upload_json,
+        vks_api::upload_fallback,
+        vks_api::request_verify_json,
+        vks_api::request_verify_fallback,
         // User interaction.
-        upload::upload,
-        upload::vks_upload_verify_json,
-        upload::vks_upload_verify_form,
-        upload::vks_upload_verify_form_data,
-        upload::publish_verify,
+        vks_web::upload,
+        vks_web::upload_post_form,
+        vks_web::upload_post_form_data,
+        vks_web::request_verify_form,
+        vks_web::request_verify_form_data,
+        vks_web::verify_confirm,
         // HKP
         hkp::pks_lookup,
         hkp::pks_add_form,
@@ -553,7 +555,7 @@ pub mod tests {
         assert!(response.body_string().unwrap().contains("/vks/v1/by-keyid"));
 
         // Check that we see the upload form.
-        let mut response = client.get("/publish").dispatch();
+        let mut response = client.get("/upload").dispatch();
         assert_eq!(response.status(), Status::Ok);
         assert_eq!(response.content_type(), Some(ContentType::HTML));
         assert!(response.body_string().unwrap().contains("upload"));
@@ -877,7 +879,7 @@ pub mod tests {
             .append_pair("address", address)
             .finish();
 
-        let response = client.post("/vks/v1/request-verify")
+        let response = client.post("/upload/request-verify")
             .header(ContentType::Form)
             .body(encoded.as_bytes())
             .dispatch();
@@ -885,7 +887,7 @@ pub mod tests {
     }
 
     fn check_verify_link_json(client: &Client, token: &str, address: &str) {
-        let json = format!(r#"{{"token":"{}","address":"{}"}}"#, token, address);
+        let json = format!(r#"{{"token":"{}","addresses":["{}"]}}"#, token, address);
 
         let mut response = client.post("/vks/v1/request-verify")
             .header(ContentType::JSON)
@@ -897,7 +899,7 @@ pub mod tests {
 
 
     fn check_mails_and_verify_email(client: &Client, filemail_path: &Path) {
-        let pattern = format!("{}(/publish/[^ \t\n]*)", BASE_URI);
+        let pattern = format!("{}(/verify/[^ \t\n]*)", BASE_URI);
         let confirm_uri = pop_mail_capture_pattern(filemail_path, &pattern);
 
         let response = client.get(&confirm_uri).dispatch();
@@ -979,19 +981,19 @@ pub mod tests {
         body.extend_from_slice(header);
         body.extend_from_slice(data);
         body.extend_from_slice(footer);
-        client.post("/vks/v1/publish")
+        client.post("/upload/submit")
             .header(ct)
             .body(&body[..])
             .dispatch()
     }
 
     fn vks_publish_json_get_token<'a>(client: &'a Client, data: &[u8]) -> String {
-        let mut response = client.post("/vks/v1/publish")
+        let mut response = client.post("/vks/v1/upload")
             .header(ContentType::JSON)
             .body(format!(r#"{{ "keytext": "{}" }}"#, base64::encode(data)))
             .dispatch();
         let response_body = response.body_string().unwrap();
-        let result: upload::json::PublishResult = serde_json::from_str(&response_body).unwrap();
+        let result: vks_api::json::UploadResult  = serde_json::from_str(&response_body).unwrap();
 
         assert_eq!(response.status(), Status::Ok);
         result.token

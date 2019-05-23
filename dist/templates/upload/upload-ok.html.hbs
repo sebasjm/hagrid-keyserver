@@ -26,7 +26,7 @@
             {{#if requested}}
             Verification Pending
             {{else}}
-            <form action="/vks/v1/request-verify" method="post">
+            <form action="/upload/request-verify" method="post">
               <input type="hidden" name="token" value="{{../token}}" />
               <input type="hidden" name="address" value="{{address}}" />
               <input type="submit" class="link" value="Send Verification Mail">
