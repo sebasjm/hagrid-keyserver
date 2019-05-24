@@ -9,6 +9,7 @@ use mail;
 use tokens;
 use rate_limiter::RateLimiter;
 
+use web::HagridState;
 use web::vks;
 use web::vks::response::*;
 
@@ -84,8 +85,10 @@ pub fn upload_json(
 
 #[post("/vks/v1/upload", rank = 2)]
 pub fn upload_fallback(
+    state: rocket::State<HagridState>,
 ) -> JsonErrorResponse {
-    JsonErrorResponse(Status::BadRequest, "expected json data".to_owned())
+    let error_msg = format!("expected application/json data. see {}/about/api for api docs.", state.base_uri);
+    JsonErrorResponse(Status::BadRequest, error_msg)
 }
 
 #[post("/vks/v1/request-verify", format = "json", data="<data>")]
@@ -107,6 +110,8 @@ pub fn request_verify_json(
 
 #[post("/vks/v1/request-verify", rank = 2)]
 pub fn request_verify_fallback(
+    state: rocket::State<HagridState>,
 ) -> JsonErrorResponse {
-    JsonErrorResponse(Status::BadRequest, "expected json data".to_owned())
+    let error_msg = format!("expected application/json data. see {}/about/api for api docs.", state.base_uri);
+    JsonErrorResponse(Status::BadRequest, error_msg)
 }
