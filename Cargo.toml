@@ -27,14 +27,14 @@ time = "0.1"
 tempfile = "3.0"
 structopt = "0.2"
 url = "1.6"
-lettre_email = "0.8"
+lettre_email = "0.9"
 handlebars = "1.1.0"
 num_cpus = "1.0"
 ring = "0.13"
 base64 = "0.10"
 
 [dependencies.lettre]
-version = "0.8"
+version = "0.9"
 default-features = false
 # smtp-transport doesn't build (openssl problem)
 features = ["file-transport", "sendmail-transport"]

@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use failure;
 use handlebars::Handlebars;
-use lettre::{EmailTransport, SendmailTransport, FileEmailTransport};
+use lettre::{Transport as LettreTransport, SendmailTransport, file::FileTransport};
 use lettre_email::EmailBuilder;
 use url;
 use serde::Serialize;
@@ -130,7 +130,7 @@ impl Service {
             println!("{}", txt.as_ref().unwrap().to_string());
         }
 
-        let mut email = EmailBuilder::new()
+        let email = EmailBuilder::new()
             .from(self.from.clone())
             .subject(subject)
             .alternative(
@@ -138,9 +138,7 @@ impl Service {
                 txt.ok_or(failure::err_msg("Email template failed to render"))?,
             );
 
-        for recipient in to.iter() {
-            email.add_to(recipient.to_string());
-        }
+        let email = to.iter().fold(email, |email, to| email.to(to.to_string()));
 
         let email = email
             .build()
@@ -149,11 +147,11 @@ impl Service {
         match self.transport {
             Transport::Sendmail => {
                 let mut transport = SendmailTransport::new();
-                transport.send(&email)?;
+                transport.send(email.into())?;
             },
             Transport::Filemail(ref path) => {
-                let mut transport = FileEmailTransport::new(path);
-                transport.send(&email)?;
+                let mut transport = FileTransport::new(path);
+                transport.send(email.into())?;
             },
         }
 
