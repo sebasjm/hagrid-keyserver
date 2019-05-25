@@ -101,7 +101,9 @@ pub fn vks_manage_key(
             Err(e) => MyResponse::ise(e),
         }
     } else {
-        MyResponse::ok("manage/manage_expired", General::default())
+        MyResponse::not_found(
+            Some("manage/manage"),
+            Some("This link is invalid or expired".to_owned()))
     }
 }
 
