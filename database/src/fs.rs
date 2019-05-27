@@ -395,7 +395,7 @@ impl Database for Filesystem {
             if !link_keyid_target.ends_with(&path_published) {
                 info!("KeyID points to different key for {} (expected {:?} to be suffix of {:?})",
                     fpr, &path_published, &link_keyid_target);
-                Err(failure::err_msg("Collision with a different key!"))?;
+                Err(failure::err_msg(format!("KeyID collision for key {}", fpr)))?;
             }
         }
 
@@ -403,7 +403,7 @@ impl Database for Filesystem {
              if !link_fpr_target.ends_with(&path_published) {
                 info!("Fingerprint points to different key for {} (expected {:?} to be suffix of {:?})",
                     fpr, &path_published, &link_fpr_target);
-                 Err(failure::err_msg("Collision with a different key!"))?;
+                Err(failure::err_msg(format!("Fingerprint collision for key {}", fpr)))?;
              }
         }
 
@@ -599,12 +599,12 @@ mod tests {
         let k3 = TPKBuilder::default().add_userid("c@invalid.example.org")
             .generate().unwrap().0;
 
-        assert!(db.merge(k1).unwrap().email_status.len() > 0);
-        assert!(db.merge(k2.clone()).unwrap().email_status.len() > 0);
-        assert!(!db.merge(k2).unwrap().email_status.len() > 0);
-        assert!(db.merge(k3.clone()).unwrap().email_status.len() > 0);
-        assert!(!db.merge(k3.clone()).unwrap().email_status.len() > 0);
-        assert!(!db.merge(k3).unwrap().email_status.len() > 0);
+        assert!(db.merge(k1).unwrap().into_tpk_status().email_status.len() > 0);
+        assert!(db.merge(k2.clone()).unwrap().into_tpk_status().email_status.len() > 0);
+        assert!(!db.merge(k2).unwrap().into_tpk_status().email_status.len() > 0);
+        assert!(db.merge(k3.clone()).unwrap().into_tpk_status().email_status.len() > 0);
+        assert!(!db.merge(k3.clone()).unwrap().into_tpk_status().email_status.len() > 0);
+        assert!(!db.merge(k3).unwrap().into_tpk_status().email_status.len() > 0);
     }
 
     #[test]

@@ -138,7 +138,7 @@ fn process_key_single(
     let fp = Fingerprint::try_from(tpk.fingerprint()).unwrap();
 
     let tpk_status = match db.merge(tpk) {
-        Ok(tpk_status) => tpk_status,
+        Ok(import_result) => import_result.into_tpk_status(),
         Err(_) => return UploadResponse::err("internal error"),
     };
 

@@ -44,7 +44,7 @@ pub fn test_uid_verification<D: Database>(db: &mut D) {
     let email2 = Email::from_str(str_uid2).unwrap();
 
     // upload key
-    let tpk_status = db.merge(tpk.clone()).unwrap();
+    let tpk_status = db.merge(tpk.clone()).unwrap().into_tpk_status();
     let fpr = Fingerprint::try_from(tpk.fingerprint()).unwrap();
 
     assert_eq!(TpkStatus {
@@ -150,7 +150,7 @@ pub fn test_uid_verification<D: Database>(db: &mut D) {
         );
     }
 
-    let tpk_status = db.merge(tpk.clone()).unwrap();
+    let tpk_status = db.merge(tpk.clone()).unwrap().into_tpk_status();
     assert_eq!(TpkStatus {
         is_revoked: false,
         email_status: vec!(
@@ -171,7 +171,7 @@ pub fn test_uid_verification<D: Database>(db: &mut D) {
         let pile : PacketPile = packets.collect::<Vec<Packet>>().into();
         let short_tpk = TPK::from_packet_pile(pile).unwrap();
 
-        let tpk_status = db.merge(short_tpk).unwrap();
+        let tpk_status = db.merge(short_tpk).unwrap().into_tpk_status();
         assert_eq!(TpkStatus {
             is_revoked: false,
             email_status: vec!(
@@ -225,7 +225,7 @@ pub fn test_uid_verification<D: Database>(db: &mut D) {
 
         let pile : PacketPile = packets.into();
         let ext_tpk = TPK::from_packet_pile(pile).unwrap();
-        let tpk_status = db.merge(ext_tpk).unwrap();
+        let tpk_status = db.merge(ext_tpk).unwrap().into_tpk_status();
 
         assert_eq!(TpkStatus {
             is_revoked: false,
@@ -270,14 +270,14 @@ pub fn test_reupload<D: Database>(db: &mut D) {
     let email2 = Email::from_str(str_uid2).unwrap();
 
     // upload key
-    db.merge(tpk.clone()).unwrap();
+    db.merge(tpk.clone()).unwrap().into_tpk_status();
 
     // verify 1st uid
     db.set_email_published(&fpr, &email1).unwrap();
     assert!(db.by_email(&email2).is_none() ^ db.by_email(&email1).is_none());
 
     // reupload
-    let tpk_status = db.merge(tpk).unwrap();
+    let tpk_status = db.merge(tpk).unwrap().into_tpk_status();
 
     assert_eq!(TpkStatus {
         is_revoked: false,
@@ -303,14 +303,14 @@ pub fn test_uid_replacement<D: Database>(db: &mut D) {
     let email1 = Email::from_str(str_uid1).unwrap();
 
     // upload key
-    db.merge(tpk1).unwrap();
+    db.merge(tpk1).unwrap().into_tpk_status();
 
     // verify 1st uid
     db.set_email_published(&fpr1, &email1).unwrap();
     assert_eq!(TPK::from_bytes(db.by_email(&email1).unwrap().as_bytes()).unwrap().fingerprint(), pgp_fpr1);
 
     // replace
-    db.merge(tpk2).unwrap();
+    db.merge(tpk2).unwrap().into_tpk_status();
 
     // Before tpk_status are verified, the first binding is still valid.
     assert!(db.by_email(&email1).is_some());
@@ -338,7 +338,7 @@ pub fn test_uid_deletion<D: Database>(db: &mut D) {
     let email2 = Email::from_str(str_uid2).unwrap();
 
     // upload key and verify uids
-    let tpk_status = db.merge(tpk).unwrap();
+    let tpk_status = db.merge(tpk).unwrap().into_tpk_status();
     assert_eq!(TpkStatus {
         is_revoked: false,
         email_status: vec!(
@@ -389,7 +389,7 @@ pub fn test_subkey_lookup<D: Database>(db: &mut D) {
         .0;
 
     // upload key
-    let _ = db.merge(tpk.clone()).unwrap();
+    let _ = db.merge(tpk.clone()).unwrap().into_tpk_status();
     let primary_fpr = Fingerprint::try_from(tpk.fingerprint()).unwrap();
     let sub1_fpr = Fingerprint::try_from(
         tpk.subkeys().next().map(|x| x.subkey().fingerprint()).unwrap(),
@@ -418,7 +418,7 @@ pub fn test_kid_lookup<D: Database>(db: &mut D) {
         .0;
 
     // upload key
-    let _ = db.merge(tpk.clone()).unwrap();
+    let _ = db.merge(tpk.clone()).unwrap().into_tpk_status();
     let primary_kid = KeyID::try_from(tpk.fingerprint()).unwrap();
     let sub1_kid = KeyID::try_from(
         tpk.subkeys().next().map(|x| x.subkey().fingerprint()).unwrap(),
@@ -455,7 +455,7 @@ pub fn test_upload_revoked_tpk<D: Database>(db: &mut D) {
     }
 
     // upload key
-    let tpk_status = db.merge(tpk).unwrap();
+    let tpk_status = db.merge(tpk).unwrap().into_tpk_status();
     assert_eq!(TpkStatus {
         is_revoked: true,
         email_status: vec!(
@@ -482,7 +482,7 @@ pub fn test_uid_revocation<D: Database>(db: &mut D) {
     let fpr = Fingerprint::try_from(tpk.fingerprint()).unwrap();
 
     // upload key
-    let tpk_status = db.merge(tpk.clone()).unwrap();
+    let tpk_status = db.merge(tpk.clone()).unwrap().into_tpk_status();
     assert_eq!(TpkStatus {
         is_revoked: false,
         email_status: vec!(
@@ -516,7 +516,7 @@ pub fn test_uid_revocation<D: Database>(db: &mut D) {
     };
     assert_eq!(sig.sigtype(), SignatureType::CertificateRevocation);
     let tpk = tpk.merge_packets(vec![sig.into()]).unwrap();
-    let tpk_status = db.merge(tpk).unwrap();
+    let tpk_status = db.merge(tpk).unwrap().into_tpk_status();
     assert_eq!(TpkStatus {
         is_revoked: false,
         email_status: vec!(
@@ -538,7 +538,7 @@ pub fn test_unlink_uid<D: Database>(db: &mut D) {
     let tpk = TPKBuilder::default().add_userid(uid).generate().unwrap().0;
     let fpr = Fingerprint::try_from(tpk.fingerprint()).unwrap();
 
-    db.merge(tpk.clone()).unwrap();
+    db.merge(tpk.clone()).unwrap().into_tpk_status();
     db.set_email_published(&fpr, &email).unwrap();
     assert!(db.by_email(&email).is_some());
 
@@ -559,7 +559,7 @@ pub fn test_unlink_uid<D: Database>(db: &mut D) {
     };
     assert_eq!(sig.sigtype(), SignatureType::CertificateRevocation);
     let tpk_evil = tpk_evil.merge_packets(vec![sig.into()]).unwrap();
-    let tpk_status = db.merge(tpk_evil).unwrap();
+    let tpk_status = db.merge(tpk_evil).unwrap().into_tpk_status();
     assert_eq!(TpkStatus {
         is_revoked: false,
         email_status: vec!(
@@ -603,14 +603,14 @@ pub fn test_same_email_1<D: Database>(db: &mut D) {
     let email2 = Email::from_str(str_uid2).unwrap();
 
     // upload keys.
-    let tpk_status1 = db.merge(tpk1).unwrap();
+    let tpk_status1 = db.merge(tpk1).unwrap().into_tpk_status();
     assert_eq!(TpkStatus {
         is_revoked: false,
         email_status: vec!(
             (email1.clone(), EmailAddressStatus::NotPublished),
         )
     }, tpk_status1);
-    let tpk_status2 = db.merge(tpk2.clone()).unwrap();
+    let tpk_status2 = db.merge(tpk2.clone()).unwrap().into_tpk_status();
     assert_eq!(TpkStatus {
         is_revoked: false,
         email_status: vec!(
@@ -652,7 +652,7 @@ pub fn test_same_email_1<D: Database>(db: &mut D) {
     };
     assert_eq!(sig.sigtype(), SignatureType::CertificateRevocation);
     let tpk2 = tpk2.merge_packets(vec![sig.into()]).unwrap();
-    let tpk_status2 = db.merge(tpk2).unwrap();
+    let tpk_status2 = db.merge(tpk2).unwrap().into_tpk_status();
     assert_eq!(TpkStatus {
         is_revoked: false,
         email_status: vec!(
@@ -684,7 +684,7 @@ pub fn test_same_email_2<D: Database>(db: &mut D) {
     let fpr = Fingerprint::try_from(tpk.fingerprint()).unwrap();
 
     // upload key
-    let tpk_status = db.merge(tpk.clone()).unwrap();
+    let tpk_status = db.merge(tpk.clone()).unwrap().into_tpk_status();
 
     // verify uid1
     assert_eq!(TpkStatus {
@@ -716,7 +716,7 @@ pub fn test_same_email_2<D: Database>(db: &mut D) {
     };
     assert_eq!(sig.sigtype(), SignatureType::CertificateRevocation);
     let tpk = tpk.merge_packets(vec![sig.into()]).unwrap();
-    let tpk_status = db.merge(tpk).unwrap();
+    let tpk_status = db.merge(tpk).unwrap().into_tpk_status();
     assert_eq!(TpkStatus {
         is_revoked: false,
         email_status: vec!(

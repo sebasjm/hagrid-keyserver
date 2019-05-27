@@ -82,6 +82,22 @@ pub enum EmailAddressStatus {
     Published,
 }
 
+pub enum ImportResult {
+    New(TpkStatus),
+    Updated(TpkStatus),
+    Unchanged(TpkStatus),
+}
+
+impl ImportResult {
+    pub fn into_tpk_status(self) -> TpkStatus {
+        match self {
+            ImportResult::New(status) => status,
+            ImportResult::Updated(status) => status,
+            ImportResult::Unchanged(status) => status,
+        }
+    }
+}
+
 #[derive(Debug,PartialEq)]
 pub struct TpkStatus {
     pub is_revoked: bool,
@@ -145,7 +161,7 @@ pub trait Database: Sync + Send {
     ///    - abort if any problems come up!
     /// 5. Move full and published temporary TPK to their location
     /// 6. Update all symlinks
-    fn merge(&self, new_tpk: TPK) -> Result<TpkStatus> {
+    fn merge(&self, new_tpk: TPK) -> Result<ImportResult> {
         let fpr_primary = Fingerprint::try_from(new_tpk.primary().fingerprint())?;
 
         let _lock = self.lock()?;
@@ -157,6 +173,7 @@ pub trait Database: Sync + Send {
 
         let full_tpk_old = self.by_fpr_full(&fpr_primary)
             .and_then(|bytes| TPK::from_bytes(bytes.as_ref()).ok());
+        let is_update = full_tpk_old.is_some();
         let (full_tpk_new, full_tpk_unchanged) = if let Some(full_tpk_old) = full_tpk_old {
             let full_tpk_new = new_tpk.merge(full_tpk_old.clone())?;
             let full_tpk_unchanged = full_tpk_new == full_tpk_old;
@@ -198,8 +215,7 @@ pub trait Database: Sync + Send {
 
         // Abort if no changes were made
         if full_tpk_unchanged {
-            println!("tpk unchanged!");
-            return Ok(TpkStatus { is_revoked, email_status });
+            return Ok(ImportResult::Unchanged(TpkStatus { is_revoked, email_status }));
         }
 
         let revoked_uids: Vec<UserID> = full_tpk_new
@@ -268,7 +284,11 @@ pub trait Database: Sync + Send {
             }
         }
 
-        Ok(TpkStatus { is_revoked, email_status })
+        if is_update {
+            Ok(ImportResult::Updated(TpkStatus { is_revoked, email_status }))
+        } else {
+            Ok(ImportResult::New(TpkStatus { is_revoked, email_status }))
+        }
     }
 
     fn get_tpk_status(&self, fpr_primary: &Fingerprint, known_addresses: &[Email]) -> Result<TpkStatus> {
