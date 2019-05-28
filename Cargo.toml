@@ -57,9 +57,5 @@ name = "hagrid"
 path = "src/main.rs"
 
 [[bin]]
-name = "hagrid-import"
-path = "src/import.rs"
-
-[[bin]]
 name = "hagrid-delete"
 path = "src/delete.rs"
