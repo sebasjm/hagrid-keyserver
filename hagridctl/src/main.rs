@@ -62,6 +62,11 @@ fn main() -> Result<()> {
                                .possible_values(&["dev","stage","prod"]))
                           .subcommand(SubCommand::with_name("import")
                                       .about("Import keys into Hagrid")
+                                      .arg(Arg::with_name("dry run")
+                                          .short("n")
+                                          .long("dry-run")
+                                          .help("don't actually keep imported keys")
+                                      )
                                       .arg(Arg::with_name("keyring files")
                                            .required(true)
                                            .multiple(true)))
@@ -78,13 +83,14 @@ fn main() -> Result<()> {
     };
 
     if let Some(matches) = matches.subcommand_matches("import") {
+        let dry_run = matches.occurrences_of("dry run") > 0;
         let keyrings: Vec<PathBuf> = matches
             .values_of_lossy("keyring files")
             .unwrap()
             .iter()
             .map(|arg| PathBuf::from_str(arg).unwrap())
             .collect();
-        import::do_import(&config, keyrings)?;
+        import::do_import(&config, dry_run, keyrings)?;
     } else {
         println!("{}", matches.usage());
     }

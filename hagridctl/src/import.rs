@@ -3,6 +3,7 @@ use std::fs::File;
 use std::io::Read;
 use std::thread;
 use std::cmp::min;
+use std::sync::Arc;
 
 extern crate failure;
 use failure::Fallible as Result;
@@ -25,47 +26,45 @@ use HagridConfig;
 // returns after the first few threads.
 const NUM_THREADS_MAX: usize = 3;
 
-pub fn do_import(config: &HagridConfig, input_files: Vec<PathBuf>) -> Result<()> {
+pub fn do_import(config: &HagridConfig, dry_run: bool, input_files: Vec<PathBuf>) -> Result<()> {
     let num_threads = min(NUM_THREADS_MAX, input_files.len());
-    let input_file_chunks = setup_chunks_with_progress(input_files, num_threads);
+    let input_file_chunks = setup_chunks(input_files, num_threads);
+
+    let multi_progress = Arc::new(MultiProgress::new());
+    let progress_bar = multi_progress.add(ProgressBar::new(0));
 
     let threads: Vec<_> = input_file_chunks
         .into_iter()
-        .map(move |(input_file_chunk, progress_bar)| {
+        .map(|input_file_chunk| {
             let config = config.clone();
+            let multi_progress = multi_progress.clone();
             thread::spawn(move || {
-                let errors = import_from_files(&config, input_file_chunk, progress_bar).unwrap();
-                for error in errors {
-                    println!("{}", error);
-                }
+                import_from_files(
+                    &config, dry_run, input_file_chunk, multi_progress).unwrap();
             })
         })
         .collect();
 
+    eprintln!("Importing in {} threads", num_threads);
+
+    thread::spawn(move || multi_progress.join().unwrap());
     threads.into_iter().for_each(|t| t.join().unwrap());
+    progress_bar.finish();
 
     Ok(())
 }
 
-fn setup_chunks_with_progress(
+fn setup_chunks(
     mut input_files: Vec<PathBuf>,
     num_threads: usize,
-) -> Vec<(Vec<PathBuf>,ProgressBar)> {
-    let multiprogress = MultiProgress::new();
-
+) -> Vec<Vec<PathBuf>> {
     let chunk_size = (input_files.len() + (num_threads - 1)) / num_threads;
-    let input_file_chunks: Vec<(Vec<PathBuf>,ProgressBar)> = (0..num_threads)
+    (0..num_threads)
         .map(|_| {
             let len = input_files.len();
                 input_files.drain(0..min(chunk_size,len)).collect()
         })
-        .map(|chunk| (chunk, multiprogress.add(ProgressBar::new(0))))
-        .collect();
-
-    eprintln!("Importing in {:?} threads", num_threads);
-    thread::spawn(move || multiprogress.join().unwrap());
-
-    input_file_chunks
+        .collect()
 }
 
 struct ImportStats<'a> {
@@ -76,7 +75,6 @@ struct ImportStats<'a> {
     count_new: u64,
     count_updated: u64,
     count_unchanged: u64,
-    errors: Vec<failure::Error>,
 }
 
 impl <'a> ImportStats<'a> {
@@ -89,7 +87,6 @@ impl <'a> ImportStats<'a> {
             count_new: 0,
             count_updated: 0,
             count_unchanged: 0,
-            errors: vec!(),
         }
     }
 
@@ -97,10 +94,7 @@ impl <'a> ImportStats<'a> {
         // If a new TPK starts, parse and import.
         self.count_total += 1;
         match result {
-            Err(x) => {
-                self.count_err += 1;
-                self.errors.push(x);
-            },
+            Err(_) => self.count_err += 1,
             Ok(ImportResult::New(_)) => self.count_new += 1,
             Ok(ImportResult::Updated(_)) => self.count_updated += 1,
             Ok(ImportResult::Unchanged(_)) => self.count_unchanged += 1,
@@ -113,56 +107,57 @@ impl <'a> ImportStats<'a> {
             return;
         }
         self.progress.set_message(&format!(
-                "{}, imported {:5} keys, {:4} New {:4} Updated {:4} Unchanged {:4} Errors",
-                &self.filename, self.count_total, self.count_new, self.count_updated, self.count_unchanged, self.count_err));
-
-    }
-    fn progress_finish(&self) {
-        self.progress.set_message(&format!(
-                "{}, imported {:5} keys, {:4} New {:4} Updated {:4} Unchanged {:4} Errors",
+                "{}, imported {:5} keys, {:5} New {:5} Updated {:5} Unchanged {:5} Errors",
                 &self.filename, self.count_total, self.count_new, self.count_updated, self.count_unchanged, self.count_err));
 
     }
 }
 
-fn import_from_files(config: &HagridConfig, input_files: Vec<PathBuf>, progress_bar: ProgressBar) -> Result<Vec<failure::Error>> {
-    let db = KeyDatabase::new(
+fn import_from_files(
+    config: &HagridConfig,
+    dry_run: bool,
+    input_files: Vec<PathBuf>,
+    multi_progress: Arc<MultiProgress>,
+) -> Result<()> {
+    let db = KeyDatabase::new_internal(
         config.keys_internal_dir.as_ref().unwrap(),
         config.keys_external_dir.as_ref().unwrap(),
-        config.tmp_dir.as_ref().unwrap()
+        config.tmp_dir.as_ref().unwrap(),
+        dry_run,
     )?;
 
+    for input_file in input_files {
+        import_from_file(&db, &input_file, &multi_progress)?;
+    }
+
+    Ok(())
+}
+
+fn import_from_file(db: &KeyDatabase, input: &Path, multi_progress: &MultiProgress) -> Result<()> {
+    let input_file = File::open(input)?;
+
+    let bytes_total = input_file.metadata()?.len();
+    let progress_bar = multi_progress.add(ProgressBar::new(bytes_total));
     progress_bar
         .set_style(ProgressStyle::default_bar()
             .template("[{elapsed_precise}] {bar:40.cyan/blue} {msg}")
             .progress_chars("##-"));
     progress_bar.set_message("Starting…");
 
-    let result = input_files
-        .into_iter()
-        .map(|input_file| import_from_file(&db, &input_file, &progress_bar))
-        .collect::<Result<Vec<_>>>()
-        .map(|results| results.into_iter().flatten().collect());
-
-    progress_bar.finish();
-
-    result
-}
-
-fn import_from_file(db: &KeyDatabase, input: &Path, progress_bar: &ProgressBar) -> Result<Vec<failure::Error>> {
-    let input_file = File::open(input)?;
-    progress_bar.set_length(input_file.metadata()?.len());
     let input_reader = &mut progress_bar.wrap_read(input_file);
     let filename = input.file_name().unwrap().to_string_lossy().to_string();
-    let mut stats = ImportStats::new(progress_bar, filename);
+    let mut stats = ImportStats::new(&progress_bar, filename);
 
     read_file_to_tpks(input_reader, &mut |acc| {
         let result = import_key(&db, acc);
+        if let Err(ref e) = result {
+            progress_bar.println(e.to_string());
+        }
         stats.update(result);
     })?;
 
-    stats.progress_finish();
-    Ok(stats.errors)
+    progress_bar.finish_and_clear();
+    Ok(())
 }
 
 fn read_file_to_tpks(
