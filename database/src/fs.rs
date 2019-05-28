@@ -32,6 +32,8 @@ pub struct Filesystem {
     links_dir_by_fingerprint: PathBuf,
     links_dir_by_keyid: PathBuf,
     links_dir_by_email: PathBuf,
+
+    dry_run: bool,
 }
 
 /// Returns the given path, ensuring that the parent directory exists.
@@ -60,35 +62,15 @@ impl Filesystem {
         keys_external_dir: impl Into<PathBuf>,
         tmp_dir: impl Into<PathBuf>,
     ) -> Result<Self> {
+        Self::new_internal(keys_internal_dir, keys_external_dir, tmp_dir, false)
+    }
 
-        /*
-         use std::fs;
-         if fs::create_dir(&state_dir).is_err() {
-            let meta = fs::metadata(&state_dir);
-
-            match meta {
-                Ok(meta) => {
-                    if !meta.file_type().is_dir() {
-                        return Err(failure::format_err!(
-                            "'{}' exists already and is not a directory",
-                            state_dir.display()));
-                    }
-
-                    if meta.permissions().readonly() {
-                        return Err(failure::format_err!(
-                            "Cannot write '{}'",
-                            state_dir.display()));
-                    }
-                }
-
-                Err(e) => {
-                    return Err(failure::format_err!(
-                        "Cannot read '{}': {}",
-                        state_dir.display(), e));
-                }
-            }
-        }*/
-
+    pub fn new_internal(
+        keys_internal_dir: impl Into<PathBuf>,
+        keys_external_dir: impl Into<PathBuf>,
+        tmp_dir: impl Into<PathBuf>,
+        dry_run: bool,
+    ) -> Result<Self> {
         let tmp_dir = tmp_dir.into();
         create_dir_all(&tmp_dir)?;
 
@@ -124,6 +106,8 @@ impl Filesystem {
             links_dir_by_keyid,
             links_dir_by_fingerprint,
             links_dir_by_email,
+
+            dry_run,
         })
     }
 
@@ -382,6 +366,9 @@ impl Database for Filesystem {
     }
 
     fn move_tmp_to_full(&self, file: NamedTempFile, fpr: &Fingerprint) -> Result<()> {
+        if self.dry_run {
+            return Ok(());
+        }
         set_permissions(file.path(), Permissions::from_mode(0o640))?;
         let target = self.fingerprint_to_path_full(fpr);
         file.persist(ensure_parent(&target)?)?;
@@ -389,6 +376,9 @@ impl Database for Filesystem {
     }
 
     fn move_tmp_to_published(&self, file: NamedTempFile, fpr: &Fingerprint) -> Result<()> {
+        if self.dry_run {
+            return Ok(());
+        }
         set_permissions(file.path(), Permissions::from_mode(0o644))?;
         let target = self.fingerprint_to_path_published(fpr);
         file.persist(ensure_parent(&target)?)?;
@@ -488,6 +478,10 @@ impl Database for Filesystem {
     }
 
     fn link_email(&self, email: &Email, fpr: &Fingerprint) -> Result<()> {
+        if self.dry_run {
+            return Ok(());
+        }
+
         let link = self.link_by_email(&email);
         let target = diff_paths(&self.fingerprint_to_path_published(fpr),
                                 link.parent().unwrap()).unwrap();
@@ -518,6 +512,10 @@ impl Database for Filesystem {
     }
 
     fn link_fpr(&self, from: &Fingerprint, primary_fpr: &Fingerprint) -> Result<()> {
+        if self.dry_run {
+            return Ok(());
+        }
+
         let link_fpr = self.link_by_fingerprint(from);
         let link_keyid = self.link_by_keyid(&from.into());
         let target = diff_paths(&self.fingerprint_to_path_published(primary_fpr),
