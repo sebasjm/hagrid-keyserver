@@ -27,7 +27,7 @@ time = "0.1"
 tempfile = "3.0"
 structopt = "0.2"
 url = "1.6"
-lettre_email = "0.9"
+lettre_email = { version = "0.9", git = "https://github.com/lettre/lettre" }
 handlebars = "1.1.0"
 num_cpus = "1.0"
 ring = "0.13"
@@ -38,6 +38,7 @@ version = "0.9"
 default-features = false
 # smtp-transport doesn't build (openssl problem)
 features = ["file-transport", "sendmail-transport"]
+git = "https://github.com/lettre/lettre"
 
 [dependencies.rocket_contrib]
 version = "0"

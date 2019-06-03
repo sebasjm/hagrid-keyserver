@@ -96,18 +96,18 @@
     <center><h3>Non-Goals</h3></center>
 
     <ul>
-        <li><b>Do not distribute spam</b>
-            <p>Unlike traditional keyservers, <tt>keys.openpgp.org</tt> will
-                never distribute key material that isn't cryptographically
-                verified. This protects keys from unwanted spam, and helps
-                protect the service itself against "denial of service" attacks.
+        <li><b>Do not distribute unverified or malicious data</b>
+            <p>Unlike traditional keyservers, <tt>keys.openpgp.org</tt> does not
+                distribute key material that isn't cryptographically verified.
+                This protects keys from unwanted spam, and helps protect the
+                service itself against "denial of service" attacks.
             </p>
             <p>We also do not distribute "third-party" signatures on keys. These
                 kinds of signatures were typically used to "sign" the keys of
                 others, in order to support a "Web of Trust" trust model. This
-                model as implemented proved ineffective in practice for various
-                reasons, in particular it allowed attaching arbitrary spam to
-                any key.
+                model meant that third parties could attach arbitrary spam to
+                any key, but didn't prove itself as a very effective trust model
+                in practice.
             </p>
             <p>We are open to alternative approaches that might be implemented
                 in the future, that avoid this issue.
@@ -117,8 +117,8 @@
             <p>The federation model of the SKS pool led to various problems in
                 practice, which are incompatible with the goals stated above.
             </p>
-            <p>We are not opposed to exploring other options for federation in
-                the future, but it is not a high priority goal for now.
+            <p>We plan to explore options for federation in the future, to allow
+                users to choose between different service operators again.
             </p>
         </li>
         <li><b>Not a de-facto certification authority</b>
@@ -128,7 +128,8 @@
             </p>
             <p>Basic validation of e-mail addresses is used to ensure keys are
                 searchable by e-mail address only with consent of its owner.  We
-                do not sign keys, or perform any other kind of certification.
+                do not sign keys, or perform any other kind of certification
+                service.
             </p>
             <p>That said, we will do what we can to make sure this service is as
                 reliable and as trustworthy as possible.
