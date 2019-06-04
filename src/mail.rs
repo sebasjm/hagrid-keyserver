@@ -140,9 +140,7 @@ impl Service {
 
         let email = to.iter().fold(email, |email, to| email.to(to.to_string()));
 
-        let email = email
-            .build()
-            .unwrap();
+        let email = email.build()?;
 
         match self.transport {
             Transport::Sendmail => {

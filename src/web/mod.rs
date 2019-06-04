@@ -439,7 +439,7 @@ pub mod tests {
     use rocket::local::{Client, LocalResponse};
     use rocket::http::Status;
     use rocket::http::ContentType;
-    use lettre::{SendableEmail, SimpleSendableEmail};
+    use lettre::Envelope;
 
     use sequoia_openpgp::TPK;
     use sequoia_openpgp::tpk::TPKBuilder;
@@ -448,6 +448,18 @@ pub mod tests {
 
     use database::*;
     use super::*;
+
+    // for some reason, this is no longer public in lettre itself
+    // FIXME replace with builtin struct on lettre update
+    // see https://github.com/lettre/lettre/blob/master/lettre/src/file/mod.rs#L41
+    #[derive(Deserialize)]
+    struct SerializableEmail {
+        #[serde(alias = "envelope")]
+        _envelope: Envelope,
+        #[serde(alias = "message_id")]
+        _message_id: String,
+        message: Vec<u8>,
+    }
 
     /// Fake base URI to use in tests.
     const BASE_URI: &'static str = "http://local.connection";
@@ -479,7 +491,7 @@ pub mod tests {
             .extra("tmp_dir", base_dir.join("tmp").to_str().unwrap())
             .extra("token_dir", base_dir.join("tokens").to_str().unwrap())
             .extra("base-URI", BASE_URI)
-            .extra("from", "from")
+            .extra("from", "from@example.com")
             .extra("token_secret", "hagrid")
             .extra("token_validity", 3600)
             .extra("filemail_into", filemail.into_os_string().into_string()
@@ -889,26 +901,25 @@ pub mod tests {
     }
 
     fn pop_mail_capture_pattern(filemail_path: &Path, pattern: &str) -> String {
-        let mail_message = pop_mail(filemail_path).unwrap().unwrap();
-        let mail_content = mail_message.message();
+        let mail_content = pop_mail(filemail_path).unwrap().unwrap();
+        println!("{}", mail_content);
 
         let capture_re = regex::bytes::Regex::new(pattern).unwrap();
-        let capture_content = capture_re .captures(&mail_content).unwrap()
+        let capture_content = capture_re.captures(mail_content.as_ref()).unwrap()
             .get(1).unwrap().as_bytes();
         String::from_utf8_lossy(capture_content).to_string()
     }
 
     /// Returns and removes the first mail it finds from the given
     /// directory.
-    pub fn pop_mail(dir: &Path) -> Result<Option<SimpleSendableEmail>> {
+    pub fn pop_mail(dir: &Path) -> Result<Option<String>> {
         for entry in fs::read_dir(dir)? {
             let entry = entry?;
             if entry.file_type()?.is_file() {
                 let fh = fs::File::open(entry.path())?;
                 fs::remove_file(entry.path())?;
-                let mail: SimpleSendableEmail =
-                    ::serde_json::from_reader(fh)?;
-                return Ok(Some(mail));
+                let mail: SerializableEmail = ::serde_json::from_reader(fh)?;
+                return Ok(Some(String::from_utf8_lossy(&mail.message).to_string()));
             }
         }
         Ok(None)
