@@ -106,11 +106,15 @@
         for one or more e-mail addresses.
       </p>
       <p>
-        The call must include an opaque <code>token</code> value
+        The call must include the opaque <code>token</code> value
         (obtained via <tt>/vks/v1/upload</tt>)
         and an <code>addresses</code> field,
         which is a list of e-mail addresses (not full User IDs)
         to request verification mails for.
+        It can optionally include a <code>locale</code> field,
+        which is list of locales,
+        ordered by preference,
+        which to use for the verification e-mail.
         The reply will be the same as for the <tt>/vks/v1/upload</tt> endpoint,
         with addresses marked as <code>pending</code> where a verification email
         has been sent.
@@ -125,6 +129,7 @@
   "addresses": [
     "address@example.org"
   ]
+  "locale": [ "de_CH", "de_DE" ]
 }
           </pre>
         </div>
