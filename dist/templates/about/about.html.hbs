@@ -3,7 +3,7 @@
     <center><h2>About | <a href="/about/usage">Usage</a> | <a href="/about/privacy">Privacy Policy</a> | <a href="/about/api">API Docs</a></h2></center>
 
     <p>
-        The <tt>keys.openpgp.org</tt> website is a public service for the
+        The <tt>keys.openpgp.org</tt> server is a public service for the
         distribution and discovery of OpenPGP-compatible keys, commonly
         referred to as a "keyserver".
     </p>
@@ -12,14 +12,46 @@
         <strong>For instructions, see our <a href="/about/usage">usage guide</a>.</strong>
     </p>
 
+    <h3>How it works</h3>
+
     <p>
-        As a user, <span class="brand">keys.openpgp.org</span> can be used as
-        a drop-in replacement for other keyservers, offering fast and reliable
-        response times. All typical workflows for key updates and discovery by
-        e-mail address are supported. Keys which are discoverable by e-mail must
-        be verified by their owner, and can also be deleted by them. See below
-        for details.
+        OpenPGP keys contain two types of information:
     </p>
+
+    <ul>
+        <li><strong>Cryptographic metadata</strong> is all the technical
+            information about the key itself, such as its expiry date, whether
+            it is revoked or not, or how it can be used for encryption.
+        </li>
+        <li><strong>Identity information</strong> includes the parts of
+            a key that identify its owner (known as "User IDs"), in
+            particular e-mail addresses.
+        </li>
+    </ul>
+
+    <p>
+        Traditionally, these pieces of information have always been distributed
+        together. On <span class="brand">keys.openpgp.org</span>, they are
+        treated differently:
+    </p>
+
+    <p>
+        The cryptographic metadata of keys can be freely up- and downloaded on
+        <span class="brand">keys.openpgp.org</span>.  It consists of technical
+        information only, which can't be used to identify its owner. It is
+        important for OpenPGP software to keep this information up to date, in
+        order to maintain secure and reliable communication.
+    </p>
+
+    <p>
+        The identity information in an OpenPGP key is only distributed with
+        consent. It contains personal data, and is not strictly necessary for
+        a key to be used for encryption or signature verification. Once the
+        owner gives consent by verifying their e-mail address, the key can then
+        be found by others in a search by address.
+    </p>
+
+    <h3>Community and platform</h3>
 
     <p>
         This service is run as a community effort. You can talk to us in
@@ -37,104 +69,5 @@
         a hosting provider focused on Internet Freedom projects, run by
         <a href="https://greenhost.net/" target="_blank">Greenhost</a>.
     </p>
-
-    <center><h3>Goals</h3></center>
-
-    <ul>
-        <li><b>Fast and reliable key distribution</b>
-            <p>The primary function of <tt>keys.openpgp.org</tt> is the
-                distribution of updates for OpenPGP public keys.  OpenPGP
-                clients can retrieve updates for keys they already know, in
-                particular revocations and new subkeys.
-            </p>
-            <p>While cryptographic key material is distributed with no
-                authentication, <strong>e-mail addresses are only distributed
-                    with their owner's consent.</strong> See next point for
-                details.</p>
-            <p>We make it a priority to keep the service fast and reliable.</p>
-        </li>
-
-        <li><b>Key discovery by e-mail address</b>
-            <p>Users can choose to make a key discoverable for a specific e-mail
-                address. In order to protect the privacy of our users and
-                improve the usefulness of the service, some limitations apply:
-            </p>
-            <ol>
-                <li>Only the owner of an e-mail address can make its key discoverable.</li>
-                <li>Only a single key can be associated with an e-mail address at any one time.</li>
-                <li>Search is only possible by exact e-mail addresses, not by name or a partial address.</li>
-            </ol>
-            <p>Making a key discoverable for an e-mail address requires simple
-                validation, to prove ownership of the e-mail address.  A key
-                published in this way can be <a href="/manage">deleted</a>
-                by the owner at any time.
-            </p>
-        </li>
-
-        <li><b>Preserve user privacy</b>
-            <p>One of our top priorities is user privacy:
-                <ul>
-                    <li>We are hosted on
-                        <a href="https://eclips.is" target="_blank">eclips.is</a>,
-                        a hosting provider specifically created to host and
-                        support Internet Freedom efforts. No Cloudflare
-                        involved.</li>
-                    <li>We keep no detailed access logs, only basic operational
-                        usage statistics.</li>
-                    <li>The service can be accessed as a TOR hidden service
-                        (coming SOON).</li>
-                    <li>In the future, we hope to use this platform to
-                        experiment with new mechanisms that improve user
-                        privacy in the OpenPGP ecosystem.</li>
-                </ul>
-            </p>
-            <p>See our <a href="/about/privacy">Privacy Policy</a> for more details on
-                how we store and distribute data.</p>
-        </li>
-    </ul>
-
-    <center><h3>Non-Goals</h3></center>
-
-    <ul>
-        <li><b>Do not distribute unverified or malicious data</b>
-            <p>Unlike traditional keyservers, <tt>keys.openpgp.org</tt> does not
-                distribute key material that isn't cryptographically verified.
-                This protects keys from unwanted spam, and helps protect the
-                service itself against "denial of service" attacks.
-            </p>
-            <p>We also do not distribute "third-party" signatures on keys. These
-                kinds of signatures were typically used to "sign" the keys of
-                others, in order to support a "Web of Trust" trust model. This
-                model meant that third parties could attach arbitrary spam to
-                any key, but didn't prove itself as a very effective trust model
-                in practice.
-            </p>
-            <p>We are open to alternative approaches that might be implemented
-                in the future, that avoid this issue.
-            </p>
-        </li>
-        <li><b>Not part of the "synchronizing keyserver" (SKS) pool</b>
-            <p>The federation model of the SKS pool led to various problems in
-                practice, which are incompatible with the goals stated above.
-            </p>
-            <p>We plan to explore options for federation in the future, to allow
-                users to choose between different service operators again.
-            </p>
-        </li>
-        <li><b>Not a de-facto certification authority</b>
-            <p>While <tt>keys.openpgp.org</tt> can be used to discover keys
-                for given e-mail addresses <i>reliably</i>, that does not mean
-                they are <i>trustworthy</i> in a cryptographic sense.
-            </p>
-            <p>Basic validation of e-mail addresses is used to ensure keys are
-                searchable by e-mail address only with consent of its owner.  We
-                do not sign keys, or perform any other kind of certification
-                service.
-            </p>
-            <p>That said, we will do what we can to make sure this service is as
-                reliable and as trustworthy as possible.
-            </p>
-        </li>
-    </ul>
 </div>
 {{/layout}}
