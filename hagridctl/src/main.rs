@@ -32,7 +32,7 @@ pub struct HagridConfigs {
 // this is not an exact match - Rocket config has more complicated semantics
 // than a plain toml file.
 // see also https://github.com/SergioBenitez/Rocket/issues/228
-#[derive(Deserialize)]
+#[derive(Deserialize,Clone)]
 pub struct HagridConfig {
     _template_dir: Option<PathBuf>,
     keys_internal_dir: Option<PathBuf>,
