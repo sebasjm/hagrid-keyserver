@@ -1,0 +1,60 @@
+{{#> layout }}
+<div class="about">
+
+    <center><h2><a href="/about">About</a> | <a href="/about/usage">Usage</a> | FAQ | <a href="/about/privacy">Privacy Policy</a> | <a href="/about/api">API</a></h2></center>
+
+    <h3>Why not sign keys after verification?</h3>
+
+    The <span class="brand">keys.openpgp.org</span> service is meant for key
+    distribution and discovery, not as a de-facto CA.  Client implementations
+    that want to offer verified communication should rely on their own trust
+    model.
+
+    <h3>Why not encrypt verification e-mails?</h3>
+
+    Various reasons:
+    <ol>
+        <li>It is more complicated, both for our users and for us.</li>
+        <li>It doesn't prevent attacks - an attacker gains nothing from
+            uploading a key they don't have access to.</li>
+        <li>Deletion would still have to be possible even when a key is
+            lost.</li>
+        <li>It would require a different (and more complicated) mechanism to
+            upload keys that can only sign.</li>
+    </ol>
+
+    <h3>Is <span class="brand">keys.openpgp.org</span> part of the "SKS" pool?</h3>
+
+    <p>No. The "append-only" federation model of the SKS pool leads to various
+        problems, that make both operation and use of those servers very
+        difficult.  There is also no simple way to store information about
+        e-mail verification in a federated way.
+    </p>
+    <p>We do plan to explore options for a distributed service in the future, so
+        users can choose between different service operators again.
+    </p>
+
+    <!--
+    <ul>
+        <li><b>Do not distribute unverified or malicious data</b>
+            <p>Unlike traditional keyservers, <tt>keys.openpgp.org</tt> does not
+                distribute key material that isn't cryptographically verified.
+                This protects keys from unwanted spam, and helps protect the
+                service itself against "denial of service" attacks.
+            </p>
+            <p>We also do not distribute "third-party" signatures on keys. These
+                kinds of signatures were typically used to "sign" the keys of
+                others, in order to support a "Web of Trust" trust model. This
+                model meant that third parties could attach arbitrary spam to
+                any key, but didn't prove itself as a very effective trust model
+                in practice.
+            </p>
+            <p>We are open to alternative approaches that might be implemented
+                in the future, that avoid this issue.
+            </p>
+        </li>
+    </ul>
+    -->
+
+</div>
+{{/layout}}

@@ -274,6 +274,11 @@ fn about() -> Template {
     Template::render("about/about", templates::General::default())
 }
 
+#[get("/about/faq")]
+fn faq() -> Template {
+    Template::render("about/faq", templates::General::default())
+}
+
 #[get("/about/usage")]
 fn usage() -> Template {
     Template::render("about/usage", templates::General::default())
@@ -300,6 +305,7 @@ fn rocket_factory(rocket: rocket::Rocket) -> Result<rocket::Rocket> {
         about,
         privacy,
         apidoc,
+        faq,
         usage,
         files,
         // VKSv1

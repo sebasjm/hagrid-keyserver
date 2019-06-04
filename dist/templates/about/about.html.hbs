@@ -1,6 +1,6 @@
 {{#> layout }}
 <div class="about">
-    <center><h2>About | <a href="/about/usage">Usage</a> | <a href="/about/privacy">Privacy Policy</a> | <a href="/about/api">API Docs</a></h2></center>
+    <center><h2>About | <a href="/about/usage">Usage</a> | <a href="/about/faq">FAQ</a> | <a href="/about/privacy">Privacy Policy</a> | <a href="/about/api">API</a></h2></center>
 
     <p>
         The <tt>keys.openpgp.org</tt> server is a public service for the
@@ -19,9 +19,10 @@
     </p>
 
     <ul>
-        <li><strong>Cryptographic metadata</strong> is all the technical
-            information about the key itself, such as its expiry date, whether
-            it is revoked or not, or how it can be used for encryption.
+        <li><strong>Technical data</strong> is all the technical information
+            about the key itself. This means the large numbers used for
+            cryptographic operations, but also metadata like its expiry date,
+            and whether it is revoked or not.
         </li>
         <li><strong>Identity information</strong> includes the parts of
             a key that identify its owner (known as "User IDs"), in
@@ -36,19 +37,19 @@
     </p>
 
     <p>
-        The cryptographic metadata of keys can be freely up- and downloaded on
+        The technical data of keys can be freely up- and downloaded on
         <span class="brand">keys.openpgp.org</span>.  It consists of technical
-        information only, which can't be used to identify its owner. It is
-        important for OpenPGP software to keep this information up to date, in
-        order to maintain secure and reliable communication.
+        information only, which can't be used to identify its owner.  However,
+        it is important for OpenPGP software to keep this information up to
+        date, in order to maintain secure and reliable communication.
     </p>
 
     <p>
         The identity information in an OpenPGP key is only distributed with
         consent. It contains personal data, and is not strictly necessary for
         a key to be used for encryption or signature verification. Once the
-        owner gives consent by verifying their e-mail address, the key can then
-        be found by others in a search by address.
+        owner gives consent by verifying their e-mail address, the key can
+        be found by everyone via search by address.
     </p>
 
     <h3>Community and platform</h3>
