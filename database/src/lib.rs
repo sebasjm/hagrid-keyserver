@@ -258,7 +258,13 @@ pub trait Database: Sync + Send {
             .map(|fpr| self.check_link_fpr(&fpr, &fpr_primary))
             .collect::<Vec<_>>()
             .into_iter()
-            .collect::<Result<Vec<_>>>()?;
+            .collect::<Result<Vec<_>>>();
+
+        if fpr_checks.is_err() {
+            self.write_to_quarantine(&fpr_primary, &tpk_to_string(&full_tpk_new)?)?;
+        }
+        let fpr_checks = fpr_checks?;
+
         let fpr_not_linked = fpr_checks.into_iter().flatten();
 
         let full_tpk_tmp = self.write_to_temp(&tpk_to_string(&full_tpk_new)?)?;
@@ -479,4 +485,5 @@ pub trait Database: Sync + Send {
     fn write_to_temp(&self, content: &[u8]) -> Result<NamedTempFile>;
     fn move_tmp_to_full(&self, content: NamedTempFile, fpr: &Fingerprint) -> Result<()>;
     fn move_tmp_to_published(&self, content: NamedTempFile, fpr: &Fingerprint) -> Result<()>;
+    fn write_to_quarantine(&self, fpr: &Fingerprint, content: &[u8]) -> Result<()>;
 }

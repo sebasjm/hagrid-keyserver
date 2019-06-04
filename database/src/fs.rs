@@ -26,6 +26,7 @@ pub struct Filesystem {
     keys_internal_dir: PathBuf,
     keys_external_dir: PathBuf,
     keys_dir_full: PathBuf,
+    keys_dir_quarantined: PathBuf,
     keys_dir_published: PathBuf,
 
     links_dir_by_fingerprint: PathBuf,
@@ -94,8 +95,10 @@ impl Filesystem {
         let keys_internal_dir: PathBuf = keys_internal_dir.into();
         let keys_external_dir: PathBuf = keys_external_dir.into();
         let keys_dir_full = keys_internal_dir.join("full");
+        let keys_dir_quarantined = keys_internal_dir.join("quarantined");
         let keys_dir_published = keys_external_dir.join("published");
         create_dir_all(&keys_dir_full)?;
+        create_dir_all(&keys_dir_quarantined)?;
         create_dir_all(&keys_dir_published)?;
 
         let links_dir_by_keyid = keys_external_dir.join("by-keyid");
@@ -116,6 +119,7 @@ impl Filesystem {
 
             keys_dir_full,
             keys_dir_published,
+            keys_dir_quarantined,
 
             links_dir_by_keyid,
             links_dir_by_fingerprint,
@@ -127,6 +131,12 @@ impl Filesystem {
     fn fingerprint_to_path_full(&self, fingerprint: &Fingerprint) -> PathBuf {
         let hex = fingerprint.to_string();
         self.keys_dir_full.join(path_split(&hex))
+    }
+
+    /// Returns the path to the given Fingerprint.
+    fn fingerprint_to_path_quarantined(&self, fingerprint: &Fingerprint) -> PathBuf {
+        let hex = fingerprint.to_string();
+        self.keys_dir_quarantined.join(&hex)
     }
 
     /// Returns the path to the given Fingerprint.
@@ -382,6 +392,19 @@ impl Database for Filesystem {
         set_permissions(file.path(), Permissions::from_mode(0o644))?;
         let target = self.fingerprint_to_path_published(fpr);
         file.persist(ensure_parent(&target)?)?;
+        Ok(())
+    }
+
+    fn write_to_quarantine(&self, fpr: &Fingerprint, content: &[u8]) -> Result<()> {
+        let mut tempfile = tempfile::Builder::new()
+            .prefix("key")
+            .rand_bytes(16)
+            .tempfile_in(&self.tmp_dir)?;
+        tempfile.write_all(content).unwrap();
+
+        let target = self.fingerprint_to_path_quarantined(fpr);
+        tempfile.persist(ensure_parent(&target)?)?;
+
         Ok(())
     }
 
