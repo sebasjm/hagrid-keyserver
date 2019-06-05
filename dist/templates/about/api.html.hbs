@@ -47,11 +47,11 @@
     <li>
       <tt>POST /vks/v1/upload</tt>
       <p>
-        Keys may be submitted using a POST request to <tt>/vks/v1/upload</tt>.
+        A single key may be submitted using a POST request to <tt>/vks/v1/upload</tt>.
         The body of the request must be <code>application/json</code>.
         The JSON data must contain a single field <code>keytext</code>,
         which must contain the keys to submit.
-        Key data can be formatted in ASCII Armor, or base64.
+        The value of <code>keytext</code> can be formatted in standard OpenPGP ASCII Armor, or base64.
       </p>
 
       <p>
@@ -61,7 +61,7 @@
         The <code>token</code> field contains an opaque value,
         which can be used to perform <tt>request-verify</tt> requests
         (see below).
-        The <code>key_fpr</code> field contains the uploaded key's fingerprint.
+        The <code>key_fpr</code> field contains the fingerprint of the uploaded primary key.
         The <code>status</code> token contains a map of email addresses
         contained in the key, with one of the values
         <code>unpublished</code>,
