@@ -59,7 +59,10 @@ mod template {
         pub key_link: String,
         pub is_revoked: bool,
         pub token: String,
-        pub uid_status: Vec<UploadUidStatus>,
+        pub email_published: Vec<String>,
+        pub email_unpublished: Vec<UploadUidStatus>,
+        pub count_revoked_one: bool,
+        pub count_revoked: usize,
     }
 
     #[derive(Serialize)]
@@ -79,8 +82,6 @@ mod template {
     pub struct UploadUidStatus {
         pub address: String,
         pub requested: bool,
-        pub published: bool,
-        pub revoked: bool,
     }
 
 }
@@ -88,7 +89,8 @@ mod template {
 impl MyResponse {
     fn upload_response(response: UploadResponse) -> Self {
         match response {
-            UploadResponse::Ok { token, key_fpr, status } => Self::upload_ok(token, key_fpr, status),
+            UploadResponse::Ok { token, key_fpr, is_revoked, status } =>
+                Self::upload_ok(token, key_fpr, is_revoked, status),
             UploadResponse::OkMulti { key_fprs } => Self::upload_ok_multi(key_fprs),
             UploadResponse::Error(error) => MyResponse::bad_request(
                 "upload/upload", failure::err_msg(error)),
@@ -98,28 +100,44 @@ impl MyResponse {
     fn upload_ok(
         token: String,
         key_fpr: String,
+        is_revoked: bool,
         uid_status: HashMap<String,EmailStatus>,
     ) -> Self {
         let key_link = format!("/pks/lookup?op=get&search={}", &key_fpr);
 
-        let mut uid_status: Vec<_> = uid_status
-            .into_iter()
-            .map(|(email,status)|
-                template::UploadUidStatus {
-                    address: email.to_string(),
-                    requested: status == EmailStatus::Pending,
-                    published: status == EmailStatus::Published,
-                    revoked: status == EmailStatus::Revoked,
-                })
+        let count_revoked = uid_status.iter()
+            .filter(|(_,status)| **status == EmailStatus::Revoked)
+            .count();
+
+        let mut email_published: Vec<_> = uid_status.iter()
+            .filter(|(_,status)| **status == EmailStatus::Published)
+            .map(|(email,_)| email.to_string())
             .collect();
-        uid_status.sort_by(|fst,snd| {
-            fst.revoked.cmp(&snd.revoked).then(fst.address.cmp(&snd.address))
-        });
+        email_published.sort_unstable();
+
+        let mut email_unpublished: Vec<_> = uid_status.into_iter()
+            .filter(|(_,status)| *status == EmailStatus::Unpublished ||
+                    *status == EmailStatus::Pending)
+             .map(|(email,status)|
+                 template::UploadUidStatus {
+                     address: email.to_string(),
+                     requested: status == EmailStatus::Pending,
+                 })
+            .collect();
+        email_unpublished
+            .sort_unstable_by(|fst,snd| fst.address.cmp(&snd.address));
 
         let context = template::VerificationSent {
             version: env!("VERGEN_SEMVER").to_string(),
             commit: env!("VERGEN_SHA_SHORT").to_string(),
-            is_revoked: false, key_fpr, key_link, token, uid_status,
+            is_revoked,
+            key_fpr,
+            key_link,
+            token,
+            email_published,
+            email_unpublished,
+            count_revoked_one: count_revoked == 1,
+            count_revoked,
         };
         MyResponse::ok("upload/upload-ok", context)
     }

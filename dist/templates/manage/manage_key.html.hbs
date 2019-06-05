@@ -1,8 +1,11 @@
 {{#> layout }}
+  <p>
+    Managing the key <span class="fingerprint"><a href="{{key_link}}" target="_blank">{{key_fpr}}</a></span>.
+  </p>
 
   {{#if uid_status}}
-  <p>
-    Your key <span class="fingerprint"><a href="{{key_link}}" target="_blank">{{key_fpr}}</a></span> is published for the following addresses.
+  <p style="padding-top: 1em;">
+    Your key is published with the following identity information:
   </p>
 
   {{#each uid_status}}
@@ -26,8 +29,9 @@
   </p>
 
   {{else}}
-  <p>
-    Your key <span class="fingerprint"><a href="{{key_link}}">{{key_fpr}}</a></span> is not published for any addresses.
+  <p style="padding-top: 1em;">
+    Your key is published with only technical data, but no identity information
+    (<a href="/about" target="_blank">what does this mean?</a>)
   </p>
 
   <p>

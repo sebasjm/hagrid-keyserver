@@ -46,6 +46,7 @@ pub mod response {
         Ok {
             token: String,
             key_fpr: String,
+            is_revoked: bool,
             status: HashMap<String,EmailStatus>,
         },
         OkMulti { key_fprs: Vec<String> },
@@ -258,7 +259,7 @@ fn show_upload_verify(
 ) -> response::UploadResponse {
     let key_fpr = verify_state.fpr.to_string();
     if tpk_status.is_revoked {
-        return response::UploadResponse::Ok { token, key_fpr, status: HashMap::new() };
+        return response::UploadResponse::Ok { token, key_fpr, is_revoked: true, status: HashMap::new() };
     }
 
     let status: HashMap<_,_> = tpk_status.email_status
@@ -278,5 +279,5 @@ fn show_upload_verify(
         })
         .collect();
 
-    response::UploadResponse::Ok { token, key_fpr, status }
+    response::UploadResponse::Ok { token, key_fpr, is_revoked: false, status }
 }

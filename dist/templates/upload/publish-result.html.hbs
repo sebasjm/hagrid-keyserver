@@ -1,9 +1,13 @@
 {{#> layout}}
   <div class="row">
     {{#if verified }}
-    Key for <span class="email">{{ userid }}</span> published.
+    <p>
+      Key for <a href="/pks/lookup?op=get&search={{ userid }}"<span class="email">{{ userid }}</span></a> published.
+    </p>
     {{else}}
-    Verification failed! You can <a href="/upload">try uploading again</a>.
+    <p>
+      Verification failed! You can <a href="/upload">try uploading again</a>.
+    </p>
     {{/if}}
   </div>
 {{/layout}}

@@ -1,53 +1,67 @@
 {{#> layout }}
   <p>
-    The key <span class="fingerprint"><a href="{{key_link}}" target="_blank">{{key_fpr}}</a></span> was successfully uploaded.
+    You uploaded the key <span class="fingerprint"><a href="{{key_link}}" target="_blank">{{key_fpr}}</a></span>.
   </p>
 
   {{#if is_revoked}}
+    <p style="padding-top: 1em;">
+      This key is now published with technical data, but no identity information (<a href="/about" target="_blank">what does this mean?</a>)
+    </p>
     <p>
-      This key is revoked. It can not be searched by email address.
+      This key is revoked, and can't be made available for search by e-mail address.
     </p>
   {{else}}
-    {{#if uid_status}}
-      <p>
-        To make this key available for search by an e-mail address, you must
-        verify it belongs to you:
+    {{#if email_published}}
+      <p style="padding-top: 1em;">
+        This key is now published with the following identity information (<a href="/about" target="_blank">what does this mean?</a>):
       </p>
-
-      {{#each uid_status}}
+      {{#each email_published}}
       <div class="publishedUid">
-        <div>
-        {{#if revoked}}
-        Revoked
-        {{else}}
-          {{#if published}}
-          Published
-          {{else}}
-            {{#if requested}}
-            Verification Pending
-            {{else}}
-            <form action="/upload/request-verify" method="post">
-              <input type="hidden" name="token" value="{{../token}}" />
-              <input type="hidden" name="address" value="{{address}}" />
-              <input type="submit" class="link" value="Send Verification Mail">
-            </form>
-            {{/if}}
-          {{/if}}
-        {{/if}}
-        </div>
-        <p>
-          <span class="email">{{address}}</span>
-        </p>
+        <div>Published</div>
+        <p><span class="email">{{this}}</span></p>
       </div>
       {{/each}}
-      <p>
-        The distributed key will also contain only verified addresses.
-      </p>
     {{else}}
-      <p>
-        This key contains no email addresses.
+      <p style="padding-top: 1em;">
+        This key is now published with technical data, but no identity information (<a href="/about" target="_blank">what does this mean?</a>)
       </p>
     {{/if}}
+
+    {{#if email_unpublished}}
+      <p style="padding-top: 1em;">
+        To make the key available for search by e-mail address, you can verify it belongs to you:
+      </p>
+      {{#each email_unpublished}}
+      <div class="publishedUid">
+        <div>
+          {{#if requested}}
+          Verification Pending
+          {{else}}
+          <form action="/upload/request-verify" method="post">
+            <input type="hidden" name="token" value="{{../token}}" />
+            <input type="hidden" name="address" value="{{address}}" />
+            <input type="submit" class="link" value="Send Verification Mail">
+          </form>
+          {{/if}}
+        </div>
+        <p><span class="email">{{address}}</span></p>
+      </div>
+      {{/each}}
+    {{/if}}
+
+    {{#if count_revoked}}
+      {{#if count_revoked_one}}
+    <p style="padding-top: 1em;">
+      This key contains one revoked identity, which is not published.
+    </p>
+      {{else}}
+    <p style="padding-top: 1em;">
+      This key contains {{count_revoked}} revoked identities, which are not
+      published.
+    </p>
+      {{/if}}
+    {{/if}}
+
   {{/if}}
 
 {{/layout}}
