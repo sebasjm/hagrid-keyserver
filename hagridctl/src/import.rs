@@ -146,12 +146,20 @@ fn import_from_file(db: &KeyDatabase, input: &Path, multi_progress: &MultiProgre
 
     let input_reader = &mut progress_bar.wrap_read(input_file);
     let filename = input.file_name().unwrap().to_string_lossy().to_string();
-    let mut stats = ImportStats::new(&progress_bar, filename);
+    let mut stats = ImportStats::new(&progress_bar, filename.clone());
 
     read_file_to_tpks(input_reader, &mut |acc| {
+        let primary_key = acc[0].clone();
         let result = import_key(&db, acc);
         if let Err(ref e) = result {
-            progress_bar.println(e.to_string());
+            let key_fpr = match primary_key {
+                Packet::PublicKey(key) => key.fingerprint().to_hex(),
+                Packet::SecretKey(key) => key.fingerprint().to_hex(),
+                _ => "Unknown".to_owned(),
+            };
+            let error = format!("{}:{:05}:{}: {}\n{}", filename, stats.count_total,
+                                key_fpr, e.to_string(), e.backtrace());
+            progress_bar.println(error);
         }
         stats.update(result);
     })?;
