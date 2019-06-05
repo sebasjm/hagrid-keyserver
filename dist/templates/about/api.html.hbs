@@ -106,7 +106,8 @@
         for one or more e-mail addresses.
       </p>
       <p>
-        The call must include the opaque <code>token</code> value
+        The body of the request must be <code>application/json</code>.
+        The JSON data must include the opaque <code>token</code> value
         (obtained via <tt>/vks/v1/upload</tt>)
         and an <code>addresses</code> field,
         which is a list of e-mail addresses (not full User IDs)
