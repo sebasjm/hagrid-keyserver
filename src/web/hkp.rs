@@ -116,7 +116,7 @@ pub fn pks_add_form_data(
     cont_type: &ContentType,
     data: Data,
 ) -> MyResponse {
-    match vks_web::upload_post_form_data(db, tokens_stateless, rate_limiter, cont_type, data) {
+    match vks_web::process_post_form_data(db, tokens_stateless, rate_limiter, cont_type, data) {
         Ok(_) => MyResponse::plain("Ok".into()),
         Err(err) => MyResponse::ise(err),
     }
@@ -128,9 +128,10 @@ pub fn pks_add_form(
     db: rocket::State<KeyDatabase>,
     tokens_stateless: rocket::State<tokens::Service>,
     rate_limiter: rocket::State<RateLimiter>,
+    cont_type: &ContentType,
     data: Data,
 ) -> MyResponse {
-    match vks_web::upload_post_form(db, tokens_stateless, rate_limiter, data) {
+    match vks_web::process_post_form_data(db, tokens_stateless, rate_limiter, cont_type, data) {
         Ok(_) => {
             let msg = format!("Upload successful. Note that identity information will only be published with verification! see {}/about/usage#gnupg-upload", request_origin.get_base_uri());
             MyResponse::plain(msg)

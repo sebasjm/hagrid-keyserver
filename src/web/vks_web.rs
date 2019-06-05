@@ -215,16 +215,26 @@ pub fn upload_post_form_data(
     rate_limiter: rocket::State<RateLimiter>,
     cont_type: &ContentType,
     data: Data,
-) -> Result<MyResponse> {
+) -> MyResponse {
+    match process_post_form_data(db, tokens_stateless, rate_limiter, cont_type, data) {
+        Ok(response) => MyResponse::upload_response(response),
+        Err(err) => MyResponse::bad_request("upload/upload", err),
+    }
+}
+
+pub fn process_post_form_data(
+    db: rocket::State<KeyDatabase>,
+    tokens_stateless: rocket::State<tokens::Service>,
+    rate_limiter: rocket::State<RateLimiter>,
+    cont_type: &ContentType,
+    data: Data,
+) -> Result<UploadResponse> {
     // multipart/form-data
-    let (_, boundary) =
-        match cont_type.params().find(|&(k, _)| k == "boundary") {
-            Some(v) => v,
-            None => return Ok(MyResponse::bad_request(
-                "upload/upload",
-                failure::err_msg("`Content-Type: multipart/form-data` \
-                                    boundary param not provided"))),
-        };
+    let (_, boundary) = cont_type
+        .params()
+        .find(|&(k, _)| k == "boundary")
+        .ok_or_else(|| failure::err_msg("`Content-Type: multipart/form-data` \
+                                      boundary param not provided"))?;
 
     process_upload(&db, &tokens_stateless, &rate_limiter, data, boundary)
 }
@@ -310,7 +320,19 @@ pub fn upload_post_form(
     tokens_stateless: rocket::State<tokens::Service>,
     rate_limiter: rocket::State<RateLimiter>,
     data: Data,
-) -> Result<MyResponse> {
+) -> MyResponse {
+    match process_post_form(db, tokens_stateless, rate_limiter, data) {
+        Ok(response) => MyResponse::upload_response(response),
+        Err(err) => MyResponse::bad_request("upload/upload", err),
+    }
+}
+
+pub fn process_post_form(
+    db: rocket::State<KeyDatabase>,
+    tokens_stateless: rocket::State<tokens::Service>,
+    rate_limiter: rocket::State<RateLimiter>,
+    data: Data,
+) -> Result<UploadResponse> {
     use rocket::request::FormItems;
     use std::io::Cursor;
 
@@ -329,19 +351,18 @@ pub fn upload_post_form(
 
         match key.as_str() {
             "keytext" => {
-                return Ok(MyResponse::upload_response(vks::process_key(
+                return Ok(vks::process_key(
                     &db,
                     &tokens_stateless,
                     &rate_limiter,
                     Cursor::new(decoded_value.as_bytes())
-                )));
+                ));
             }
             _ => { /* skip */ }
         }
     }
 
-    Ok(MyResponse::bad_request("upload/upload",
-                                failure::err_msg("No keytext found")))
+    Err(failure::err_msg("No keytext found"))
 }
 
 
@@ -351,7 +372,7 @@ fn process_upload(
     rate_limiter: &RateLimiter,
     data: Data,
     boundary: &str,
-) -> Result<MyResponse> {
+) -> Result<UploadResponse> {
     // saves all fields, any field longer than 10kB goes to a temporary directory
     // Entries could implement FromData though that would give zero control over
     // how the files are saved; Multipart would be a good impl candidate though
@@ -371,18 +392,14 @@ fn process_multipart(
     tokens_stateless: &tokens::Service,
     rate_limiter: &RateLimiter,
     entries: Entries,
-) -> Result<MyResponse> {
+) -> Result<UploadResponse> {
     match entries.fields.get("keytext") {
         Some(ent) if ent.len() == 1 => {
             let reader = ent[0].data.readable()?;
-            Ok(MyResponse::upload_response(vks::process_key(db, tokens_stateless, rate_limiter, reader)))
+            Ok(vks::process_key(db, tokens_stateless, rate_limiter, reader))
         }
-        Some(_) =>
-            Ok(MyResponse::bad_request(
-                "upload/upload", failure::err_msg("Multiple keytexts found"))),
-        None =>
-            Ok(MyResponse::bad_request(
-                "upload/upload", failure::err_msg("No keytext found"))),
+        Some(_) => Err(failure::err_msg("Multiple keytexts found")),
+        None => Err(failure::err_msg("No keytext found")),
     }
 }
 
