@@ -148,6 +148,23 @@ mod templates {
         pub version: String,
     }
 
+    #[derive(Serialize)]
+    pub struct About {
+        pub base_uri: String,
+        pub commit: String,
+        pub version: String,
+    }
+
+    impl About {
+        pub fn new(base_uri: impl Into<String>) -> Self {
+            Self {
+                base_uri: base_uri.into(),
+                version: env!("VERGEN_SEMVER").to_string(),
+                commit: env!("VERGEN_SHA_SHORT").to_string(),
+            }
+        }
+    }
+
     impl General {
         pub fn new(error: Option<String>) -> Self {
             Self {
@@ -280,8 +297,8 @@ fn faq() -> Template {
 }
 
 #[get("/about/usage")]
-fn usage() -> Template {
-    Template::render("about/usage", templates::General::default())
+fn usage(state: rocket::State<HagridState>) -> Template {
+    Template::render("about/usage", templates::About::new(state.base_uri.as_ref()))
 }
 
 #[get("/about/privacy")]
@@ -323,6 +340,8 @@ fn rocket_factory(rocket: rocket::Rocket) -> Result<rocket::Rocket> {
         vks_web::request_verify_form,
         vks_web::request_verify_form_data,
         vks_web::verify_confirm,
+        vks_web::quick_upload,
+        vks_web::quick_upload_proceed,
         // HKP
         hkp::pks_lookup,
         hkp::pks_add_form,
@@ -733,6 +752,23 @@ pub mod tests {
         assert_eq!(response.status(), Status::BadRequest);
     }
 
+    #[test]
+    fn upload_curl_shortcut() {
+        let (_tmpdir, client) = client().unwrap();
+
+        let (tpk, _) = TPKBuilder::autocrypt(
+            None, Some("foo@invalid.example.com".into()))
+            .generate().unwrap();
+
+        let mut tpk_serialized = Vec::new();
+        tpk.serialize(&mut tpk_serialized).unwrap();
+
+        let _token = vks_publish_shortcut_get_token(&client, &tpk_serialized);
+
+        check_mr_responses_by_fingerprint(&client, &tpk, 0);
+        check_null_responses_by_email(&client, "foo@invalid.example.com");
+    }
+
     /// Asserts that the given URI 404s.
     pub fn check_null_response(client: &Client, uri: &str) {
         let response = client.get(uri).dispatch();
@@ -891,7 +927,6 @@ pub mod tests {
         assert!(response.body_string().unwrap().contains("pending"));
     }
 
-
     fn check_mails_and_verify_email(client: &Client, filemail_path: &Path) {
         let pattern = format!("{}(/verify/[^ \t\n]*)", BASE_URI);
         let confirm_uri = pop_mail_capture_pattern(filemail_path, &pattern);
@@ -978,6 +1013,21 @@ pub mod tests {
             .header(ct)
             .body(&body[..])
             .dispatch()
+    }
+
+    fn vks_publish_shortcut_get_token<'a>(client: &'a Client, data: &[u8]) -> String {
+        let mut response = client.put("/")
+            .body(data)
+            .dispatch();
+        let response_body = response.body_string().unwrap();
+        assert_eq!(response.status(), Status::Ok);
+        assert!(response_body.contains("Key successfully uploaded"));
+
+        let pattern = format!("{}/upload/([^ \t\n]*)", BASE_URI);
+        let capture_re = regex::bytes::Regex::new(&pattern).unwrap();
+        let capture_content = capture_re .captures(response_body.as_bytes()).unwrap()
+            .get(1).unwrap().as_bytes();
+        String::from_utf8_lossy(capture_content).to_string()
     }
 
     fn vks_publish_json_get_token<'a>(client: &'a Client, data: &[u8]) -> String {

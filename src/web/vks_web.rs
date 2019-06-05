@@ -12,7 +12,7 @@ use rocket::Data;
 use database::{KeyDatabase, StatefulTokens};
 use mail;
 use tokens;
-use web::MyResponse;
+use web::{HagridState,MyResponse};
 use rate_limiter::RateLimiter;
 
 use std::io::Read;
@@ -87,11 +87,30 @@ mod template {
 }
 
 impl MyResponse {
+    fn upload_response_quick(response: UploadResponse, base_uri: &str) -> Self {
+        match response {
+            UploadResponse::Ok { token, key_fpr: _, is_revoked: _, status: _ } => {
+                let uri = uri!(quick_upload_proceed: token);
+                let text = format!(
+                    "Key successfully uploaded. Proceed here:\n{}{}\n",
+                    base_uri,
+                    uri
+                );
+                MyResponse::plain(text)
+            },
+            UploadResponse::OkMulti { key_fprs } =>
+                MyResponse::plain(format!("Uploaded {} keys.\n", key_fprs.len())),
+            UploadResponse::Error(error) => MyResponse::bad_request(
+                "500-plain", failure::err_msg(error)),
+        }
+    }
+
     fn upload_response(response: UploadResponse) -> Self {
         match response {
             UploadResponse::Ok { token, key_fpr, is_revoked, status } =>
                 Self::upload_ok(token, key_fpr, is_revoked, status),
-            UploadResponse::OkMulti { key_fprs } => Self::upload_ok_multi(key_fprs),
+            UploadResponse::OkMulti { key_fprs } =>
+                Self::upload_ok_multi(key_fprs),
             UploadResponse::Error(error) => MyResponse::bad_request(
                 "upload/upload", failure::err_msg(error)),
         }
@@ -190,6 +209,44 @@ pub fn upload_post_form_data(
 
     process_upload(&db, &tokens_stateless, &rate_limiter, data, boundary)
 }
+
+#[put("/", data = "<data>")]
+pub fn quick_upload(
+    db: rocket::State<KeyDatabase>,
+    tokens_stateless: rocket::State<tokens::Service>,
+    rate_limiter: rocket::State<RateLimiter>,
+    state: rocket::State<HagridState>,
+    data: Data,
+) -> MyResponse {
+    use std::io::Cursor;
+
+    let mut buf = Vec::default();
+    if let Err(error) = std::io::copy(&mut data.open().take(UPLOAD_LIMIT), &mut buf) {
+        return MyResponse::bad_request("500-plain", failure::err_msg(error));
+    }
+
+    MyResponse::upload_response_quick(vks::process_key(
+                        &db,
+                        &tokens_stateless,
+                        &rate_limiter,
+                        Cursor::new(buf)), &state.base_uri)
+}
+
+#[get("/upload/<token>", rank = 2)]
+pub fn quick_upload_proceed(
+    db: rocket::State<KeyDatabase>,
+    token_stateful: rocket::State<StatefulTokens>,
+    token_stateless: rocket::State<tokens::Service>,
+    mail_service: rocket::State<mail::Service>,
+    rate_limiter: rocket::State<RateLimiter>,
+    token: String,
+) -> MyResponse {
+    let result = vks::request_verify(
+        db, token_stateful, token_stateless, mail_service,
+        rate_limiter, token, vec!());
+    MyResponse::upload_response(result)
+}
+
 
 #[post("/upload/submit", format = "application/x-www-form-urlencoded", data = "<data>")]
 pub fn upload_post_form(

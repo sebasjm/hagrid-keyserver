@@ -31,25 +31,47 @@
     </p>
 
     <h2 style="margin-left: 3%;"><img src="/assets/img/gnupg.svg" style="display: inline; height: 2em; vertical-align: -30%; padding-right: 10px;" /> GnuPG</h2>
-    <p>
-        To configure GnuPG to use <span class="brand">keys.openpgp.org</span>
-        as keyserver, add this line to your <tt>gpg.conf</tt> file:
-        <blockquote>
-            keyserver hkps://keys.openpgp.org
-        </blockquote>
-        Alternatively, commands can be run with an extra parameter
-        <tt>--keyserver keys.openpgp.org</tt>.
 
-        <ul>
-            <li>
-                To locate the key of a user, by email address:
-                <blockquote>gpg --locate-keys user@example.net</blockquote>
-            </li>
-            <li>To refresh all your keys (e.g. new revocation certificates and subkeys):
-                <blockquote>gpg --refresh</blockquote>
-            </li>
-        </ul>
+    To configure GnuPG to use <span class="brand">keys.openpgp.org</span>
+    as keyserver, add this line to your <tt>gpg.conf</tt> file:
+    <blockquote>
+        keyserver hkps://keys.openpgp.org
+    </blockquote>
+
+    <h3>Retrieving keys</h3>
+    <ul>
+        <li>
+            To locate the key of a user, by email address:
+            <blockquote>gpg --locate-keys user@example.net</blockquote>
+        </li>
+        <li>To refresh all your keys (e.g. new revocation certificates and subkeys):
+            <blockquote>gpg --refresh</blockquote>
+        </li>
+    </ul>
+
+    <h3>Uploading your key</h3>
+    <p>
+        Keys can be uploaded with GnuPG's <tt>--send-keys</tt> command, but
+        identity information can't be verified that way to make the key
+        searchable by e-mail address (<a href="/about">what's that?</a>).
     </p>
+
+    <ul>
+        <li>
+            You can try this shortcut for uploading your key, which outputs
+            a direct link to the verification page:
+            <blockquote>
+                gpg --export your_address@example.net | curl -T - {{base_uri}}
+            </blockquote>
+        </li>
+        <li>
+            Alternatively, you can export them to a file and enter that into the
+            <a href="/upload" target="_blank">upload</a> page:
+            <blockquote>
+                gpg --export your_address@example.net &gt; my_key.pub
+            </blockquote>
+        </li>
+    </ul>
 
     <h2 style="margin-left: 3%;">Others</h2>
 
