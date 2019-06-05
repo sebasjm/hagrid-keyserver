@@ -1,14 +1,10 @@
 {{#> layout }}
-  <center><h2>Manage</h2></center>
-
-  <p>
-    Enter any verified address for your key.
-  </p>
+  <center><h2>Manage your key</h2></center>
 
   <form action="/manage" method="POST">
     <div class="manage">
       <input type="text" name="search_term" class="manageEmail" autofocus
-              placeholder="Email address">
+              placeholder="Enter any verified address of your key">
       <button type="submit" class="manageButton button">
         Send
       </button>
@@ -16,7 +12,7 @@
   </form>
 
   <p>
-    We will send you an e-mail with a link, where you can unlist your key for
-    any of its e-mail addresses.
+    We will send you an e-mail with a link, where you can remove any of your
+    e-mail addresses from search.
   </p>
 {{/layout}}
