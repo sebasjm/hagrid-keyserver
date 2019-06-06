@@ -148,9 +148,9 @@ pub fn vks_manage_post(
 
     let fpr: Fingerprint = tpk.fingerprint().try_into().unwrap();
     let token = token_service.create(&StatelessVerifyToken { fpr });
-    let token_uri = uri!(vks_manage_key: token).to_string();
+    let link_path = uri!(vks_manage_key: token).to_string();
 
-    if let Err(e) = mail_service.send_manage_token(&email, &token_uri) {
+    if let Err(e) = mail_service.send_manage_token(&email, &link_path) {
         return MyResponse::ise(e);
     }
 

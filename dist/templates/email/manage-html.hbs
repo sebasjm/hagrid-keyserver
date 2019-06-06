@@ -1,27 +1,26 @@
+
 <!doctype html>
 <html lang=en>
   <head>
     <meta charset=utf-8>
-    <title>Please confirm deletion of your key</title>
+    <title>Manage your key on {{domain}}</title>
   </head>
   <body>
     <p>
-      Someone, presumably you, requested that your key will no longer
-      be available when searching for your email addresses on
-      <a href="{{base_uri}}">{{domain}}</a>.
-    </p>
+      Hi,
     <p>
-      If it was not you, please ignore this email.
-    </p>
+      this is an automated message from <a rel="nofollow" href="{{base_uri}}" style="text-decoration:none; color: #333"><tt>{{domain}}</tt></a>. If you didn't
+      request this message, please ignore it.
     <p>
-      To de-list your key on <a href="{{base_uri}}">{{domain}}</a>,
-      follow this link:
-    </p>
+      OpenPGP key: <tt>{{primary_fp}}</tt>
     <p>
-      <a href="{{base_uri}}{{uri}}">{{base_uri}}{{uri}}</a>
-    </p>
+      To manage and delete listed addresses on this key, please follow
+      the link below:
     <p>
-      If you do not want to de-list your key, please ignore this
-      email.
+      <a href="{{uri}}">{{uri}}</a>
+    <p>
+      You can find more info at <a href="{{base_uri}}/about">{{domain}}/about</a>.
+    <p>
+      Greetings from the <a rel="nofollow" href="{{base_uri}}" style="text-decoration:none; color: #333"><tt>keys.openpgp.org</tt></a> team
   </body>
 </html>

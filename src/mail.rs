@@ -90,17 +90,17 @@ impl Service {
         )
     }
 
-    pub fn send_manage_token(&self, recipient: &Email, uri: &str)
+    pub fn send_manage_token(&self, recipient: &Email, link_path: &str)
                              -> Result<()> {
         let ctx = context::Manage {
-            uri: uri.to_string(),
+            uri: format!("{}{}", self.base_uri, link_path),
             base_uri: self.base_uri.clone(),
             domain: self.domain.clone(),
         };
 
         self.send(
             &[recipient],
-            &format!("{}: Manage your key", &self.domain),
+            &format!("Manage your key on {}", self.domain),
             "manage",
             ctx,
         )
