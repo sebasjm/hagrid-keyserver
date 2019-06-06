@@ -84,7 +84,7 @@ impl Service {
 
         self.send(
             &vec![userid],
-            "Please verify your email address",
+            &format!("Verify {} for your key on {}", userid, self.domain),
             "verify",
             ctx,
         )

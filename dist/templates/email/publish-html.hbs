@@ -2,33 +2,25 @@
 <html lang=en>
   <head>
     <meta charset=utf-8>
-    <title>Verify your address: {{userid}}</title>
+    <title>Verify {{userid}} for your key on {{domain}}</title>
   </head>
   <body>
     <p>
-      Hi there,
-
-      someone, presumably you, has uploaded an OpenPGP key on
-        <a href="{{base_uri}}">{{domain}}</a> for the address "{{userid}}".
-      The key has the following fingerprint:
-    </p>
+      Hi,
     <p>
-      <pre>{{primary_fp}}</pre>
-    </p>
+      this is an automated message from <a rel="nofollow" href="{{base_uri}}" style="text-decoration:none; color: #333"><tt>{{domain}}</tt></a>. If you didn't
+      request this message, please ignore it.
     <p>
-      If it was not you, or this is not your key, please ignore this
-      email.
-    </p>
+      OpenPGP key: <tt>{{primary_fp}}</tt>
     <p>
-      To allow others to find this OpenPGP key from your email address "{{userid}}",
-      click the link below:
-    </p>
+      To let others find this key from your email address
+      "<a rel="nofollow" href="#" style="text-decoration:none; color: #333">{{userid}}</a>",
+      please click the link below:
     <p>
       <a href="{{uri}}">{{uri}}</a>
-    </p>
     <p>
-      You can find more info about the keys.openpgp.org keyserver at
-      <a href="{{base_uri}}/about/help">{{base_uri}}/about/help</a>.
-    </p>
+      You can find more info at <a href="{{base_uri}}/about">{{domain}}/about</a>.
+    <p>
+      Greetings from the <a rel="nofollow" href="{{base_uri}}" style="text-decoration:none; color: #333"><tt>keys.openpgp.org</tt></a> team
   </body>
 </html>
