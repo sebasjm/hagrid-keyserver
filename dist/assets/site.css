@@ -161,6 +161,7 @@ abbr {
   cursor: pointer;
   font-size: 20px;
   font-family: inherit;
+  font-weight: bold;
 }
 
 .manageButton {
