@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use failure;
 use handlebars::Handlebars;
 use lettre::{Transport as LettreTransport, SendmailTransport, file::FileTransport};
-use lettre_email::EmailBuilder;
+use lettre_email::{Mailbox,EmailBuilder};
 use url;
 use serde::Serialize;
 
@@ -29,7 +29,7 @@ mod context {
 }
 
 pub struct Service {
-    from: String,
+    from: Mailbox,
     base_uri: String,
     domain: String,
     templates: Handlebars,
@@ -63,7 +63,7 @@ impl Service {
             ?.host_str().ok_or_else(|| failure::err_msg("No host in base-URI"))
             ?.to_string();
         Ok(Self {
-            from: from,
+            from: from.parse().unwrap(),
             base_uri: base_uri,
             domain: domain,
             templates: templates,
