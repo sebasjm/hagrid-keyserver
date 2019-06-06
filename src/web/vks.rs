@@ -139,7 +139,8 @@ fn process_key_single(
 
     let tpk_status = match db.merge(tpk) {
         Ok(import_result) => import_result.into_tpk_status(),
-        Err(_) => return UploadResponse::err("internal error"),
+        Err(_) => return UploadResponse::err(&format!(
+            "Something went wrong processing key {}", fp)),
     };
 
     let verify_state = {
