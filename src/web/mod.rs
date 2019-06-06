@@ -298,7 +298,7 @@ fn faq() -> Template {
 
 #[get("/about/usage")]
 fn usage(state: rocket::State<HagridState>) -> Template {
-    Template::render("about/usage", templates::About::new(state.base_uri.as_ref()))
+    Template::render("about/usage", templates::About::new(state.base_uri.clone()))
 }
 
 #[get("/about/privacy")]
