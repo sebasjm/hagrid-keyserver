@@ -558,7 +558,7 @@ pub mod tests {
         let mut response = client.get("/manage").dispatch();
         assert_eq!(response.status(), Status::Ok);
         assert_eq!(response.content_type(), Some(ContentType::HTML));
-        assert!(response.body_string().unwrap().contains("any verified address"));
+        assert!(response.body_string().unwrap().contains("any verified e-mail address"));
 
         assert_consistency(client.rocket());
     }
