@@ -222,7 +222,7 @@ pub fn quick_upload(
 
     let mut buf = Vec::default();
     if let Err(error) = std::io::copy(&mut data.open().take(UPLOAD_LIMIT), &mut buf) {
-        return MyResponse::bad_request("500-plain", failure::err_msg(error));
+        return MyResponse::bad_request("400-plain", failure::err_msg(error));
     }
 
     MyResponse::upload_response_quick(vks::process_key(
