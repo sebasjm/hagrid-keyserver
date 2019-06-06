@@ -22,6 +22,7 @@ mod context {
 
     #[derive(Serialize, Clone)]
     pub struct Manage {
+        pub primary_fp: String,
         pub uri: String,
         pub base_uri: String,
         pub domain: String,
@@ -90,9 +91,10 @@ impl Service {
         )
     }
 
-    pub fn send_manage_token(&self, recipient: &Email, link_path: &str)
-                             -> Result<()> {
+    pub fn send_manage_token(&self, tpk_name: String, recipient: &Email,
+                             link_path: &str) -> Result<()> {
         let ctx = context::Manage {
+            primary_fp: tpk_name,
             uri: format!("{}{}", self.base_uri, link_path),
             base_uri: self.base_uri.clone(),
             domain: self.domain.clone(),
