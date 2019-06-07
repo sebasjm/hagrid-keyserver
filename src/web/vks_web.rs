@@ -103,7 +103,7 @@ impl MyResponse {
             UploadResponse::OkMulti { key_fprs } =>
                 MyResponse::plain(format!("Uploaded {} keys.\n", key_fprs.len())),
             UploadResponse::Error(error) => MyResponse::bad_request(
-                "500-plain", failure::err_msg(error)),
+                "400-plain", failure::err_msg(error)),
         }
     }
 
