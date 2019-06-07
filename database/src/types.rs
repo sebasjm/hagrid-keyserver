@@ -193,6 +193,8 @@ mod tests {
         assert_eq!(c("<foo@example.org>").as_str(), "foo@example.org");
         assert_eq!(c("Foo <foo@example.org>").as_str(), "foo@example.org");
         assert_eq!(c("Foo Bar <foo@example.org>").as_str(), "foo@example.org");
+        // FIXME gotta fix this
+        // assert_eq!(c("foo@example.org <foo@example.org>").as_str(), "foo@example.org");
         assert_eq!(c("\"Foo Bar\" <foo@example.org>").as_str(),
                    "foo@example.org");
         assert_eq!(c("foo@👍.example.org").as_str(),
