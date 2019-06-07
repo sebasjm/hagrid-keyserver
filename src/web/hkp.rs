@@ -164,7 +164,8 @@ pub fn pks_lookup(state: rocket::State<HagridState>,
                 "Search by short key ids is not supported, sorry!".to_owned()));
         }
         Hkp::Invalid { query: _ } => {
-            return MyResponse::not_found(None, None);
+            return MyResponse::not_found(None, Some(
+                "Invalid search query!".to_owned()));
         }
     };
 

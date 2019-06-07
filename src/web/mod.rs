@@ -207,7 +207,7 @@ fn key_to_response<'a>(state: rocket::State<HagridState>,
     let fp = if let Some(fp) = db.lookup_primary_fingerprint(&query) {
         fp
     } else {
-        return MyResponse::not_found(None, None);
+        return MyResponse::not_found(None, query.describe_error());
     };
 
     if machine_readable {

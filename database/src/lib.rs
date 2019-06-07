@@ -75,6 +75,19 @@ impl FromStr for Query {
     }
 }
 
+impl Query {
+    pub fn describe_error(&self) -> String {
+        match self {
+            Query::ByFingerprint(fpr) =>
+                format!("No key found for fingerprint {}", fpr),
+            Query::ByKeyID(key_id) =>
+                format!("No key found for key id {}", key_id),
+            Query::ByEmail(email) =>
+                format!("No key found for e-mail address {}", email),
+        }
+    }
+}
+
 #[derive(Debug,PartialEq,Eq)]
 pub enum EmailAddressStatus {
     Revoked,
