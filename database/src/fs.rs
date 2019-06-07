@@ -198,94 +198,6 @@ impl Filesystem {
         }
     }
 
-    /// Checks the database for consistency.
-    ///
-    /// Note that this operation may take a long time, and is
-    /// generally only useful for testing.
-    pub fn check_consistency(&self) -> Result<()> {
-        use std::collections::HashMap;
-        use failure::format_err;
-
-        // A cache of all TPKs, for quick lookups.
-        let mut tpks = HashMap::new();
-
-        self.perform_checks(&self.keys_dir_published, &mut tpks,
-            |path, _, primary_fp| {
-                // The KeyID corresponding with this path.
-                let fp = self.path_to_fingerprint(&path)
-                    .ok_or_else(|| format_err!("Malformed path: {:?}", path))?;
-
-                if fp != *primary_fp {
-                    return Err(format_err!(
-                        "{:?} points to the wrong TPK, expected {} \
-                            but found {}",
-                        path, fp, primary_fp));
-                }
-                Ok(())
-            }
-        )?;
-
-        self.perform_checks(&self.links_dir_by_fingerprint, &mut tpks,
-            |path, tpk, _| {
-                // The KeyID corresponding with this path.
-                let id = self.path_to_keyid(&path)
-                    .ok_or_else(|| format_err!("Malformed path: {:?}", path))?;
-
-                let found = tpk.keys_all()
-                    .map(|(_, _, key)| KeyID::try_from(key.fingerprint()).unwrap())
-                    .any(|key_fp| key_fp == id);
-                if ! found {
-                    return Err(format_err!(
-                        "{:?} points to the wrong TPK, the TPK does not \
-                            contain the (sub)key {}", path, id));
-                }
-                Ok(())
-            }
-        )?;
-
-        self.perform_checks(&self.links_dir_by_keyid, &mut tpks,
-            |path, tpk, _| {
-                // The KeyID corresponding with this path.
-                let id = self.path_to_keyid(&path)
-                    .ok_or_else(|| format_err!("Malformed path: {:?}", path))?;
-
-                let found = tpk.keys_all()
-                    .map(|(_, _, key)| KeyID::try_from(key.fingerprint()).unwrap())
-                    .any(|key_fp| key_fp == id);
-                if ! found {
-                    return Err(format_err!(
-                        "{:?} points to the wrong TPK, the TPK does not \
-                            contain the (sub)key {}", path, id));
-                }
-                Ok(())
-            }
-        )?;
-
-        self.perform_checks(&self.links_dir_by_email, &mut tpks,
-            |path, tpk, _| {
-                // The Email corresponding with this path.
-                let email = self.path_to_email(&path)
-                    .ok_or_else(|| format_err!("Malformed path: {:?}", path))?;
-                let mut found = false;
-                for uidb in tpk.userids() {
-                    if Email::try_from(uidb.userid()).unwrap() == email
-                    {
-                        found = true;
-                        break;
-                    }
-                }
-                if ! found {
-                    return Err(format_err!(
-                        "{:?} points to the wrong TPK, the TPK does not \
-                            contain the email {}", path, email));
-                }
-                Ok(())
-        })?;
-
-        Ok(())
-    }
-
-
     fn perform_checks(
         &self,
         checks_dir: &Path,
@@ -420,7 +332,7 @@ impl Database for Filesystem {
             }
         }
 
-        if !link_fpr.exists() || link_keyid.exists() {
+        if !link_fpr.exists() || !link_keyid.exists() {
             Ok(Some(fpr.clone()))
         } else {
             Ok(None)
@@ -528,12 +440,13 @@ impl Database for Filesystem {
     fn unlink_fpr(&self, from: &Fingerprint, primary_fpr: &Fingerprint) -> Result<()> {
         let link_fpr = self.link_by_fingerprint(from);
         let link_keyid = self.link_by_keyid(&from.into());
-        let expected = self.fingerprint_to_path_published(primary_fpr);
+        let expected = diff_paths(&self.fingerprint_to_path_published(primary_fpr),
+                                link_fpr.parent().unwrap()).unwrap();
 
         match read_link(&link_fpr) {
             Ok(target) => {
                 if target == expected {
-                    remove_file(link_fpr)?;
+                    remove_file(&link_fpr)?;
                 }
             }
             Err(_) => {}
@@ -557,6 +470,12 @@ impl Database for Filesystem {
     }
 
     // XXX: slow
+    fn by_primary_fpr(&self, fpr: &Fingerprint) -> Option<String> {
+        let path = self.fingerprint_to_path_published(fpr);
+        self.read_from_path(&path, false)
+    }
+
+    // XXX: slow
     fn by_fpr(&self, fpr: &Fingerprint) -> Option<String> {
         let path = self.link_by_fingerprint(fpr);
         self.read_from_path(&path, false)
@@ -573,6 +492,134 @@ impl Database for Filesystem {
         let path = self.link_by_keyid(kid);
         self.read_from_path(&path, false)
     }
+
+    /// Checks the database for consistency.
+    ///
+    /// Note that this operation may take a long time, and is
+    /// generally only useful for testing.
+    fn check_consistency(&self) -> Result<()> {
+        use std::collections::HashMap;
+        use failure::format_err;
+
+        // A cache of all TPKs, for quick lookups.
+        let mut tpks = HashMap::new();
+
+        self.perform_checks(&self.keys_dir_published, &mut tpks,
+            |path, _, primary_fp| {
+                // The KeyID corresponding with this path.
+                let fp = self.path_to_fingerprint(&path)
+                    .ok_or_else(|| format_err!("Malformed path: {:?}", path))?;
+
+                if fp != *primary_fp {
+                    return Err(format_err!(
+                        "{:?} points to the wrong TPK, expected {} \
+                            but found {}",
+                        path, fp, primary_fp));
+                }
+                Ok(())
+            }
+        )?;
+
+        // check that all subkeys are linked
+        self.perform_checks(&self.keys_dir_published, &mut tpks,
+            |_, tpk, primary_fp| {
+                let fingerprints = tpk
+                    .keys_all()
+                    .certification_capable()
+                    .signing_capable()
+                    .map(|(_, _, key)| key.fingerprint())
+                    .map(|fpr| Fingerprint::try_from(fpr))
+                    .flatten();
+
+                for fpr in fingerprints {
+                    if let Some(missing_fpr) = self.check_link_fpr(&fpr, &primary_fp)? {
+                        return Err(format_err!(
+                            "Missing link to key {} for sub {}", primary_fp, missing_fpr));
+                    }
+                }
+                Ok(())
+            }
+        )?;
+
+        // check that all published uids are linked
+        self.perform_checks(&self.keys_dir_published, &mut tpks,
+            |_, tpk, primary_fp| {
+                let emails = tpk
+                    .userids()
+                    .map(|binding| binding.userid().clone())
+                    .map(|userid| Email::try_from(&userid).unwrap());
+
+                for email in emails {
+                    let email_path = self.link_by_email(&email);
+                    if !email_path.exists() {
+                        return Err(format_err!(
+                            "Missing link to key {} for email {}", primary_fp, email));
+                    }
+                }
+                Ok(())
+            }
+        )?;
+
+
+        self.perform_checks(&self.links_dir_by_fingerprint, &mut tpks,
+            |path, tpk, _| {
+                // The KeyID corresponding with this path.
+                let id = self.path_to_keyid(&path)
+                    .ok_or_else(|| format_err!("Malformed path: {:?}", path))?;
+
+                let found = tpk.keys_all()
+                    .map(|(_, _, key)| KeyID::try_from(key.fingerprint()).unwrap())
+                    .any(|key_fp| key_fp == id);
+                if ! found {
+                    return Err(format_err!(
+                        "{:?} points to the wrong TPK, the TPK does not \
+                            contain the (sub)key {}", path, id));
+                }
+                Ok(())
+            }
+        )?;
+
+        self.perform_checks(&self.links_dir_by_keyid, &mut tpks,
+            |path, tpk, _| {
+                // The KeyID corresponding with this path.
+                let id = self.path_to_keyid(&path)
+                    .ok_or_else(|| format_err!("Malformed path: {:?}", path))?;
+
+                let found = tpk.keys_all()
+                    .map(|(_, _, key)| KeyID::try_from(key.fingerprint()).unwrap())
+                    .any(|key_fp| key_fp == id);
+                if ! found {
+                    return Err(format_err!(
+                        "{:?} points to the wrong TPK, the TPK does not \
+                            contain the (sub)key {}", path, id));
+                }
+                Ok(())
+            }
+        )?;
+
+        self.perform_checks(&self.links_dir_by_email, &mut tpks,
+            |path, tpk, _| {
+                // The Email corresponding with this path.
+                let email = self.path_to_email(&path)
+                    .ok_or_else(|| format_err!("Malformed path: {:?}", path))?;
+                let mut found = false;
+                for uidb in tpk.userids() {
+                    if Email::try_from(uidb.userid()).unwrap() == email
+                    {
+                        found = true;
+                        break;
+                    }
+                }
+                if ! found {
+                    return Err(format_err!(
+                        "{:?} points to the wrong TPK, the TPK does not \
+                            contain the email {}", path, email));
+                }
+                Ok(())
+        })?;
+
+        Ok(())
+    }
 }
 
 fn path_split(path: &str) -> PathBuf {
@@ -587,13 +634,6 @@ fn path_merge(path: &Path) -> String {
     let comps = path.iter().rev().take(3).collect::<Vec<_>>().into_iter().rev();
     let comps: Vec<_> = comps.map(|os| os.to_string_lossy()).collect();
     comps.join("")
-}
-
-#[cfg(test)]
-impl Drop for Filesystem {
-    fn drop(&mut self) {
-        self.check_consistency().expect("inconsistent database");
-    }
 }
 
 #[cfg(test)]
@@ -634,6 +674,7 @@ mod tests {
         let mut db = Filesystem::new_from_base(tmpdir.path()).unwrap();
 
         test::test_uid_verification(&mut db);
+        db.check_consistency().expect("inconsistent database");
     }
 
     #[test]
@@ -642,6 +683,7 @@ mod tests {
         let mut db = Filesystem::new_from_base(tmpdir.path()).unwrap();
 
         test::test_uid_deletion(&mut db);
+        db.check_consistency().expect("inconsistent database");
     }
 
     #[test]
@@ -650,6 +692,7 @@ mod tests {
         let mut db = Filesystem::new_from_base(tmpdir.path()).unwrap();
 
         test::test_subkey_lookup(&mut db);
+        db.check_consistency().expect("inconsistent database");
     }
 
     #[test]
@@ -658,6 +701,7 @@ mod tests {
         let mut db = Filesystem::new_from_base(tmpdir.path()).unwrap();
 
         test::test_kid_lookup(&mut db);
+        db.check_consistency().expect("inconsistent database");
     }
 
     #[test]
@@ -665,6 +709,7 @@ mod tests {
         let tmpdir = TempDir::new().unwrap();
         let mut db = Filesystem::new_from_base(tmpdir.path()).unwrap();
         test::test_upload_revoked_tpk(&mut db);
+        db.check_consistency().expect("inconsistent database");
     }
 
     #[test]
@@ -673,6 +718,16 @@ mod tests {
         let mut db = Filesystem::new_from_base(tmpdir.path()).unwrap();
 
         test::test_uid_revocation(&mut db);
+        db.check_consistency().expect("inconsistent database");
+    }
+
+    #[test]
+    fn regenerate() {
+        let tmpdir = TempDir::new().unwrap();
+        let mut db = Filesystem::new_from_base(tmpdir.path()).unwrap();
+
+        test::test_regenerate(&mut db);
+        db.check_consistency().expect("inconsistent database");
     }
 
     #[test]
@@ -681,6 +736,7 @@ mod tests {
         let mut db = Filesystem::new_from_base(tmpdir.path()).unwrap();
 
         test::test_reupload(&mut db);
+        db.check_consistency().expect("inconsistent database");
     }
 
     #[test]
@@ -689,6 +745,7 @@ mod tests {
         let mut db = Filesystem::new_from_base(tmpdir.path()).unwrap();
 
         test::test_uid_replacement(&mut db);
+        db.check_consistency().expect("inconsistent database");
     }
 
     #[test]
@@ -696,6 +753,7 @@ mod tests {
         let tmpdir = TempDir::new().unwrap();
         let mut db = Filesystem::new_from_base(tmpdir.path()).unwrap();
         test::test_unlink_uid(&mut db);
+        db.check_consistency().expect("inconsistent database");
     }
 
     #[test]
@@ -704,6 +762,7 @@ mod tests {
         let mut db = Filesystem::new_from_base(tmpdir.path()).unwrap();
 
         test::test_same_email_1(&mut db);
+        db.check_consistency().expect("inconsistent database");
     }
 
     #[test]
@@ -712,6 +771,7 @@ mod tests {
         let mut db = Filesystem::new_from_base(tmpdir.path()).unwrap();
 
         test::test_same_email_2(&mut db);
+        db.check_consistency().expect("inconsistent database");
     }
 
     #[test]
@@ -724,5 +784,6 @@ mod tests {
 
         assert_eq!(db.path_to_fingerprint(&db.link_by_fingerprint(&fp)),
                    Some(fp.clone()));
+        db.check_consistency().expect("inconsistent database");
     }
 }

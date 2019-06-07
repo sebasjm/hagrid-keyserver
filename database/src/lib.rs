@@ -2,7 +2,7 @@
 #![recursion_limit = "1024"]
 #![feature(try_from)]
 
-use std::convert::TryFrom;
+use std::convert::{TryFrom,TryInto};
 use std::path::PathBuf;
 use std::str::FromStr;
 
@@ -517,12 +517,63 @@ pub trait Database: Sync + Send {
         self.set_email_unpublished_filter(fpr_primary, |_| false)
     }
 
+    fn regenerate_links(
+        &self,
+        fpr_primary: &Fingerprint,
+    ) -> Result<()> {
+        let tpk = self.by_primary_fpr(&fpr_primary)
+            .and_then(|bytes| TPK::from_bytes(bytes.as_ref()).ok())
+            .ok_or_else(|| failure::err_msg("Key not in database!"))?;
+
+        let published_emails: Vec<Email> = tpk
+            .userids()
+            .map(|binding| binding.userid())
+            .map(|uid| Email::try_from(uid))
+            .flatten()
+            .collect();
+
+        let fingerprints = tpk
+            .keys_all()
+            .certification_capable()
+            .signing_capable()
+            .map(|(_, _, key)| key.fingerprint())
+            .map(|fpr| Fingerprint::try_from(fpr))
+            .flatten();
+
+        let fpr_checks = fingerprints
+            .map(|fpr| self.check_link_fpr(&fpr, &fpr_primary))
+            .collect::<Vec<_>>()
+            .into_iter()
+            .collect::<Result<Vec<_>>>()?;
+
+        let fpr_not_linked = fpr_checks.into_iter().flatten();
+
+        for fpr in fpr_not_linked {
+            if let Err(e) = self.link_fpr(&fpr, &fpr_primary) {
+                info!("Error ensuring symlink! {} {} {:?}",
+                      &fpr, &fpr_primary, e);
+            }
+        }
+
+        for email in published_emails {
+            if let Err(e) = self.link_email(&email, &fpr_primary) {
+                info!("Error ensuring email symlink! {} -> {} {:?}",
+                    &email, &fpr_primary, e);
+            }
+        }
+
+        Ok(())
+    }
+
     fn check_link_fpr(&self, fpr: &Fingerprint, target: &Fingerprint) -> Result<Option<Fingerprint>>;
 
     fn by_fpr_full(&self, fpr: &Fingerprint) -> Option<String>;
+    fn by_primary_fpr(&self, fpr: &Fingerprint) -> Option<String>;
 
     fn write_to_temp(&self, content: &[u8]) -> Result<NamedTempFile>;
     fn move_tmp_to_full(&self, content: NamedTempFile, fpr: &Fingerprint) -> Result<()>;
     fn move_tmp_to_published(&self, content: NamedTempFile, fpr: &Fingerprint) -> Result<()>;
     fn write_to_quarantine(&self, fpr: &Fingerprint, content: &[u8]) -> Result<()>;
+
+    fn check_consistency(&self) -> Result<()>;
 }

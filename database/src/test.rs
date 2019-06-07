@@ -257,6 +257,51 @@ pub fn test_uid_verification<D: Database>(db: &mut D) {
     }
 }
 
+pub fn test_regenerate<D: Database>(db: &mut D) {
+    let str_uid1 = "Test A <test_a@example.com>";
+    let tpk = TPKBuilder::default()
+        .add_userid(str_uid1)
+        .add_signing_subkey()
+        .add_encryption_subkey()
+        .generate()
+        .unwrap()
+        .0;
+    let fpr = Fingerprint::try_from(tpk.fingerprint()).unwrap();
+    let email1 = Email::from_str(str_uid1).unwrap();
+    let fpr_sign: Fingerprint = tpk.keys_all()
+        .signing_capable()
+        .map(|(_, _, key)| key.fingerprint().try_into().unwrap())
+        .next().unwrap();
+    let fpr_encrypt: Fingerprint = tpk.keys_all()
+        .key_flags(KeyFlags::empty().set_encrypt_for_transport(true))
+        .map(|(_, _, key)| key.fingerprint().try_into().unwrap())
+        .next().unwrap();
+
+    // upload key
+    db.merge(tpk).unwrap().into_tpk_status();
+
+    db.regenerate_links(&fpr).unwrap();
+    assert!(db.by_email(&email1).is_none());
+    assert!(db.by_fpr(&fpr_encrypt).is_none());
+
+    db.set_email_published(&fpr, &email1).unwrap();
+
+    db.unlink_email(&email1, &fpr).unwrap();
+    assert!(db.check_consistency().is_err());
+    db.regenerate_links(&fpr).unwrap();
+    assert!(db.check_consistency().is_ok());
+
+    db.unlink_fpr(&fpr, &fpr).unwrap();
+    assert!(db.check_consistency().is_err());
+    db.regenerate_links(&fpr).unwrap();
+    assert!(db.check_consistency().is_ok());
+
+    db.unlink_fpr(&fpr_sign, &fpr).unwrap();
+    assert!(db.check_consistency().is_err());
+    db.regenerate_links(&fpr).unwrap();
+    assert!(db.check_consistency().is_ok());
+}
+
 pub fn test_reupload<D: Database>(db: &mut D) {
     let str_uid1 = "Test A <test_a@example.com>";
     let str_uid2 = "Test B <test_b@example.com>";

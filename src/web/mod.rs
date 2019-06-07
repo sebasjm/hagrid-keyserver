@@ -532,6 +532,7 @@ pub mod tests {
         Ok((tmpdir, Client::new(rocket)?))
     }
 
+    #[cfg(test)]
     pub fn assert_consistency(rocket: &rocket::Rocket) {
         let db = rocket.state::<KeyDatabase>().unwrap();
         db.check_consistency().unwrap();
