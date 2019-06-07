@@ -93,7 +93,7 @@ impl MyResponse {
     }
 
     pub fn ise(e: failure::Error) -> Self {
-        println!("Internal error: {:?}", e);
+        eprintln!("Internal error: {:?}", e);
         let ctx = templates::FiveHundred{
             internal_error: e.to_string(),
             version: env!("VERGEN_SEMVER").to_string(),
@@ -103,6 +103,7 @@ impl MyResponse {
     }
 
     pub fn bad_request(template: &'static str, e: failure::Error) -> Self {
+        eprintln!("Bad Request: {:?}", e);
         let ctx = templates::General {
             error: Some(format!("{}", e)),
             version: env!("VERGEN_SEMVER").to_string(),
