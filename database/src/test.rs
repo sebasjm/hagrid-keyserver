@@ -282,6 +282,8 @@ pub fn test_regenerate<D: Database>(db: &mut D) {
 
     db.regenerate_links(&fpr).unwrap();
     assert!(db.by_email(&email1).is_none());
+    assert!(db.by_fpr(&fpr).is_some());
+    assert!(db.by_fpr(&fpr_sign).is_some());
     assert!(db.by_fpr(&fpr_encrypt).is_none());
 
     db.set_email_published(&fpr, &email1).unwrap();

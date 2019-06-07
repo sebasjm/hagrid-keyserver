@@ -30,6 +30,7 @@ use openpgp::{
     RevocationStatus,
     packet::UserID,
     parse::Parse,
+    packet::KeyFlags,
 };
 
 pub mod types;
@@ -260,15 +261,11 @@ pub trait Database: Sync + Send {
                 !has_unrevoked_userid
             }).collect();
 
-        let fingerprints = published_tpk_new
-            .keys_all()
-            .certification_capable()
-            .signing_capable()
-            .map(|(_, _, key)| key.fingerprint())
-            .map(|fpr| Fingerprint::try_from(fpr))
-            .flatten();
+        let fingerprints = tpk_get_linkable_fprs(&published_tpk_new);
+        println!("{:?}", fingerprints);
 
         let fpr_checks = fingerprints
+            .iter()
             .map(|fpr| self.check_link_fpr(&fpr, &fpr_primary))
             .collect::<Vec<_>>()
             .into_iter()
@@ -532,15 +529,10 @@ pub trait Database: Sync + Send {
             .flatten()
             .collect();
 
-        let fingerprints = tpk
-            .keys_all()
-            .certification_capable()
-            .signing_capable()
-            .map(|(_, _, key)| key.fingerprint())
-            .map(|fpr| Fingerprint::try_from(fpr))
-            .flatten();
+        let fingerprints = tpk_get_linkable_fprs(&tpk);
 
         let fpr_checks = fingerprints
+            .into_iter()
             .map(|fpr| self.check_link_fpr(&fpr, &fpr_primary))
             .collect::<Vec<_>>()
             .into_iter()
@@ -576,4 +568,25 @@ pub trait Database: Sync + Send {
     fn write_to_quarantine(&self, fpr: &Fingerprint, content: &[u8]) -> Result<()>;
 
     fn check_consistency(&self) -> Result<()>;
+}
+
+pub fn tpk_get_linkable_fprs(tpk: &TPK) -> Vec<Fingerprint> {
+    let ref signing_capable = KeyFlags::empty()
+        .set_sign(true)
+        .set_certify(true);
+    let ref fpr_primary = Fingerprint::try_from(tpk.fingerprint()).unwrap();
+    tpk
+            .keys_all()
+            .into_iter()
+            .flat_map(|(sig, _, key)| {
+                Fingerprint::try_from(key.fingerprint())
+                    .map(|fpr| (fpr, sig.map(|sig| sig.key_flags())))
+            })
+            .filter(|(fpr, flags)| {
+                fpr == fpr_primary ||
+                   flags.is_none() ||
+                    !(signing_capable & flags.as_ref().unwrap()).is_empty()
+            })
+            .map(|(fpr,_)| fpr)
+            .collect()
 }
