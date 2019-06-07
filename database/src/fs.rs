@@ -164,22 +164,22 @@ impl Filesystem {
         }
     }
 
-    /// Returns the KeyID the given path is pointing to.
-    fn path_to_keyid(&self, path: &Path) -> Option<KeyID> {
-        use std::str::FromStr;
-        let merged = path_merge(path);
-        KeyID::from_str(&merged).ok()
-    }
-
     /// Returns the Fingerprint the given path is pointing to.
-    fn path_to_fingerprint(&self, path: &Path) -> Option<Fingerprint> {
+    pub fn path_to_fingerprint(path: &Path) -> Option<Fingerprint> {
         use std::str::FromStr;
         let merged = path_merge(path);
         Fingerprint::from_str(&merged).ok()
     }
 
+    /// Returns the KeyID the given path is pointing to.
+    fn path_to_keyid(path: &Path) -> Option<KeyID> {
+        use std::str::FromStr;
+        let merged = path_merge(path);
+        KeyID::from_str(&merged).ok()
+    }
+
     /// Returns the Email the given path is pointing to.
-    fn path_to_email(&self, path: &Path) -> Option<Email> {
+    fn path_to_email(path: &Path) -> Option<Email> {
         use std::str::FromStr;
         let merged = path_merge(path);
         let decoded = url::form_urlencoded::parse(merged.as_bytes()).next()?.0;
@@ -187,14 +187,14 @@ impl Filesystem {
     }
 
     /// Returns the backing primary key fingerprint for any key path.
-    fn path_to_primary(&self, path: &Path) -> Option<Fingerprint> {
+    fn path_to_primary(path: &Path) -> Option<Fingerprint> {
         use std::fs;
         let typ = fs::symlink_metadata(&path).ok()?.file_type();
         if typ.is_symlink() {
             let path = read_link(path).ok()?;
-            self.path_to_fingerprint(&path)
+            Filesystem::path_to_fingerprint(&path)
         } else {
-            self.path_to_fingerprint(path)
+            Filesystem::path_to_fingerprint(path)
         }
     }
 
@@ -218,7 +218,7 @@ impl Filesystem {
 
             // Compute the corresponding primary fingerprint just
             // by looking at the paths.
-            let primary_fp = self.path_to_primary(path)
+            let primary_fp = Filesystem::path_to_primary(path)
                 .ok_or_else(
                             || format_err!("Malformed path: {:?}",
                                             path.read_link().unwrap()))?;
@@ -353,7 +353,7 @@ impl Database for Filesystem {
                     Some(fp.clone())
                 } else if typ.is_symlink() {
                     path.read_link().ok()
-                        .and_then(|link_path| self.path_to_fingerprint(&link_path))
+                        .and_then(|link_path| Filesystem::path_to_fingerprint(&link_path))
                 } else {
                     // Neither file nor symlink.  Freak value.
                     None
@@ -362,12 +362,12 @@ impl Database for Filesystem {
             ByKeyID(ref keyid) => {
                 let path = self.link_by_keyid(keyid);
                 path.read_link().ok()
-                    .and_then(|path| self.path_to_fingerprint(&path))
+                    .and_then(|path| Filesystem::path_to_fingerprint(&path))
             },
             ByEmail(ref email) => {
                 let path = self.link_by_email(email);
                 path.read_link().ok()
-                    .and_then(|path| self.path_to_fingerprint(&path))
+                    .and_then(|path| Filesystem::path_to_fingerprint(&path))
             },
         }
     }
@@ -507,7 +507,7 @@ impl Database for Filesystem {
         self.perform_checks(&self.keys_dir_published, &mut tpks,
             |path, _, primary_fp| {
                 // The KeyID corresponding with this path.
-                let fp = self.path_to_fingerprint(&path)
+                let fp = Filesystem::path_to_fingerprint(&path)
                     .ok_or_else(|| format_err!("Malformed path: {:?}", path))?;
 
                 if fp != *primary_fp {
@@ -564,7 +564,7 @@ impl Database for Filesystem {
         self.perform_checks(&self.links_dir_by_fingerprint, &mut tpks,
             |path, tpk, _| {
                 // The KeyID corresponding with this path.
-                let id = self.path_to_keyid(&path)
+                let id = Filesystem::path_to_keyid(&path)
                     .ok_or_else(|| format_err!("Malformed path: {:?}", path))?;
 
                 let found = tpk.keys_all()
@@ -582,7 +582,7 @@ impl Database for Filesystem {
         self.perform_checks(&self.links_dir_by_keyid, &mut tpks,
             |path, tpk, _| {
                 // The KeyID corresponding with this path.
-                let id = self.path_to_keyid(&path)
+                let id = Filesystem::path_to_keyid(&path)
                     .ok_or_else(|| format_err!("Malformed path: {:?}", path))?;
 
                 let found = tpk.keys_all()
@@ -600,7 +600,7 @@ impl Database for Filesystem {
         self.perform_checks(&self.links_dir_by_email, &mut tpks,
             |path, tpk, _| {
                 // The Email corresponding with this path.
-                let email = self.path_to_email(&path)
+                let email = Filesystem::path_to_email(&path)
                     .ok_or_else(|| format_err!("Malformed path: {:?}", path))?;
                 let mut found = false;
                 for uidb in tpk.userids() {
@@ -782,7 +782,7 @@ mod tests {
         let fp: Fingerprint =
             "CBCD8F030588653EEDD7E2659B7DD433F254904A".parse().unwrap();
 
-        assert_eq!(db.path_to_fingerprint(&db.link_by_fingerprint(&fp)),
+        assert_eq!(Filesystem::path_to_fingerprint(&db.link_by_fingerprint(&fp)),
                    Some(fp.clone()));
         db.check_consistency().expect("inconsistent database");
     }

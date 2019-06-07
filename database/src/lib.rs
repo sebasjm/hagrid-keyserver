@@ -118,6 +118,11 @@ pub struct TpkStatus {
     pub email_status: Vec<(Email,EmailAddressStatus)>,
 }
 
+pub enum RegenerateResult {
+    Updated,
+    Unchanged,
+}
+
 pub trait Database: Sync + Send {
     type MutexGuard;
 
@@ -517,7 +522,7 @@ pub trait Database: Sync + Send {
     fn regenerate_links(
         &self,
         fpr_primary: &Fingerprint,
-    ) -> Result<()> {
+    ) -> Result<RegenerateResult> {
         let tpk = self.by_primary_fpr(&fpr_primary)
             .and_then(|bytes| TPK::from_bytes(bytes.as_ref()).ok())
             .ok_or_else(|| failure::err_msg("Key not in database!"))?;
@@ -540,7 +545,11 @@ pub trait Database: Sync + Send {
 
         let fpr_not_linked = fpr_checks.into_iter().flatten();
 
+        let mut keys_linked = 0;
+        let mut emails_linked = 0;
+
         for fpr in fpr_not_linked {
+            keys_linked += 1;
             if let Err(e) = self.link_fpr(&fpr, &fpr_primary) {
                 info!("Error ensuring symlink! {} {} {:?}",
                       &fpr, &fpr_primary, e);
@@ -548,13 +557,18 @@ pub trait Database: Sync + Send {
         }
 
         for email in published_emails {
+            emails_linked += 1;
             if let Err(e) = self.link_email(&email, &fpr_primary) {
                 info!("Error ensuring email symlink! {} -> {} {:?}",
                     &email, &fpr_primary, e);
             }
         }
 
-        Ok(())
+        if keys_linked != 0 || emails_linked != 0 {
+            Ok(RegenerateResult::Updated)
+        } else {
+            Ok(RegenerateResult::Unchanged)
+        }
     }
 
     fn check_link_fpr(&self, fpr: &Fingerprint, target: &Fingerprint) -> Result<Option<Fingerprint>>;
