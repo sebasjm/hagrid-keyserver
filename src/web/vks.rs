@@ -90,8 +90,10 @@ pub fn process_key(
 ) -> response::UploadResponse {
     use sequoia_openpgp::parse::Parse;
     use sequoia_openpgp::tpk::TPKParser;
+    use sequoia_openpgp::armor::{Reader,ReaderMode};
 
     // First, parse all TPKs and error out if one fails.
+    let reader = Reader::from_reader(reader, ReaderMode::VeryTolerant);
     let parser = match TPKParser::from_reader(reader) {
         Ok(p) => p,
         Err(_) => return UploadResponse::err("Failed parsing key"),

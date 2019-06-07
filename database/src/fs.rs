@@ -633,11 +633,11 @@ mod tests {
     fn new() {
         let tmpdir = TempDir::new().unwrap();
         let db = Filesystem::new_from_base(tmpdir.path()).unwrap();
-        let k1 = TPKBuilder::default().add_userid("a@invalid.example.org")
+        let k1 = TPKBuilder::new().add_userid("a@invalid.example.org")
             .generate().unwrap().0;
-        let k2 = TPKBuilder::default().add_userid("b@invalid.example.org")
+        let k2 = TPKBuilder::new().add_userid("b@invalid.example.org")
             .generate().unwrap().0;
-        let k3 = TPKBuilder::default().add_userid("c@invalid.example.org")
+        let k3 = TPKBuilder::new().add_userid("c@invalid.example.org")
             .generate().unwrap().0;
 
         assert!(db.merge(k1).unwrap().into_tpk_status().email_status.len() > 0);

@@ -217,7 +217,7 @@ fn key_to_hkp_index<'a>(db: rocket::State<KeyDatabase>, query: Query)
             "pub:{}:{}:{}:{}:{}:{}{}\r\n",
             p.fingerprint().to_string().replace(" ", ""),
             algo,
-            p.mpis().bits(),
+            p.mpis().bits().unwrap_or(0),
             ctime,
             extime,
             is_exp,
@@ -280,7 +280,7 @@ mod tests {
 
         // Generate a key and upload it.
         let (tpk, _) = TPKBuilder::autocrypt(
-            None, Some("foo@invalid.example.com".into()))
+            None, Some("foo@invalid.example.com"))
             .generate().unwrap();
 
         // Prepare to /pks/add
@@ -329,10 +329,10 @@ mod tests {
 
         // Generate two keys and upload them.
         let tpk_0 = TPKBuilder::autocrypt(
-            None, Some("foo@invalid.example.com".into()))
+            None, Some("foo@invalid.example.com"))
             .generate().unwrap().0;
         let tpk_1 = TPKBuilder::autocrypt(
-            None, Some("bar@invalid.example.com".into()))
+            None, Some("bar@invalid.example.com"))
             .generate().unwrap().0;
 
         // Prepare to /pks/add
