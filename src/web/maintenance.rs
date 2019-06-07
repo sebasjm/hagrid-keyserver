@@ -46,7 +46,10 @@ impl MaintenanceMode {
     }
 
     fn is_relevant_path(&self, path: &str) -> bool {
-        path.starts_with("/publish") || path.starts_with("/manage")
+        path.starts_with("/vks/v1/upload") ||
+            path.starts_with("/upload") ||
+            path.starts_with("/manage") ||
+            path.starts_with("/verify")
     }
 
     fn get_maintenance_message(&self) -> Option<String> {
