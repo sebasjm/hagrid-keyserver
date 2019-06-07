@@ -354,6 +354,8 @@ pub trait Database: Sync + Send {
     fn set_email_published(&self, fpr_primary: &Fingerprint, email_new: &Email) -> Result<()> {
         let _lock = self.lock()?;
 
+        self.nolock_unlink_email_if_other(fpr_primary, email_new)?;
+
         let full_tpk = self.by_fpr_full(&fpr_primary)
             .ok_or_else(|| failure::err_msg("Key not in database!"))
             .and_then(|bytes| TPK::from_bytes(bytes.as_ref()))?;
@@ -401,6 +403,22 @@ pub trait Database: Sync + Send {
         Ok(())
     }
 
+    fn nolock_unlink_email_if_other(
+        &self,
+        fpr_primary: &Fingerprint,
+        email: &Email,
+    ) -> Result<()> {
+        let current_link_fpr = self.lookup_primary_fingerprint(
+            &Query::ByEmail(email.clone()));
+        if let Some(current_fpr) = current_link_fpr {
+            if current_fpr != *fpr_primary {
+                self.nolock_set_email_unpublished_filter(
+                    &current_fpr, |uid| Email::try_from(uid).unwrap() != *email)?;
+            }
+        }
+        Ok(())
+    }
+
     /// Complex operation that un-publishes some user id for a TPK already in the database.
     ///
     /// 1. Load published TPK
@@ -420,7 +438,14 @@ pub trait Database: Sync + Send {
         email_remove: impl Fn(&UserID) -> bool,
     ) -> Result<()> {
         let _lock = self.lock()?;
+        self.nolock_set_email_unpublished_filter(fpr_primary, email_remove)
+    }
 
+    fn nolock_set_email_unpublished_filter(
+        &self,
+        fpr_primary: &Fingerprint,
+        email_remove: impl Fn(&UserID) -> bool,
+    ) -> Result<()> {
         let published_tpk_old = self.by_fpr(&fpr_primary)
             .ok_or_else(|| failure::err_msg("Key not in database!"))
             .and_then(|bytes| TPK::from_bytes(bytes.as_ref()))?;
@@ -454,7 +479,7 @@ pub trait Database: Sync + Send {
 
         for unpublished_email in unpublished_emails {
             if let Err(e) = self.unlink_email(&unpublished_email, &fpr_primary) {
-                info!("Error ensuring email symlink! {} -> {} {:?}",
+                info!("Error deleting email symlink! {} -> {} {:?}",
                     &unpublished_email, &fpr_primary, e);
             }
         }
