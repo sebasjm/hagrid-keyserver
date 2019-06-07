@@ -303,23 +303,31 @@ pub fn test_uid_replacement<D: Database>(db: &mut D) {
 
     let email1 = Email::from_str(str_uid1).unwrap();
 
-    // upload key
+    // upload both keys
     db.merge(tpk1).unwrap().into_tpk_status();
+    db.merge(tpk2).unwrap().into_tpk_status();
 
     // verify 1st uid
     db.set_email_published(&fpr1, &email1).unwrap();
-    assert_eq!(TPK::from_bytes(db.by_email(&email1).unwrap().as_bytes()).unwrap().fingerprint(), pgp_fpr1);
-
-    // replace
-    db.merge(tpk2).unwrap().into_tpk_status();
-
-    // Before tpk_status are verified, the first binding is still valid.
     assert!(db.by_email(&email1).is_some());
+    assert_eq!(TPK::from_bytes(db.by_email(&email1).unwrap().as_bytes()).unwrap()
+               .fingerprint(), pgp_fpr1);
+
+    assert_eq!(TPK::from_bytes(db.by_fpr(&fpr1).unwrap().as_bytes()).unwrap()
+               .userids().len(), 1);
+    assert_eq!(TPK::from_bytes(db.by_fpr(&fpr2).unwrap().as_bytes()).unwrap()
+               .userids().len(), 0);
+
+    // verify uid on other key
     db.set_email_published(&fpr2, &email1).unwrap();
-    assert_eq!(
-        TPK::from_bytes(&db.by_email(&email1).unwrap().as_bytes()).unwrap().fingerprint(),
-        pgp_fpr2
-    );
+    assert!(db.by_email(&email1).is_some());
+    assert_eq!(TPK::from_bytes(db.by_email(&email1).unwrap().as_bytes()).unwrap()
+               .fingerprint(), pgp_fpr2);
+
+    assert_eq!(TPK::from_bytes(db.by_fpr(&fpr1).unwrap().as_bytes()).unwrap()
+               .userids().len(), 0);
+    assert_eq!(TPK::from_bytes(db.by_fpr(&fpr2).unwrap().as_bytes()).unwrap()
+               .userids().len(), 1);
 }
 
 pub fn test_uid_deletion<D: Database>(db: &mut D) {
