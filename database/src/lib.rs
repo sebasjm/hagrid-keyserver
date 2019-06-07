@@ -249,7 +249,8 @@ pub trait Database: Sync + Send {
 
         let fingerprints = published_tpk_new
             .keys_all()
-            .unfiltered()
+            .certification_capable()
+            .signing_capable()
             .map(|(_, _, key)| key.fingerprint())
             .map(|fpr| Fingerprint::try_from(fpr))
             .flatten();

@@ -23,6 +23,7 @@ use openpgp::tpk::{TPKBuilder, UserIDBinding};
 use openpgp::{
     constants::ReasonForRevocation, constants::SignatureType, packet::UserID,
     parse::Parse, Packet, PacketPile, RevocationStatus, TPK,
+    packet::KeyFlags
 };
 use types::{Email, Fingerprint, KeyID};
 
@@ -390,22 +391,25 @@ pub fn test_subkey_lookup<D: Database>(db: &mut D) {
 
     // upload key
     let _ = db.merge(tpk.clone()).unwrap().into_tpk_status();
-    let primary_fpr = Fingerprint::try_from(tpk.fingerprint()).unwrap();
-    let sub1_fpr = Fingerprint::try_from(
-        tpk.subkeys().next().map(|x| x.subkey().fingerprint()).unwrap(),
-    )
-    .unwrap();
-    let sub2_fpr = Fingerprint::try_from(
-        tpk.subkeys().skip(1).next().map(|x| x.subkey().fingerprint()).unwrap(),
-    )
-    .unwrap();
 
-    let raw1 = db.by_fpr(&primary_fpr).unwrap();
-    let raw2 = db.by_fpr(&sub1_fpr).unwrap();
-    let raw3 = db.by_fpr(&sub2_fpr).unwrap();
+    // upload key
+    let _ = db.merge(tpk.clone()).unwrap().into_tpk_status();
+    let fpr_primray = Fingerprint::try_from(tpk.fingerprint()).unwrap();
+    let fpr_sign: Fingerprint = tpk.keys_all()
+        .signing_capable()
+        .map(|(_, _, key)| key.fingerprint().try_into().unwrap())
+        .next().unwrap();
+    let fpr_encrypt: Fingerprint = tpk.keys_all()
+        .key_flags(KeyFlags::empty().set_encrypt_for_transport(true))
+        .map(|(_, _, key)| key.fingerprint().try_into().unwrap())
+        .next().unwrap();
+
+    let raw1 = db.by_fpr(&fpr_primray).expect("primary fpr must be linked!");
+    let raw2 = db.by_fpr(&fpr_sign).expect("signing subkey fpr must be linked!");
+    // encryption subkey key id must not be linked!
+    assert!(db.by_fpr(&fpr_encrypt).is_none());
 
     assert_eq!(raw1, raw2);
-    assert_eq!(raw1, raw3);
 }
 
 pub fn test_kid_lookup<D: Database>(db: &mut D) {
@@ -419,22 +423,22 @@ pub fn test_kid_lookup<D: Database>(db: &mut D) {
 
     // upload key
     let _ = db.merge(tpk.clone()).unwrap().into_tpk_status();
-    let primary_kid = KeyID::try_from(tpk.fingerprint()).unwrap();
-    let sub1_kid = KeyID::try_from(
-        tpk.subkeys().next().map(|x| x.subkey().fingerprint()).unwrap(),
-    )
-    .unwrap();
-    let sub2_kid = KeyID::try_from(
-        tpk.subkeys().skip(1).next().map(|x| x.subkey().fingerprint()).unwrap(),
-    )
-    .unwrap();
+    let kid_primray = KeyID::try_from(tpk.fingerprint()).unwrap();
+    let kid_sign: KeyID = tpk.keys_all()
+        .signing_capable()
+        .map(|(_, _, key)| key.fingerprint().try_into().unwrap())
+        .next().unwrap();
+    let kid_encrypt: KeyID = tpk.keys_all()
+        .key_flags(KeyFlags::empty().set_encrypt_for_transport(true))
+        .map(|(_, _, key)| key.fingerprint().try_into().unwrap())
+        .next().unwrap();
 
-    let raw1 = db.by_kid(&primary_kid).expect("primary key id must be linked!");
-    let raw2 = db.by_kid(&sub1_kid).expect("first subkey key id must be linked!");
-    let raw3 = db.by_kid(&sub2_kid).expect("second subkey key id must be linked!");
+    let raw1 = db.by_kid(&kid_primray).expect("primary key id must be linked!");
+    let raw2 = db.by_kid(&kid_sign).expect("signing subkey key id must be linked!");
+    // encryption subkey key id must not be linked!
+    assert!(db.by_kid(&kid_encrypt).is_none());
 
     assert_eq!(raw1, raw2);
-    assert_eq!(raw1, raw3);
 }
 
 pub fn test_upload_revoked_tpk<D: Database>(db: &mut D) {
