@@ -88,14 +88,17 @@ pub fn process_key(
     rate_limiter: &RateLimiter,
     reader: impl Read,
 ) -> response::UploadResponse {
-    use sequoia_openpgp::parse::Parse;
+    use sequoia_openpgp::parse::{Parse, PacketParserBuilder, Dearmor};
     use sequoia_openpgp::tpk::TPKParser;
-    use sequoia_openpgp::armor::{Reader,ReaderMode};
+    use sequoia_openpgp::armor::ReaderMode;
 
     // First, parse all TPKs and error out if one fails.
-    let reader = Reader::from_reader(reader, ReaderMode::VeryTolerant);
-    let parser = match TPKParser::from_reader(reader) {
-        Ok(p) => p,
+    let parser = match PacketParserBuilder::from_reader(reader)
+        .and_then(|ppb| {
+            ppb.dearmor(Dearmor::Auto(ReaderMode::VeryTolerant)).finalize()
+        })
+    {
+        Ok(ppr) => TPKParser::from_packet_parser(ppr),
         Err(_) => return UploadResponse::err("Failed parsing key"),
     };
     let mut tpks = Vec::new();
