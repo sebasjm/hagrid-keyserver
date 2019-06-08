@@ -116,6 +116,7 @@ impl ImportResult {
 pub struct TpkStatus {
     pub is_revoked: bool,
     pub email_status: Vec<(Email,EmailAddressStatus)>,
+    pub unparsed_uids: usize,
 }
 
 pub enum RegenerateResult {
@@ -211,6 +212,12 @@ pub trait Database: Sync + Send {
                  .collect()
                 ).unwrap_or_default();
 
+        let unparsed_uids = full_tpk_new
+            .userids()
+            .map(|binding| Email::try_from(binding.userid()).is_err())
+            .filter(|x| *x)
+            .count();
+
         let mut email_status: Vec<_> = full_tpk_new
             .userids()
             .filter(|binding| known_uids.contains(binding.userid()))
@@ -234,7 +241,7 @@ pub trait Database: Sync + Send {
 
         // Abort if no changes were made
         if full_tpk_unchanged {
-            return Ok(ImportResult::Unchanged(TpkStatus { is_revoked, email_status }));
+            return Ok(ImportResult::Unchanged(TpkStatus { is_revoked, email_status, unparsed_uids }));
         }
 
         let revoked_uids: Vec<UserID> = full_tpk_new
@@ -307,9 +314,9 @@ pub trait Database: Sync + Send {
         }
 
         if is_update {
-            Ok(ImportResult::Updated(TpkStatus { is_revoked, email_status }))
+            Ok(ImportResult::Updated(TpkStatus { is_revoked, email_status, unparsed_uids }))
         } else {
-            Ok(ImportResult::New(TpkStatus { is_revoked, email_status }))
+            Ok(ImportResult::New(TpkStatus { is_revoked, email_status, unparsed_uids }))
         }
     }
 
@@ -319,6 +326,12 @@ pub trait Database: Sync + Send {
             .and_then(|bytes| TPK::from_bytes(bytes.as_ref()))?;
 
         let is_revoked = tpk_full.revoked(None) != RevocationStatus::NotAsFarAsWeKnow;
+
+        let unparsed_uids = tpk_full
+            .userids()
+            .map(|binding| Email::try_from(binding.userid()).is_err())
+            .filter(|x| *x)
+            .count();
 
         let published_uids: Vec<UserID> = self
             .by_fpr(&fpr_primary)
@@ -350,7 +363,7 @@ pub trait Database: Sync + Send {
         email_status.sort_by(|(e1,_),(e2,_)| e1.cmp(e2));
         email_status.dedup_by(|(e1, _), (e2, _)| e1 == e2);
 
-        Ok(TpkStatus { is_revoked, email_status })
+        Ok(TpkStatus { is_revoked, email_status, unparsed_uids })
     }
 
     /// Complex operation that publishes some user id for a TPK already in the database.

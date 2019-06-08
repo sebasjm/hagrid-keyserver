@@ -53,7 +53,8 @@ pub fn test_uid_verification<D: Database>(db: &mut D) {
         email_status: vec!(
             (email1.clone(), EmailAddressStatus::NotPublished),
             (email2.clone(), EmailAddressStatus::NotPublished),
-        )
+        ),
+        unparsed_uids: 0,
     }, tpk_status);
 
     {
@@ -157,7 +158,8 @@ pub fn test_uid_verification<D: Database>(db: &mut D) {
         email_status: vec!(
             (email1.clone(), EmailAddressStatus::Published),
             (email2.clone(), EmailAddressStatus::Published),
-        )
+        ),
+        unparsed_uids: 0,
     }, tpk_status);
 
     // publish w/ one uid less
@@ -177,7 +179,8 @@ pub fn test_uid_verification<D: Database>(db: &mut D) {
             is_revoked: false,
             email_status: vec!(
                 (email2.clone(), EmailAddressStatus::Published),
-            )
+            ),
+            unparsed_uids: 0,
         }, tpk_status);
 
         // fetch by fpr
@@ -233,7 +236,8 @@ pub fn test_uid_verification<D: Database>(db: &mut D) {
             email_status: vec!(
                 (email2.clone(), EmailAddressStatus::Published),
                 (email3.clone(), EmailAddressStatus::NotPublished),
-            )
+            ),
+            unparsed_uids: 0,
         }, tpk_status);
 
         // fetch by fpr
@@ -332,7 +336,8 @@ pub fn test_reupload<D: Database>(db: &mut D) {
         email_status: vec!(
             (email1.clone(), EmailAddressStatus::Published),
             (email2.clone(), EmailAddressStatus::NotPublished),
-        )
+        ),
+        unparsed_uids: 0,
     }, tpk_status);
     assert!(db.by_email(&email2).is_none() ^ db.by_email(&email1).is_none());
 }
@@ -400,7 +405,8 @@ pub fn test_uid_deletion<D: Database>(db: &mut D) {
         email_status: vec!(
             (email1.clone(), EmailAddressStatus::NotPublished),
             (email2.clone(), EmailAddressStatus::NotPublished),
-        )
+        ),
+        unparsed_uids: 0,
     }, tpk_status);
 
     db.set_email_published(&fpr, &email1).unwrap();
@@ -520,7 +526,8 @@ pub fn test_upload_revoked_tpk<D: Database>(db: &mut D) {
         email_status: vec!(
             (email1.clone(), EmailAddressStatus::NotPublished),
             (email2.clone(), EmailAddressStatus::NotPublished),
-        )
+        ),
+        unparsed_uids: 0,
     }, tpk_status);
 }
 
@@ -547,7 +554,8 @@ pub fn test_uid_revocation<D: Database>(db: &mut D) {
         email_status: vec!(
             (email1.clone(), EmailAddressStatus::NotPublished),
             (email2.clone(), EmailAddressStatus::NotPublished),
-        )
+        ),
+        unparsed_uids: 0,
     }, tpk_status);
 
     // verify uid
@@ -581,7 +589,8 @@ pub fn test_uid_revocation<D: Database>(db: &mut D) {
         email_status: vec!(
             (email1.clone(), EmailAddressStatus::Published),
             (email2.clone(), EmailAddressStatus::Revoked),
-        )
+        ),
+        unparsed_uids: 0,
     }, tpk_status);
 
     // Fail to fetch by the revoked uid, ok by the non-revoked one.
@@ -623,7 +632,8 @@ pub fn test_unlink_uid<D: Database>(db: &mut D) {
         is_revoked: false,
         email_status: vec!(
             (email.clone(), EmailAddressStatus::Revoked),
-        )
+        ),
+        unparsed_uids: 0,
     }, tpk_status);
 
     // Check that when looking up by email, we still get the former
@@ -667,14 +677,16 @@ pub fn test_same_email_1<D: Database>(db: &mut D) {
         is_revoked: false,
         email_status: vec!(
             (email1.clone(), EmailAddressStatus::NotPublished),
-        )
+        ),
+        unparsed_uids: 0,
     }, tpk_status1);
     let tpk_status2 = db.merge(tpk2.clone()).unwrap().into_tpk_status();
     assert_eq!(TpkStatus {
         is_revoked: false,
         email_status: vec!(
             (email2.clone(), EmailAddressStatus::NotPublished),
-        )
+        ),
+        unparsed_uids: 0,
     }, tpk_status2);
 
     // verify tpk1
@@ -716,7 +728,8 @@ pub fn test_same_email_1<D: Database>(db: &mut D) {
         is_revoked: false,
         email_status: vec!(
             (email2.clone(), EmailAddressStatus::Revoked),
-        )
+        ),
+        unparsed_uids: 0,
     }, tpk_status2);
 
     // fetch by both user ids.  We should get nothing.
@@ -750,7 +763,8 @@ pub fn test_same_email_2<D: Database>(db: &mut D) {
         is_revoked: false,
         email_status: vec!(
             (email.clone(), EmailAddressStatus::NotPublished),
-        )
+        ),
+        unparsed_uids: 0,
     }, tpk_status);
     db.set_email_published(&fpr, &tpk_status.email_status[0].0).unwrap();
 
@@ -780,7 +794,8 @@ pub fn test_same_email_2<D: Database>(db: &mut D) {
         is_revoked: false,
         email_status: vec!(
             (email.clone(), EmailAddressStatus::Published),
-        )
+        ),
+        unparsed_uids: 0,
     }, tpk_status);
 
     // fetch by both user ids.  We should still get both user ids.
@@ -789,4 +804,27 @@ pub fn test_same_email_2<D: Database>(db: &mut D) {
                vec![ uid1.clone() ]);
     assert_eq!(get_userids(&db.by_email(&email).unwrap()[..]),
                vec![ uid1.clone() ]);
+}
+
+pub fn test_bad_uids<D: Database>(db: &mut D) {
+    let str_uid1 = "foo@bar.example <foo@bar.example>";
+    let str_uid2 = "A <test@example.com>";
+    let str_uid3 = "lalalalaaaaa";
+    let tpk = TPKBuilder::default()
+        .add_userid(str_uid1)
+        .add_userid(str_uid2)
+        .add_userid(str_uid3)
+        .generate()
+        .unwrap()
+        .0;
+    let email2 = Email::from_str(str_uid2).unwrap();
+
+    let tpk_status = db.merge(tpk).unwrap().into_tpk_status();
+    assert_eq!(TpkStatus {
+        is_revoked: false,
+        email_status: vec!(
+            (email2.clone(), EmailAddressStatus::NotPublished),
+        ),
+        unparsed_uids: 2,
+    }, tpk_status);
 }

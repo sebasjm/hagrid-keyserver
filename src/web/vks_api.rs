@@ -62,7 +62,7 @@ fn json_or_error<T>(data: Result<Json<T>, JsonError>) -> Result<Json<T>, JsonErr
 
 fn upload_ok_json(response: UploadResponse) -> Result<JsonValue,JsonErrorResponse> {
     match response {
-        UploadResponse::Ok { token, key_fpr, is_revoked: _, status } =>
+        UploadResponse::Ok { token, key_fpr, status, .. } =>
             Ok(json!(json::UploadResult { token, key_fpr, status })),
         UploadResponse::OkMulti { key_fprs } => Ok(json!(key_fprs)),
         UploadResponse::Error(error) => Err(JsonErrorResponse(Status::BadRequest, error)),

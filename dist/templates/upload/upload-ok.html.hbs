@@ -49,6 +49,20 @@
       {{/each}}
     {{/if}}
 
+    {{#if count_unparsed}}
+      {{#if count_unparsed_one}}
+    <p style="padding-top: 1em;">
+      This key contains one identity that could not be parsed as an email
+      address, which is not published.
+    </p>
+      {{else}}
+    <p style="padding-top: 1em;">
+      This key contains {{count_unparsed}} identities that could not be parsed
+      as an email address, which are not published.
+    </p>
+      {{/if}}
+    {{/if}}
+
     {{#if count_revoked}}
       {{#if count_revoked_one}}
     <p style="padding-top: 1em;">

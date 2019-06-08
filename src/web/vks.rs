@@ -48,6 +48,7 @@ pub mod response {
             key_fpr: String,
             is_revoked: bool,
             status: HashMap<String,EmailStatus>,
+            count_unparsed: usize,
         },
         OkMulti { key_fprs: Vec<String> },
         Error(String),
@@ -260,7 +261,7 @@ fn show_upload_verify(
 ) -> response::UploadResponse {
     let key_fpr = verify_state.fpr.to_string();
     if tpk_status.is_revoked {
-        return response::UploadResponse::Ok { token, key_fpr, is_revoked: true, status: HashMap::new() };
+        return response::UploadResponse::Ok { token, key_fpr, count_unparsed: 0, is_revoked: true, status: HashMap::new() };
     }
 
     let status: HashMap<_,_> = tpk_status.email_status
@@ -280,5 +281,7 @@ fn show_upload_verify(
         })
         .collect();
 
-    response::UploadResponse::Ok { token, key_fpr, is_revoked: false, status }
+    let count_unparsed = tpk_status.unparsed_uids;
+
+    response::UploadResponse::Ok { token, key_fpr, count_unparsed, is_revoked: false, status }
 }

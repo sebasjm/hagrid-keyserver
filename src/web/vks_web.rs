@@ -63,6 +63,8 @@ mod template {
         pub email_unpublished: Vec<UploadUidStatus>,
         pub count_revoked_one: bool,
         pub count_revoked: usize,
+        pub count_unparsed_one: bool,
+        pub count_unparsed: usize,
     }
 
     #[derive(Serialize)]
@@ -89,7 +91,7 @@ mod template {
 impl MyResponse {
     fn upload_response_quick(response: UploadResponse, base_uri: &str) -> Self {
         match response {
-            UploadResponse::Ok { token, key_fpr: _, is_revoked: _, status: _ } => {
+            UploadResponse::Ok { token, .. } => {
                 let uri = uri!(quick_upload_proceed: token);
                 let text = format!(
                     "Key successfully uploaded. Proceed here:\n{}{}\n",
@@ -107,8 +109,8 @@ impl MyResponse {
 
     fn upload_response(response: UploadResponse) -> Self {
         match response {
-            UploadResponse::Ok { token, key_fpr, is_revoked, status } =>
-                Self::upload_ok(token, key_fpr, is_revoked, status),
+            UploadResponse::Ok { token, key_fpr, is_revoked, count_unparsed, status } =>
+                Self::upload_ok(token, key_fpr, is_revoked, count_unparsed, status),
             UploadResponse::OkMulti { key_fprs } =>
                 Self::upload_ok_multi(key_fprs),
             UploadResponse::Error(error) => MyResponse::bad_request(
@@ -120,6 +122,7 @@ impl MyResponse {
         token: String,
         key_fpr: String,
         is_revoked: bool,
+        count_unparsed: usize,
         uid_status: HashMap<String,EmailStatus>,
     ) -> Self {
         let key_link = format!("/pks/lookup?op=get&search={}", &key_fpr);
@@ -157,6 +160,8 @@ impl MyResponse {
             email_unpublished,
             count_revoked_one: count_revoked == 1,
             count_revoked,
+            count_unparsed_one: count_unparsed == 1,
+            count_unparsed,
         };
         MyResponse::ok("upload/upload-ok", context)
     }

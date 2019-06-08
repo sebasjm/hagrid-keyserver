@@ -775,6 +775,15 @@ mod tests {
     }
 
     #[test]
+    fn bad_uids() {
+        let tmpdir = TempDir::new().unwrap();
+        let mut db = Filesystem::new_from_base(tmpdir.path()).unwrap();
+
+        test::test_bad_uids(&mut db);
+        db.check_consistency().expect("inconsistent database");
+    }
+
+    #[test]
     fn reverse_fingerprint_to_path() {
         let tmpdir = TempDir::new().unwrap();
         let db = Filesystem::new_from_base(tmpdir.path()).unwrap();
