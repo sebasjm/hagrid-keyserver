@@ -205,7 +205,7 @@ fn key_to_hkp_index<'a>(db: rocket::State<KeyDatabase>, query: Query)
         })
     .unwrap_or_default();
     let is_rev =
-        if tpk.revoked(None) != RevocationStatus::NotAsFarAsWeKnow {
+        if tpk.revocation_status() != RevocationStatus::NotAsFarAsWeKnow {
             "r"
         } else {
             ""

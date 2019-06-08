@@ -202,7 +202,8 @@ pub trait Database: Sync + Send {
             (new_tpk, false)
         };
 
-        let is_revoked = full_tpk_new.revoked(None) != RevocationStatus::NotAsFarAsWeKnow;
+        let is_revoked = full_tpk_new.revocation_status()
+            != RevocationStatus::NotAsFarAsWeKnow;
 
         let published_uids: Vec<UserID> = self
             .by_fpr(&fpr_primary)
@@ -324,7 +325,8 @@ pub trait Database: Sync + Send {
             .ok_or_else(|| failure::err_msg("Key not in database!"))
             .and_then(|bytes| TPK::from_bytes(bytes.as_ref()))?;
 
-        let is_revoked = tpk_full.revoked(None) != RevocationStatus::NotAsFarAsWeKnow;
+        let is_revoked = tpk_full.revocation_status()
+            != RevocationStatus::NotAsFarAsWeKnow;
 
         let unparsed_uids = tpk_full
             .userids()

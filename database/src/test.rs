@@ -515,7 +515,7 @@ pub fn test_upload_revoked_tpk<D: Database>(db: &mut D) {
     let email2 = Email::from_str(str_uid2).unwrap();
 
     tpk = tpk.merge_packets(vec![revocation.into()]).unwrap();
-    match tpk.revoked(None) {
+    match tpk.revocation_status() {
         RevocationStatus::Revoked(_) => (),
         _ => panic!("expected TPK to be revoked"),
     }
