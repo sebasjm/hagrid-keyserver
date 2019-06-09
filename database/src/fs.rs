@@ -78,14 +78,15 @@ impl Filesystem {
         let keys_external_dir: PathBuf = keys_external_dir.into();
         let keys_dir_full = keys_internal_dir.join("full");
         let keys_dir_quarantined = keys_internal_dir.join("quarantined");
-        let keys_dir_published = keys_external_dir.join("published");
+        let keys_dir_published = keys_external_dir.join("pub");
         create_dir_all(&keys_dir_full)?;
         create_dir_all(&keys_dir_quarantined)?;
         create_dir_all(&keys_dir_published)?;
 
-        let links_dir_by_keyid = keys_external_dir.join("by-keyid");
-        let links_dir_by_fingerprint = keys_external_dir.join("by-fpr");
-        let links_dir_by_email = keys_external_dir.join("by-email");
+        let links_dir = keys_external_dir.join("links");
+        let links_dir_by_keyid = links_dir.join("by-keyid");
+        let links_dir_by_fingerprint = links_dir.join("by-fpr");
+        let links_dir_by_email = links_dir.join("by-email");
         create_dir_all(&links_dir_by_keyid)?;
         create_dir_all(&links_dir_by_fingerprint)?;
         create_dir_all(&links_dir_by_email)?;
