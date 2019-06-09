@@ -46,7 +46,10 @@ impl <'a> RegenerateStats<'a> {
             self.prefix = fpr.to_string()[0..4].to_owned();
         }
         match result {
-            Err(_) => self.count_err += 1,
+            Err(e) => {
+                self.progress.println(format!("{}: {}", fpr, e.to_string()));
+                self.count_err += 1;
+            },
             Ok(RegenerateResult::Updated) => self.count_updated += 1,
             Ok(RegenerateResult::Unchanged) => self.count_unchanged += 1,
         }
