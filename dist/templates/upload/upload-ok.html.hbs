@@ -4,11 +4,12 @@
   </p>
 
   {{#if is_revoked}}
-    <p style="padding-top: 1em;">
-      This key is now published with technical data, but no identity information (<a href="/about" target="_blank">what does this mean?</a>)
-    </p>
     <p>
-      This key is revoked, and can't be made available for search by e-mail address.
+      <strong>This key is revoked.</strong>
+      It is published without identity information
+      (<a href="/about" target="_blank">what does this mean?</a>),
+      and can't be made available for search
+      by e-mail address.
     </p>
   {{else}}
     {{#if email_published}}
@@ -56,7 +57,7 @@
       address.<br />
       This identity can't be published
       on <span class="brand">keys.openpgp.org</span>.
-      (<a href="/about/faq#non-email-uids" target="_blank">Why?</a>)
+      (<a href="/about/faq#non-email-uids" target="_blank">why?</a>)
     </p>
       {{else}}
     <p style="padding-top: 1em;">
@@ -64,7 +65,7 @@
       as an email address.<br />
       These identities can't be published
       on <span class="brand">keys.openpgp.org</span>.
-      (<a href="/about/faq#non-email-uids" target="_blank">Why?</a>)
+      (<a href="/about/faq#non-email-uids" target="_blank">why?</a>)
     </p>
       {{/if}}
     {{/if}}
@@ -73,11 +74,13 @@
       {{#if count_revoked_one}}
     <p style="padding-top: 1em;">
       This key contains one revoked identity, which is not published.
+      (<a href="/about/faq#revoked-uids" target="_blank">Why?</a>)
     </p>
       {{else}}
     <p style="padding-top: 1em;">
       This key contains {{count_revoked}} revoked identities, which are not
       published.
+      (<a href="/about/faq#revoked-uids" target="_blank">Why?</a>)
     </p>
       {{/if}}
     {{/if}}

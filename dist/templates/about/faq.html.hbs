@@ -12,7 +12,7 @@
     model.
 
     <h3 id="non-email-uids"><a href="#non-email-uids">Why is there no support
-            for UserIDs that aren't e-mail addresses?</a></h3>
+            for identities that aren't e-mail addresses?</a></h3>
 
     <p>
         We require explicit consent to distribute identity information.
@@ -26,6 +26,29 @@
         <span class="brand">keys.openpgp.org</span>.
     </p>
 
+    <h3 id="revoked-uids"><a href="#revoked-uids">Why are revoked identities not
+            distributed as such?</a></h3>
+
+    <p>
+        When an OpenPGP key marks one of its identities as revoked, this
+        identity should no longer be considered valid for the key.  And this
+        information should ideally be distributed to all OpenPGP clients that
+        already know about the newly revoked identity.
+    </p>
+    <p>
+        Unfortunately, there is currently no good way to distribute revocations,
+        that doesn't also reveal the revoked identity itself.  We don't want to
+        distribute revoked identities, so we can't distribute the identity at
+        all.
+    </p>
+    <p>
+        There are proposed solutions to this issue, that allow the distribution
+        of revocations without also revealing the identity itself.  But so far
+        there is no final specification, or support in any OpenPGP software.  We
+        hope that a solution will be established in the near future, and will
+        add support on <span class="brand">keys.openpgp.org</span> as soon as
+        we can.
+    </p>
 
     <h3 id="encrypt-verification-emails"><a href="#encrypt-verification-emails">
             Why not encrypt verification e-mails?</a></h3>
