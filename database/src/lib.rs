@@ -274,7 +274,6 @@ pub trait Database: Sync + Send {
             }).collect();
 
         let fingerprints = tpk_get_linkable_fprs(&published_tpk_new);
-        println!("{:?}", fingerprints);
 
         let fpr_checks = fingerprints
             .iter()
