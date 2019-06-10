@@ -342,35 +342,14 @@ impl Database for Filesystem {
 
     fn lookup_primary_fingerprint(&self, term: &Query) -> Option<Fingerprint> {
         use super::Query::*;
-        match term {
-            ByFingerprint(ref fp) => {
-                let path = self.link_by_fingerprint(fp);
-                let typ = match path.symlink_metadata() {
-                    Ok(meta) => meta.file_type(),
-                    Err(_) => return None,
-                };
-
-                if typ.is_file() {
-                    Some(fp.clone())
-                } else if typ.is_symlink() {
-                    path.read_link().ok()
-                        .and_then(|link_path| Filesystem::path_to_fingerprint(&link_path))
-                } else {
-                    // Neither file nor symlink.  Freak value.
-                    None
-                }
-            },
-            ByKeyID(ref keyid) => {
-                let path = self.link_by_keyid(keyid);
-                path.read_link().ok()
-                    .and_then(|path| Filesystem::path_to_fingerprint(&path))
-            },
-            ByEmail(ref email) => {
-                let path = self.link_by_email(email);
-                path.read_link().ok()
-                    .and_then(|path| Filesystem::path_to_fingerprint(&path))
-            },
-        }
+        let path = match term {
+            ByFingerprint(ref fp) => self.link_by_fingerprint(fp),
+            ByKeyID(ref keyid) => self.link_by_keyid(keyid),
+            ByEmail(ref email) => self.link_by_email(email),
+        };
+        path.read_link()
+            .ok()
+            .and_then(|link_path| Filesystem::path_to_fingerprint(&link_path))
     }
 
     /// Gets the path to the underlying file, if any.
