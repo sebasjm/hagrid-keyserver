@@ -39,6 +39,14 @@ a.brand {
   color: #050505;
 }
 
+h3:target {
+  background-color: #ffa;
+}
+
+h3 a, h3 a:visited {
+  color: #050505;
+}
+
 span.brand {
   font-family: monospace;
   font-size: large;

@@ -53,12 +53,18 @@
       {{#if count_unparsed_one}}
     <p style="padding-top: 1em;">
       This key contains one identity that could not be parsed as an email
-      address, which is not published.
+      address.<br />
+      This identity can't be published
+      on <span class="brand">keys.openpgp.org</span>.
+      (<a href="/about/faq#non-email-uids" target="_blank">Why?</a>)
     </p>
       {{else}}
     <p style="padding-top: 1em;">
       This key contains {{count_unparsed}} identities that could not be parsed
-      as an email address, which are not published.
+      as an email address.<br />
+      These identities can't be published
+      on <span class="brand">keys.openpgp.org</span>.
+      (<a href="/about/faq#non-email-uids" target="_blank">Why?</a>)
     </p>
       {{/if}}
     {{/if}}
