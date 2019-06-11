@@ -205,6 +205,14 @@ pub trait Database: Sync + Send {
         let is_revoked = full_tpk_new.revocation_status()
             != RevocationStatus::NotAsFarAsWeKnow;
 
+        let is_ok = is_revoked ||
+            full_tpk_new.subkeys().next().is_some() ||
+            full_tpk_new.userids().next().is_some();
+        if !is_ok {
+            self.write_to_quarantine(&fpr_primary, &tpk_to_string(&full_tpk_new)?)?;
+            return Err(failure::err_msg("Not a well-formed key!"));
+        }
+
         let published_uids: Vec<UserID> = self
             .by_fpr(&fpr_primary)
             .and_then(|bytes| TPK::from_bytes(bytes.as_ref()).ok())
