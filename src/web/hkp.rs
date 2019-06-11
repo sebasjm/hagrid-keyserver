@@ -13,19 +13,19 @@ use rate_limiter::RateLimiter;
 
 use tokens;
 
+use web;
 use web::{
     HagridState,
     MyResponse,
-    key_to_response,
     vks_web,
 };
 
 #[derive(Debug)]
 pub enum Hkp {
-    Fingerprint { fpr: Fingerprint, index: bool, machine_readable: bool },
-    KeyID { keyid: KeyID, index: bool, machine_readable: bool },
-    ShortKeyID { query: String, index: bool, machine_readable: bool },
-    Email { email: Email, index: bool, machine_readable: bool },
+    Fingerprint { fpr: Fingerprint, index: bool },
+    KeyID { keyid: KeyID, index: bool },
+    ShortKeyID { query: String, index: bool },
+    Email { email: Email, index: bool },
     Invalid { query: String, },
 }
 
@@ -67,9 +67,6 @@ impl<'a, 'r> FromRequest<'a, 'r> for Hkp {
             .unwrap_or(false)
         {
             let index = fields.get("op").map(|x| x == "index").unwrap_or(false);
-            let machine_readable =
-                fields.get("options").map(|x| x.contains("mr"))
-                .unwrap_or(false);
             let search = fields.get("search").cloned().unwrap_or_default();
             let maybe_fpr = Fingerprint::from_str(&search);
             let maybe_keyid = KeyID::from_str(&search);
@@ -78,19 +75,16 @@ impl<'a, 'r> FromRequest<'a, 'r> for Hkp {
                 Outcome::Success(Hkp::ShortKeyID {
                     query: search,
                     index: index,
-                    machine_readable: machine_readable,
                 })
             } else if let Ok(fpr) = maybe_fpr {
                 Outcome::Success(Hkp::Fingerprint {
                     fpr: fpr,
                     index: index,
-                    machine_readable: machine_readable,
                 })
             } else if let Ok(keyid) = maybe_keyid {
                 Outcome::Success(Hkp::KeyID {
                     keyid: keyid,
                     index: index,
-                    machine_readable: machine_readable,
                 })
             } else {
                 match Email::from_str(&search) {
@@ -98,7 +92,6 @@ impl<'a, 'r> FromRequest<'a, 'r> for Hkp {
                         Outcome::Success(Hkp::Email {
                             email: email,
                             index: index,
-                            machine_readable: machine_readable,
                         })
                     }
                     Err(_) => {
@@ -150,39 +143,36 @@ pub fn pks_add_form(
 pub fn pks_lookup(state: rocket::State<HagridState>,
                   db: rocket::State<KeyDatabase>,
                   key: Hkp) -> MyResponse {
-    let query_string = key.to_string();
-    let (query, index, machine_readable) = match key {
-        Hkp::Fingerprint { fpr, index, machine_readable } =>
-            (Query::ByFingerprint(fpr), index, machine_readable),
-        Hkp::KeyID { keyid, index, machine_readable } =>
-            (Query::ByKeyID(keyid), index, machine_readable),
-        Hkp::Email { email, index, machine_readable } => {
-            (Query::ByEmail(email), index, machine_readable)
+    let (query, index) = match key {
+        Hkp::Fingerprint { fpr, index } =>
+            (Query::ByFingerprint(fpr), index),
+        Hkp::KeyID { keyid, index } =>
+            (Query::ByKeyID(keyid), index),
+        Hkp::Email { email, index } => {
+            (Query::ByEmail(email), index)
         }
         Hkp::ShortKeyID { query: _, .. } => {
-            return MyResponse::not_found(None, Some(
-                "Search by short key ids is not supported, sorry!".to_owned()));
+            return MyResponse::bad_request_plain("Search by short key ids is not supported, sorry!");
         }
         Hkp::Invalid { query: _ } => {
-            return MyResponse::not_found(None, Some(
-                "Invalid search query!".to_owned()));
+            return MyResponse::bad_request_plain("Invalid search query!");
         }
     };
 
     if index {
         key_to_hkp_index(db, query)
     } else {
-        key_to_response(state, db, query_string, query, machine_readable)
+        web::key_to_response_plain(state, db, query)
     }
 }
 
-fn key_to_hkp_index<'a>(db: rocket::State<KeyDatabase>, query: Query)
+fn key_to_hkp_index(db: rocket::State<KeyDatabase>, query: Query)
                         -> MyResponse {
     use sequoia_openpgp::RevocationStatus;
 
     let tpk = match db.lookup(&query) {
         Ok(Some(tpk)) => tpk,
-        Ok(None) => return MyResponse::not_found(None, None),
+        Ok(None) => return MyResponse::not_found_plain(query.describe_error()),
         Err(err) => { return MyResponse::ise(err); }
     };
     let mut out = String::default();

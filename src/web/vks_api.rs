@@ -4,12 +4,14 @@ use rocket::response::{self, Response, Responder};
 use rocket::http::{ContentType,Status};
 use std::io::Cursor;
 
-use database::{KeyDatabase, StatefulTokens};
+use database::{KeyDatabase, StatefulTokens, Query};
+use database::types::{Email, Fingerprint, KeyID};
 use mail;
 use tokens;
 use rate_limiter::RateLimiter;
 
-use web::HagridState;
+use web;
+use web::{HagridState, MyResponse};
 use web::vks;
 use web::vks::response::*;
 
@@ -114,4 +116,40 @@ pub fn request_verify_fallback(
 ) -> JsonErrorResponse {
     let error_msg = format!("expected application/json data. see {}/about/api for api docs.", state.base_uri);
     JsonErrorResponse(Status::BadRequest, error_msg)
+}
+
+#[get("/vks/v1/by-fingerprint/<fpr>")]
+pub fn vks_v1_by_fingerprint(state: rocket::State<HagridState>,
+                         db: rocket::State<KeyDatabase>,
+                         fpr: String) -> MyResponse {
+    let query = match fpr.parse::<Fingerprint>() {
+        Ok(fpr) => Query::ByFingerprint(fpr),
+        Err(e) => return MyResponse::bad_request("index", e),
+    };
+
+    web::key_to_response_plain(state, db, query)
+}
+
+#[get("/vks/v1/by-email/<email>")]
+pub fn vks_v1_by_email(state: rocket::State<HagridState>,
+                   db: rocket::State<KeyDatabase>,
+                   email: String) -> MyResponse {
+    let query = match email.parse::<Email>() {
+        Ok(email) => Query::ByEmail(email),
+        Err(e) => return MyResponse::bad_request("index", e),
+    };
+
+    web::key_to_response_plain(state, db, query)
+}
+
+#[get("/vks/v1/by-keyid/<kid>")]
+pub fn vks_v1_by_keyid(state: rocket::State<HagridState>,
+                   db: rocket::State<KeyDatabase>,
+                   kid: String) -> MyResponse {
+    let query = match kid.parse::<KeyID>() {
+        Ok(keyid) => Query::ByKeyID(keyid),
+        Err(e) => return MyResponse::bad_request("index", e),
+    };
+
+    web::key_to_response_plain(state, db, query)
 }

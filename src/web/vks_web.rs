@@ -9,7 +9,7 @@ use rocket::http::ContentType;
 use rocket::request::Form;
 use rocket::Data;
 
-use database::{KeyDatabase, StatefulTokens};
+use database::{KeyDatabase, StatefulTokens, Query, Database};
 use mail;
 use tokens;
 use web::{HagridState,MyResponse};
@@ -41,6 +41,15 @@ mod template {
     pub struct Verify {
         pub verified: bool,
         pub userid: String,
+        pub commit: String,
+        pub version: String,
+    }
+
+    #[derive(Serialize)]
+    pub struct Search {
+        pub query: String,
+        pub fpr: String,
+        pub base_uri: String,
         pub commit: String,
         pub version: String,
     }
@@ -214,6 +223,42 @@ pub fn upload_post_form_data(
 
     process_upload(&db, &tokens_stateless, &rate_limiter, data, boundary)
 }
+
+#[get("/search?<q>")]
+pub fn search(
+    state: rocket::State<HagridState>,
+    db: rocket::State<KeyDatabase>,
+    q: String,
+) -> MyResponse {
+    match q.parse::<Query>() {
+        Ok(query) => key_to_response(state, db, q, query),
+        Err(e) => MyResponse::bad_request("index", e),
+    }
+}
+
+fn key_to_response(
+    state: rocket::State<HagridState>,
+    db: rocket::State<KeyDatabase>,
+    query_string: String,
+    query: Query,
+) -> MyResponse {
+    let fp = if let Some(fp) = db.lookup_primary_fingerprint(&query) {
+        fp
+    } else {
+        return MyResponse::not_found(None, query.describe_error());
+    };
+
+    let context = template::Search{
+        query: query_string,
+        base_uri: state.base_uri.clone(),
+        fpr: fp.to_string(),
+        version: env!("VERGEN_SEMVER").to_string(),
+        commit: env!("VERGEN_SHA_SHORT").to_string(),
+    };
+
+    MyResponse::ok("found", context)
+}
+
 
 #[put("/", data = "<data>")]
 pub fn quick_upload(

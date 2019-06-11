@@ -64,6 +64,10 @@ impl FromStr for Query {
     fn from_str(term: &str) -> Result<Self> {
         use self::Query::*;
 
+        if term.starts_with("0x") && term.len() < 16 && !term.contains('@') {
+            return Err(failure::err_msg(
+                    "Search by Short Key ID is not supported, sorry!"));
+        }
         if let Ok(fp) = Fingerprint::from_str(term) {
             Ok(ByFingerprint(fp))
         } else if let Ok(keyid) = KeyID::from_str(term) {
@@ -71,7 +75,7 @@ impl FromStr for Query {
         } else if let Ok(email) = Email::from_str(term) {
             Ok(ByEmail(email))
         } else {
-            Err(failure::err_msg("Malformed query"))
+            Err(failure::err_msg("Invalid search query!"))
         }
     }
 }

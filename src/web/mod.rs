@@ -15,10 +15,9 @@ use tokens;
 use rate_limiter::RateLimiter;
 
 use database::{Database, KeyDatabase, Query};
-use database::types::{Email, Fingerprint, KeyID};
+use database::types::Fingerprint;
 use Result;
 
-use std::str::FromStr;
 use std::convert::TryInto;
 
 mod hkp;
@@ -46,8 +45,12 @@ pub enum MyResponse {
     ServerError(Template),
     #[response(status = 404, content_type = "html")]
     NotFound(Template),
+    #[response(status = 404, content_type = "html")]
+    NotFoundPlain(String),
     #[response(status = 400, content_type = "html")]
     BadRequest(Template),
+    #[response(status = 400, content_type = "html")]
+    BadRequestPlain(String),
 }
 
 impl MyResponse {
@@ -103,7 +106,6 @@ impl MyResponse {
     }
 
     pub fn bad_request(template: &'static str, e: failure::Error) -> Self {
-        eprintln!("Bad Request: {:?}", e);
         let ctx = templates::General {
             error: Some(format!("{}", e)),
             version: env!("VERGEN_SEMVER").to_string(),
@@ -112,10 +114,18 @@ impl MyResponse {
         MyResponse::BadRequest(Template::render(template, ctx))
     }
 
-    pub fn not_found<M>(tmpl: Option<&'static str>, message: M)
-                        -> Self
-        where M: Into<Option<String>>,
-    {
+    pub fn bad_request_plain(message: impl Into<String>) -> Self {
+        MyResponse::BadRequestPlain(message.into())
+    }
+
+    pub fn not_found_plain(message: impl Into<String>) -> Self {
+        MyResponse::NotFoundPlain(message.into())
+    }
+
+    pub fn not_found(
+        tmpl: Option<&'static str>,
+        message: impl Into<Option<String>>
+    ) -> Self {
         MyResponse::NotFound(
             Template::render(
                 tmpl.unwrap_or("index"),
@@ -126,15 +136,6 @@ impl MyResponse {
 }
 
 mod templates {
-    #[derive(Serialize)]
-    pub struct Search {
-        pub query: String,
-        pub fpr: String,
-        pub base_uri: String,
-        pub commit: String,
-        pub version: String,
-    }
-
     #[derive(Serialize)]
     pub struct FiveHundred {
         pub internal_error: String,
@@ -196,85 +197,35 @@ pub struct HagridState {
     /// 
     x_accel_redirect: bool,
     x_accel_prefix: Option<PathBuf>,
-
 }
 
-fn key_to_response<'a>(state: rocket::State<HagridState>,
-                       db: rocket::State<KeyDatabase>,
-                       query_string: String,
-                       query: Query,
-                       machine_readable: bool)
-                       -> MyResponse {
+pub fn key_to_response_plain(
+    state: rocket::State<HagridState>,
+    db: rocket::State<KeyDatabase>,
+    query: Query,
+) -> MyResponse {
     let fp = if let Some(fp) = db.lookup_primary_fingerprint(&query) {
         fp
     } else {
-        return MyResponse::not_found(None, query.describe_error());
+        return MyResponse::not_found_plain(query.describe_error());
     };
 
-    if machine_readable {
-        if state.x_accel_redirect {
-            if let Some(key_path) = db.lookup_path(&query) {
-                let mut x_accel_path = state.keys_external_dir.join(&key_path);
-                if let Some(prefix) = state.x_accel_prefix.as_ref() {
-                    x_accel_path = x_accel_path.strip_prefix(&prefix).unwrap().to_path_buf();
-                }
-                // prepend a / to make path relative to nginx root
-                let x_accel_path = format!("/{}", x_accel_path.to_string_lossy());
-                return MyResponse::x_accel_redirect(x_accel_path, &fp);
+    if state.x_accel_redirect {
+        if let Some(key_path) = db.lookup_path(&query) {
+            let mut x_accel_path = state.keys_external_dir.join(&key_path);
+            if let Some(prefix) = state.x_accel_prefix.as_ref() {
+                x_accel_path = x_accel_path.strip_prefix(&prefix).unwrap().to_path_buf();
             }
-        }
-
-        return match db.by_fpr(&fp) {
-            Some(armored) => MyResponse::key(armored, &fp.into()),
-            None => MyResponse::not_found(None, None),
+            // prepend a / to make path relative to nginx root
+            let x_accel_path = format!("/{}", x_accel_path.to_string_lossy());
+            return MyResponse::x_accel_redirect(x_accel_path, &fp);
         }
     }
 
-    let context = templates::Search{
-        query: query_string,
-        base_uri: state.base_uri.clone(),
-        fpr: fp.to_string(),
-        version: env!("VERGEN_SEMVER").to_string(),
-        commit: env!("VERGEN_SHA_SHORT").to_string(),
-    };
-
-    MyResponse::ok("found", context)
-}
-
-#[get("/vks/v1/by-fingerprint/<fpr>")]
-fn vks_v1_by_fingerprint(state: rocket::State<HagridState>,
-                         db: rocket::State<KeyDatabase>,
-                         fpr: String) -> MyResponse {
-    let query = match Fingerprint::from_str(&fpr) {
-        Ok(fpr) => Query::ByFingerprint(fpr),
-        Err(e) => return MyResponse::bad_request("index", e),
-    };
-
-    key_to_response(state, db, fpr, query, true)
-}
-
-#[get("/vks/v1/by-email/<email>")]
-fn vks_v1_by_email(state: rocket::State<HagridState>,
-                   db: rocket::State<KeyDatabase>,
-                   email: String) -> MyResponse {
-    let query = match Email::from_str(&email) {
-        Ok(email) => Query::ByEmail(email),
-        Err(e) => return MyResponse::bad_request("index", e),
-    };
-
-    key_to_response(state, db, email, query, true)
-}
-
-#[get("/vks/v1/by-keyid/<kid>")]
-fn vks_v1_by_keyid(state: rocket::State<HagridState>,
-                   db: rocket::State<KeyDatabase>,
-                   kid: String) -> MyResponse {
-    let query = match KeyID::from_str(&kid) {
-        Ok(keyid) => Query::ByKeyID(keyid),
-        Err(e) => return MyResponse::bad_request("index", e),
-    };
-
-    key_to_response(state, db, kid, query, true)
+    return match db.by_fpr(&fp) {
+        Some(armored) => MyResponse::key(armored, &fp.into()),
+        None => MyResponse::not_found_plain(query.describe_error()),
+    }
 }
 
 #[get("/assets/<file..>")]
@@ -327,14 +278,15 @@ fn rocket_factory(rocket: rocket::Rocket) -> Result<rocket::Rocket> {
         usage,
         files,
         // VKSv1
-        vks_v1_by_email,
-        vks_v1_by_fingerprint,
-        vks_v1_by_keyid,
+        vks_api::vks_v1_by_email,
+        vks_api::vks_v1_by_fingerprint,
+        vks_api::vks_v1_by_keyid,
         vks_api::upload_json,
         vks_api::upload_fallback,
         vks_api::request_verify_json,
         vks_api::request_verify_fallback,
         // User interaction.
+        vks_web::search,
         vks_web::upload,
         vks_web::upload_post_form,
         vks_web::upload_post_form_data,
@@ -805,7 +757,7 @@ pub mod tests {
             &tpk, nr_uids);
         check_hr_response(
             &client,
-            &format!("/pks/lookup?op=get&search={}", addr),
+            &format!("/search?q={}", addr),
             &tpk, nr_uids);
     }
 
@@ -855,6 +807,10 @@ pub mod tests {
             &client,
             &format!("/pks/lookup?op=get&options=mr&search=0x{}", keyid),
             &tpk, nr_uids);
+        check_mr_response(
+            &client,
+            &format!("/pks/lookup?op=get&search=0x{}", keyid),
+            &tpk, nr_uids);
     }
 
     /// Asserts that the given URI returns human readable response
@@ -889,19 +845,19 @@ pub mod tests {
 
         check_hr_response(
             &client,
-            &format!("/pks/lookup?op=get&search={}", fp),
+            &format!("/search?q={}", fp),
             &tpk, nr_uids);
         check_hr_response(
             &client,
-            &format!("/pks/lookup?op=get&search=0x{}", fp),
+            &format!("/search?q=0x{}", fp),
             &tpk, nr_uids);
         check_hr_response(
             &client,
-            &format!("/pks/lookup?op=get&search={}", keyid),
+            &format!("/search?q={}", keyid),
             &tpk, nr_uids);
         check_hr_response(
             &client,
-            &format!("/pks/lookup?op=get&search=0x{}", keyid),
+            &format!("/search?q=0x{}", keyid),
             &tpk, nr_uids);
     }
 
