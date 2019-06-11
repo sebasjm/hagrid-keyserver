@@ -50,6 +50,18 @@
         we can.
     </p>
 
+    <h3 id="tor"><a href="#tor">Do you support Tor?</a></h3>
+
+    <p>
+        Of course!
+        If you have Tor installed,
+        you can reach <span class="brand">keys.openpgp.org</span> anonymously
+        as an
+        <a href="https://en.wikipedia.org/wiki/Tor_(anonymity_network)#Onion_services" target="_blank">onion service</a>:
+        <br />
+        <a href="zkaan2xfbuxia2wpf7ofnkbz6r5zdbbvxbunvp5g2iebopbfc4iqmbad.onion">zkaan2xfbuxia2wpf7ofnkbz6r5zdbbvxbunvp5g2iebopbfc4iqmbad.onion</a>
+    </p>
+
     <h3 id="encrypt-verification-emails"><a href="#encrypt-verification-emails">
             Why not encrypt verification e-mails?</a></h3>
 
@@ -64,8 +76,7 @@
             upload keys that can only sign.</li>
     </ol>
 
-    <h3 id="sks-pool"><a href="#sks-pool">Is
-            <span class="brand">keys.openpgp.org</span> part of the "SKS" pool?</a>
+    <h3 id="sks-pool"><a href="#sks-pool">Is this server part of the "SKS" pool?</a>
     </h3>
 
     <p>No. The "append-only" federation model of the SKS pool leads to various
@@ -76,28 +87,5 @@
     <p>We do plan to explore options for a distributed service in the future, so
         users can choose between different service operators again.
     </p>
-
-    <!--
-    <ul>
-        <li><b>Do not distribute unverified or malicious data</b>
-            <p>Unlike traditional keyservers, <tt>keys.openpgp.org</tt> does not
-                distribute key material that isn't cryptographically verified.
-                This protects keys from unwanted spam, and helps protect the
-                service itself against "denial of service" attacks.
-            </p>
-            <p>We also do not distribute "third-party" signatures on keys. These
-                kinds of signatures were typically used to "sign" the keys of
-                others, in order to support a "Web of Trust" trust model. This
-                model meant that third parties could attach arbitrary spam to
-                any key, but didn't prove itself as a very effective trust model
-                in practice.
-            </p>
-            <p>We are open to alternative approaches that might be implemented
-                in the future, that avoid this issue.
-            </p>
-        </li>
-    </ul>
-    -->
-
 </div>
 {{/layout}}
