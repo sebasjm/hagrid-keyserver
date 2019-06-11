@@ -264,7 +264,7 @@ pub fn test_uid_verification<D: Database>(db: &mut D) {
 
 pub fn test_regenerate<D: Database>(db: &mut D) {
     let str_uid1 = "Test A <test_a@example.com>";
-    let tpk = TPKBuilder::default()
+    let tpk = TPKBuilder::new()
         .add_userid(str_uid1)
         .add_signing_subkey()
         .add_encryption_subkey()
@@ -823,7 +823,7 @@ pub fn test_bad_uids<D: Database>(db: &mut D) {
     let str_uid1 = "foo@bar.example <foo@bar.example>";
     let str_uid2 = "A <test@example.com>";
     let str_uid3 = "lalalalaaaaa";
-    let tpk = TPKBuilder::default()
+    let tpk = TPKBuilder::new()
         .add_userid(str_uid1)
         .add_userid(str_uid2)
         .add_userid(str_uid3)
