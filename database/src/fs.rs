@@ -755,6 +755,15 @@ mod tests {
     }
 
     #[test]
+    fn no_selfsig() {
+        let tmpdir = TempDir::new().unwrap();
+        let mut db = Filesystem::new_from_base(tmpdir.path()).unwrap();
+
+        test::test_no_selfsig(&mut db);
+        db.check_consistency().expect("inconsistent database");
+    }
+
+    #[test]
     fn bad_uids() {
         let tmpdir = TempDir::new().unwrap();
         let mut db = Filesystem::new_from_base(tmpdir.path()).unwrap();

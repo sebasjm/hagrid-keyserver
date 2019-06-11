@@ -841,3 +841,21 @@ pub fn test_bad_uids<D: Database>(db: &mut D) {
         unparsed_uids: 2,
     }, tpk_status);
 }
+
+pub fn test_no_selfsig<D: Database>(db: &mut D) {
+    let (mut tpk, revocation) = TPKBuilder::new()
+        .generate()
+        .unwrap();
+
+    // don't allow upload of naked key
+    assert!(db.merge(tpk.clone()).is_err());
+
+    // with revocation, it's ok
+    tpk = tpk.merge_packets(vec![revocation.into()]).unwrap();
+    let tpk_status = db.merge(tpk).unwrap().into_tpk_status();
+    assert_eq!(TpkStatus {
+        is_revoked: true,
+        email_status: vec!(),
+        unparsed_uids: 0,
+    }, tpk_status);
+}
