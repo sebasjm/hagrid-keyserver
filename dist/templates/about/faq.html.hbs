@@ -87,5 +87,23 @@
     <p>We do plan to explore options for a distributed service in the future, so
         users can choose between different service operators again.
     </p>
+
+    <h3 id="older-gnupg"><a href="#older-gnupg">
+	I have trouble updating some keys with GnuPG.  Is there a bug?
+    </a></h3>
+
+    <p>
+      This is a problem with current versions of GnuPG.  If you are
+      trying to update a key whose owner has not opted-in to having
+      their userid(s) published, GnuPG will complain complain about
+      the key having no userid:
+    </p>
+    <blockquote>
+      $ gpg --receive-keys FB3751F1587DAEF<br>
+      gpg: key FB3751F1587DAEF1: no user ID
+    </blockquote>
+    <p>
+      We are working with the GnuPG team to resolve this problem.
+    </p>
 </div>
 {{/layout}}
