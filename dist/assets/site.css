@@ -35,6 +35,10 @@ a, a:visited {
   text-decoration: none;
 }
 
+hr {
+  color: #4aa3ff;
+}
+
 a.brand {
   color: #050505;
 }

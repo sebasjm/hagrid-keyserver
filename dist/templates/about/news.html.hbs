@@ -1,0 +1,124 @@
+{{#> layout }}
+<div class="about">
+    <center><h2><a href="/about">About</a> | News | <a href="/about/usage">Usage</a> | <a href="/about/faq">FAQ</a> | <a href="/about/privacy">Privacy Policy</a></h2></center>
+
+    <h3>
+      <div style="float: right; font-size: small; line-height: 2em;">2019-06-12 📅</div>
+      <a href="/about/news#2019-06-12-launch">Launching a new keyserver! 🚀</a>
+    </h3>
+
+    <p>
+    From a community effort by <a>Enigmail</a>, <a>OpenKeychain</a>, and
+    <a>Sequoia PGP</a>, we are pleased to announce the launch of the new public
+    OpenPGP keyserver <span class="brand">keys.openpgp.org</span>! Hurray! 🎉
+
+    <h4>Give me the short story!</h4>
+
+    <ul>
+      <li>Fast and reliable. No wait times, no downtimes, no inconsistencies.</li>
+      <li>Precise. Searches return only a single key, which allows for easy key discovery.</li>
+      <li>Validating. Identities are only published with consent,
+        while non-identity information is freely distributed.</li>
+      <li>Deletable. Users can delete personal information with a simple e-mail confirmation.</li>
+      <li>Built on Rust, powered by <a href="https://sequoia-pgp.org" target="_blank">Sequoia PGP</a> - free and open source, running AGPLv3.</li>
+    </ul>
+
+    <h4>Why a new keyserver?</h4>
+
+    <p>
+      We created <span class="brand">keys.openpgp.org</span>
+      to provide an alternative to the SKS Keyserver pool,
+      which is the default in many applications today.
+      This distributed network of keyservers has been struggling with
+      <a target="_blank" href="https://medium.com/@mdrahony/are-sks-keyservers-safe-do-we-need-them-7056b495101c">abuse</a>,
+      <a target="_blank" href="https://en.wikipedia.org/wiki/Key_server_(cryptographic)#Problems_with_keyservers">performance</a>,
+      as well as <a href="http://www.openwall.com/lists/oss-security/2017/12/10/1">privacy issues</a>,
+      and more recently also
+      <a target="_blank" href="http://nongnu.13855.n7.nabble.com/SKS-apocalypse-mitigation-td228252.html">GDPR</a>
+      compliance questions.
+      Kristian Fiskerstrand has done a stellar job maintaining the pool for
+      <a target="_blank" href="https://blog.sumptuouscapital.com/2016/12/10-year-anniversary-for-sks-keyservers-net/">more than ten years</a>,
+      but at this point development activity seems to have
+      <a target="_blank" href="https://bitbucket.org/skskeyserver/sks-keyserver/pull-requests/60/clean-build-with-405">mostly ceased</a>.
+
+    <p>
+    We thought it time to consider a fresh approach to solve these problems.
+
+    <h4>Identity and non-identity information</h4>
+
+    <p>
+    The <span class="brand">keys.openpgp.org</span> keyserver splits up
+    identity and non-identity information in keys.
+    You can find more details on our <a href="/about" target="_blank">about page</a>:
+    The gist is that non-identity information (keys, revocations, and so on)
+    is freely distributed,
+    while identity information
+    is only distributed with consent
+    that can also be revoked at any time.
+
+    <p>
+    If a new key is verified some e-mail address,
+    it will replace the previous one.
+    This way,
+    every e-mail address is only associated with a single key at most.
+    It can also be removed from the listing
+    at any time by its owner.
+    This is very useful for key discovery:
+    if a search by e-mail address returns a key,
+    it means this is the single key
+    that is currently valid for the searched e-mail address.
+
+    <h4>Support in Enigmail and OpenKeychain</h4>
+
+    <p>
+    The <span class="brand">keys.openpgp.org</span> keysever
+    will receive first-party support in upcoming releases of
+    <a href="https://enigmail.net" target="_blank">Enigmail</a> for Thunderbird,
+    as well as
+    <a href="https://play.google.com/store/apps/details?id=org.sufficientlysecure.keychain&hl=en">OpenKeychain</a> on Android.
+    This means users of those implementations will
+    benefit from the faster response times,
+    and improved key discovery by e-mail address.
+    We hope that this will also give us some momentum
+    to build this project into a bigger community effort.
+
+    <h4>Current challenges</h4>
+
+    <p>
+    Privacy-preserving techniques in keyservers are still new,
+    and sadly there are still a few compatibility issues
+    caused by splitting out identity information.
+
+    <p>
+    In particular, when GnuPG (as of version 2.2.13) encounters
+    an OpenPGP key without identities,
+    it throws an error "no user ID"
+    and does not process new non-identity information
+    (like revocation certificates)
+    even if it is cryptographically valid.
+    We are actively engaged in
+    providing fixes for these issues.
+
+    <h4>The Future</h4>
+
+    <p>
+    Privacy-preserving techniques in keyservers are still new,
+    and we have more ideas for reducing the metadata.
+
+    <p>
+    But for now, our plan is only to
+    keep <span class="brand">keys.openpgp.org</span> reliable and fast 🐇,
+    fix any upcoming bugs 🐞,
+    and listen to feedback from the community. 👂
+    For more info, head on over to
+    our <a target="_blank" href="/about">about page</a>,
+    <a target="_blank" href="/usage">usage instructions</a>
+    and <a target="_blank" href="/about/faq">FAQ</a> pages.
+    There is more cool stuff to discover,
+    like our <a target="_blank" href="/about/api">API</a>,
+    and an <a target="_blank" href="/about/faq#tor">Onion Service</a>!
+
+    <p>
+    Cheers! 🍻
+
+{{/layout}}

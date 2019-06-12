@@ -243,6 +243,11 @@ fn about() -> Template {
     Template::render("about/about", templates::General::default())
 }
 
+#[get("/about/news")]
+fn news() -> Template {
+    Template::render("about/news", templates::General::default())
+}
+
 #[get("/about/faq")]
 fn faq() -> Template {
     Template::render("about/faq", templates::General::default())
@@ -272,6 +277,7 @@ fn rocket_factory(rocket: rocket::Rocket) -> Result<rocket::Rocket> {
         // infra
         root,
         about,
+        news,
         privacy,
         apidoc,
         faq,
