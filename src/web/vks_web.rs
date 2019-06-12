@@ -110,7 +110,7 @@ impl MyResponse {
                 MyResponse::plain(text)
             },
             UploadResponse::OkMulti { key_fprs } =>
-                MyResponse::plain(format!("Uploaded {} keys.\n", key_fprs.len())),
+                MyResponse::plain(format!("Uploaded {} keys. For verification, please upload keys individually.\n", key_fprs.len())),
             UploadResponse::Error(error) => MyResponse::bad_request(
                 "400-plain", failure::err_msg(error)),
         }
