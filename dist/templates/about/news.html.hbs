@@ -28,6 +28,8 @@
       <li>Built on Rust, powered by <a href="https://sequoia-pgp.org" target="_blank">Sequoia PGP</a> - free and open source, running AGPLv3.</li>
     </ul>
 
+    Get started right now by <a href="/upload">uploading your key</a>!
+
     <h4>Why a new keyserver?</h4>
 
     <p>
@@ -62,12 +64,12 @@
     that can also be revoked at any time.
 
     <p>
-    If a new key is verified some e-mail address,
+    If a new key is verified for some e-mail address,
     it will replace the previous one.
     This way,
     every e-mail address is only associated with a single key at most.
     It can also be removed from the listing
-    at any time by its owner.
+    at any time by the owner of the address.
     This is very useful for key discovery:
     if a search by e-mail address returns a key,
     it means this is the single key
@@ -95,7 +97,7 @@
     caused by splitting out identity information.
 
     <p>
-    In particular, when GnuPG (as of version 2.2.13) encounters
+    In particular, when GnuPG (as of this writing, version 2.2.16) encounters
     an OpenPGP key without identities,
     it throws an error "no user ID"
     and does not process new non-identity information
@@ -104,7 +106,7 @@
     We are actively engaged in
     providing fixes for these issues.
 
-    <h4>The Future</h4>
+    <h4>The future</h4>
 
     <p>
     Privacy-preserving techniques in keyservers are still new,
