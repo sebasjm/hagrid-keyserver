@@ -5,6 +5,7 @@ use rocket::request::Form;
 use failure::Fallible as Result;
 
 use web::{HagridState, MyResponse, templates::General};
+use web::vks_web;
 use database::{Database, KeyDatabase, types::Email, types::Fingerprint};
 use mail;
 use rate_limiter::RateLimiter;
@@ -84,9 +85,10 @@ pub fn vks_manage_key(
                         published: true,
                     }
                 ).collect();
+               let key_link = uri!(vks_web::search: fp.to_string()).to_string();
                 let context = templates::ManageKey {
                     key_fpr: fp.to_string(),
-                    key_link: format!("/pks/lookup?op=get&search={}", &fp),
+                    key_link,
                     uid_status,
                     token,
                     base_uri: state.base_uri.clone(),

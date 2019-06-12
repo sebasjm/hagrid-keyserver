@@ -40,7 +40,9 @@ mod template {
     #[derive(Serialize)]
     pub struct Verify {
         pub verified: bool,
+        pub key_fpr: String,
         pub userid: String,
+        pub userid_link: String,
         pub commit: String,
         pub version: String,
     }
@@ -134,7 +136,7 @@ impl MyResponse {
         count_unparsed: usize,
         uid_status: HashMap<String,EmailStatus>,
     ) -> Self {
-        let key_link = format!("/pks/lookup?op=get&search={}", &key_fpr);
+        let key_link = uri!(search: &key_fpr).to_string();
 
         let count_revoked = uid_status.iter()
             .filter(|(_,status)| **status == EmailStatus::Revoked)
@@ -177,9 +179,12 @@ impl MyResponse {
 
     fn upload_ok_multi(key_fprs: Vec<String>) -> Self {
         let keys = key_fprs.into_iter()
-            .map(|fpr| template::UploadOkKey {
-                key_fpr: fpr.to_owned(),
-                key_link: format!("/pks/lookup?op=get&search={}", &fpr),
+            .map(|fpr| {
+                let key_link = uri!(search: &fpr).to_string();
+                template::UploadOkKey {
+                    key_fpr: fpr.to_owned(),
+                    key_link,
+                }
             })
             .collect();
 
@@ -419,10 +424,13 @@ pub fn verify_confirm(
     token: String,
 ) -> MyResponse {
     match vks::verify_confirm(db, token_service, token) {
-        PublishResponse::Ok { email } => {
+        PublishResponse::Ok { fingerprint, email } => {
+            let userid_link = uri!(search: &email).to_string();
             let context = template::Verify {
                 verified: true,
                 userid: email,
+                key_fpr: fingerprint,
+                userid_link,
                 version: env!("VERGEN_SEMVER").to_string(),
                 commit: env!("VERGEN_SHA_SHORT").to_string(),
             };

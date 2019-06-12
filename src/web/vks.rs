@@ -61,7 +61,7 @@ pub mod response {
     }
 
     pub enum PublishResponse {
-        Ok { email: String },
+        Ok { fingerprint: String, email: String },
         Error(String),
     }
 
@@ -238,24 +238,27 @@ pub fn verify_confirm(
     token_service: rocket::State<StatefulTokens>,
     token: String,
 ) -> response::PublishResponse {
-    let email = match check_publish_token(&db, &token_service, token) {
-        Ok(email) => email,
+    let (fingerprint, email) = match check_publish_token(&db, &token_service, token) {
+        Ok(x) => x,
         Err(_) => return PublishResponse::err("token verification failed"),
     };
 
-    response::PublishResponse::Ok { email: email.to_string() }
+    response::PublishResponse::Ok {
+        fingerprint: fingerprint.to_string(),
+        email: email.to_string()
+    }
 }
 
 fn check_publish_token(
     db: &KeyDatabase,
     token_service: &StatefulTokens,
     token: String,
-) -> Result<Email> {
+) -> Result<(Fingerprint,Email)> {
     let payload = token_service.pop_token("verify", &token)?;
     let (fingerprint, email) = serde_json::from_str(&payload)?;
     db.set_email_published(&fingerprint, &email)?;
 
-    Ok(email)
+    Ok((fingerprint, email))
 }
 
 fn show_upload_verify(

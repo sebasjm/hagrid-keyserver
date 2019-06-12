@@ -2,11 +2,17 @@
   <div class="row">
     {{#if verified }}
     <p>
-      Key for <a href="/search?q={{ userid }}"<span class="email">{{ userid }}</span></a> published.
+      Your key
+      <span class="fingerprint">{{key_fpr}}</span>
+      is now published
+      for the identity <a href="{{userid_link}}" target="_blank"><span class="email">{{ userid }}</span></a>.
     </p>
     {{else}}
     <p>
-      Verification failed! You can <a href="/upload">try uploading again</a>.
+      Verification failed! Perhaps the link you used was expired?
+    </p>
+    <p>
+      You can <a href="/upload">try uploading again</a>.
     </p>
     {{/if}}
   </div>
