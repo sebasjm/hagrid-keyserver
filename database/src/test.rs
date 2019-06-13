@@ -602,6 +602,86 @@ pub fn test_uid_revocation<D: Database>(db: &mut D) {
     assert!(db.by_email(&email2).is_none());
 }
 
+/* FIXME I couldn't get this to work.
+pub fn test_uid_revocation_fake<D: Database>(db: &mut D) {
+    use std::{thread, time};
+
+    let str_uid = "Test A <test_a@example.com>";
+    let tpk = TPKBuilder::new()
+        .add_userid(str_uid)
+        .generate()
+        .unwrap()
+        .0;
+    let tpk_fake = TPKBuilder::new()
+        .generate()
+        .unwrap()
+        .0;
+    let uid = UserID::from(str_uid);
+    let email = Email::from_str(str_uid).unwrap();
+    let fpr = Fingerprint::try_from(tpk.fingerprint()).unwrap();
+
+    // upload key
+    let tpk_status = db.merge(tpk.clone()).unwrap().into_tpk_status();
+    assert_eq!(TpkStatus {
+        is_revoked: false,
+        email_status: vec!(
+            (email.clone(), EmailAddressStatus::NotPublished),
+        ),
+        unparsed_uids: 0,
+    }, tpk_status);
+
+    // verify uid
+    db.set_email_published(&fpr, &tpk_status.email_status[0].0).unwrap();
+
+    // fetch both uids
+    assert!(db.by_email(&email).is_some());
+
+    thread::sleep(time::Duration::from_secs(2));
+
+    // revoke one uid
+    let uid = tpk.userids().find(|b| *b.userid() == uid).cloned().unwrap();
+    let sig = {
+        assert_eq!(RevocationStatus::NotAsFarAsWeKnow, uid.revoked(None));
+
+        let mut keypair = tpk.primary().clone().into_keypair().unwrap();
+        uid.userid().revoke(
+            &mut keypair,
+            &tpk_fake,
+            ReasonForRevocation::UIDRetired,
+            b"It was the maid :/",
+            None,
+            None,
+        )
+        .unwrap()
+    };
+    assert_eq!(sig.sigtype(), SignatureType::CertificateRevocation);
+    // XXX how to get the bad revocation into the packet pile?
+    let pile: PacketPile = tpk
+        .into_packet_pile()
+        .replace(&[ 0 ], 3, [
+                 uid.userid().clone().into(),
+                 uid.binding_signature().unwrap().clone().into(),
+                 // sig.into(),
+        ].to_vec())
+        .unwrap()
+        .into();
+    println!("{:?}", pile);
+    let tpk = TPK::from_packet_pile(pile).unwrap();
+    println!("{:?}", tpk);
+    let tpk_status = db.merge(tpk).unwrap().into_tpk_status();
+    assert_eq!(TpkStatus {
+        is_revoked: false,
+        email_status: vec!(
+            (email.clone(), EmailAddressStatus::Published),
+        ),
+        unparsed_uids: 0,
+    }, tpk_status);
+
+    // Fail to fetch by the revoked uid, ok by the non-revoked one.
+    assert!(db.by_email(&email).is_some());
+}
+*/
+
 pub fn test_unlink_uid<D: Database>(db: &mut D) {
     let uid = "Test A <test_a@example.com>";
     let email = Email::from_str(uid).unwrap();
