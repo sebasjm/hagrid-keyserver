@@ -417,14 +417,16 @@ pub trait Database: Sync + Send {
         }
 
         let published_tpk_new = {
-            tpk_filter_userids(&full_tpk,
-                |uid| Email::try_from(uid).unwrap() == *email_new || published_uids_old.contains(uid))?
+            tpk_filter_userids(&full_tpk, |uid| {
+                Email::try_from(uid).map(|email| email == *email_new)
+                    .unwrap_or(false) || published_uids_old.contains(uid)
+            })?
         };
 
-        if ! published_tpk_new
+        if !published_tpk_new
             .userids()
             .map(|binding| binding.userid())
-            .any(|uid| Email::try_from(uid).map(|email| email == *email_new).unwrap_or_default()) {
+            .any(|uid| Email::try_from(uid).map(|email| email == *email_new).unwrap_or(false)) {
                 return Err(failure::err_msg("Requested UserID not found!"));
         }
 
@@ -444,14 +446,15 @@ pub trait Database: Sync + Send {
     fn nolock_unlink_email_if_other(
         &self,
         fpr_primary: &Fingerprint,
-        email: &Email,
+        unlink_email: &Email,
     ) -> Result<()> {
         let current_link_fpr = self.lookup_primary_fingerprint(
-            &Query::ByEmail(email.clone()));
+            &Query::ByEmail(unlink_email.clone()));
         if let Some(current_fpr) = current_link_fpr {
             if current_fpr != *fpr_primary {
-                self.nolock_set_email_unpublished_filter(
-                    &current_fpr, |uid| Email::try_from(uid).unwrap() != *email)?;
+                self.nolock_set_email_unpublished_filter(&current_fpr,
+                    |uid| Email::try_from(uid).map(|email| email != *unlink_email)
+                        .unwrap_or(false))?;
             }
         }
         Ok(())
@@ -530,9 +533,10 @@ pub trait Database: Sync + Send {
         fpr_primary: &Fingerprint,
         email_remove: &Email,
     ) -> Result<()> {
-        self.set_email_unpublished_filter(fpr_primary,
-            |uid| Email::try_from(uid).unwrap() != *email_remove
-        )
+        self.set_email_unpublished_filter(fpr_primary, |uid|
+            Email::try_from(uid)
+                .map(|email| email != *email_remove)
+                .unwrap_or(false))
     }
 
     fn set_email_unpublished_all(
