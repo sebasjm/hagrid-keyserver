@@ -26,6 +26,49 @@
         <span class="brand">keys.openpgp.org</span>.
     </p>
 
+    <h3 id="third-party-signatures"><a href="#third-party-signatures">
+            Do you distribute "third party signatures"?</a></h3>
+
+    <p>
+        Short answer: No.
+    </p>
+
+    <p>
+        A "third party signature" is a signature on a key
+        that was made by some other key.
+        Most commonly,
+        those are the signatures produced when "signing someone's key",
+        which are the basis for
+        the "<a href="https://en.wikipedia.org/wiki/Web_of_trust" target="_blank">Web of Trust</a>".
+        For a number of reasons,
+        those signatures are not currently distributed
+        via <span class="brand">keys.openpgp.org</span>.
+    </p>
+
+    <p>
+        The killer reason is <strong>spam</strong>.
+        Third party signatures allow attaching arbitrary data to anyone's key,
+        and nothing stops a malicious user from
+        attaching so many megabytes of bloat to a key
+        that it becomes practically unusable.
+        Even worse,
+        they could attach offensive or illegal content.
+    </p>
+
+    <p>
+        There are ideas to resolve this issue.
+        For example, signatures could be distributed with the signer,
+        rather than the signee.
+        Alternatively, we could require
+        cross-signing by the signee before distribution
+        to support a
+        <a href="https://wiki.debian.org/caff" target="_blank">caff-style</a>
+        workflow.
+        If there is enough interest,
+        we are open to working with other OpenPGP projects
+        on a solution.
+    </p>
+
     <h3 id="revoked-uids"><a href="#revoked-uids">Why are revoked identities not
             distributed as such?</a></h3>
 
