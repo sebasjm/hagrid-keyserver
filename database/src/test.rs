@@ -910,6 +910,7 @@ pub fn test_bad_uids<D: Database>(db: &mut D) {
         .generate()
         .unwrap()
         .0;
+    let fpr = Fingerprint::try_from(tpk.fingerprint()).unwrap();
     let email2 = Email::from_str(str_uid2).unwrap();
 
     let tpk_status = db.merge(tpk).unwrap().into_tpk_status();
@@ -917,6 +918,17 @@ pub fn test_bad_uids<D: Database>(db: &mut D) {
         is_revoked: false,
         email_status: vec!(
             (email2.clone(), EmailAddressStatus::NotPublished),
+        ),
+        unparsed_uids: 2,
+    }, tpk_status);
+
+    db.set_email_published(&fpr, &email2).unwrap();
+
+    let tpk_status = db.get_tpk_status(&fpr, &vec!(email2.clone())).unwrap();
+    assert_eq!(TpkStatus {
+        is_revoked: false,
+        email_status: vec!(
+            (email2.clone(), EmailAddressStatus::Published),
         ),
         unparsed_uids: 2,
     }, tpk_status);
