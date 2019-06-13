@@ -2,7 +2,7 @@
 #![recursion_limit = "1024"]
 #![feature(try_from)]
 
-use std::convert::{TryFrom,TryInto};
+use std::convert::TryFrom;
 use std::path::PathBuf;
 use std::str::FromStr;
 
@@ -27,7 +27,6 @@ use tempfile::NamedTempFile;
 extern crate sequoia_openpgp as openpgp;
 use openpgp::{
     TPK,
-    RevocationStatus,
     packet::UserID,
     parse::Parse,
     packet::KeyFlags,
@@ -45,7 +44,7 @@ mod stateful_tokens;
 pub use stateful_tokens::StatefulTokens;
 
 mod openpgp_utils;
-use openpgp_utils::{tpk_filter_userids, tpk_to_string, tpk_clean};
+use openpgp_utils::{tpk_filter_userids, tpk_to_string, tpk_clean, is_status_revoked};
 
 #[cfg(test)]
 mod test;
@@ -206,8 +205,7 @@ pub trait Database: Sync + Send {
             (new_tpk, false)
         };
 
-        let is_revoked = full_tpk_new.revocation_status()
-            != RevocationStatus::NotAsFarAsWeKnow;
+        let is_revoked = is_status_revoked(full_tpk_new.revocation_status());
 
         let is_ok = is_revoked ||
             full_tpk_new.subkeys().next().is_some() ||
@@ -237,7 +235,7 @@ pub trait Database: Sync + Send {
             .flat_map(|binding| {
                 let uid = binding.userid();
                 if let Ok(email) = Email::try_from(uid) {
-                    if binding.revoked(None) != RevocationStatus::NotAsFarAsWeKnow {
+                    if is_status_revoked(binding.revoked(None)) {
                         Some((email, EmailAddressStatus::Revoked))
                     } else if published_uids.contains(uid) {
                         Some((email, EmailAddressStatus::Published))
@@ -259,7 +257,7 @@ pub trait Database: Sync + Send {
 
         let revoked_uids: Vec<UserID> = full_tpk_new
             .userids()
-            .filter(|binding| binding.revoked(None) != RevocationStatus::NotAsFarAsWeKnow)
+            .filter(|binding| is_status_revoked(binding.revoked(None)))
             .map(|binding| binding.userid().clone())
             .collect();
 
@@ -278,7 +276,7 @@ pub trait Database: Sync + Send {
             .filter(|email| {
                 let has_unrevoked_userid = published_tpk_new
                     .userids()
-                    .filter(|binding| binding.revoked(None) == RevocationStatus::NotAsFarAsWeKnow)
+                    .filter(|binding| !is_status_revoked(binding.revoked(None)))
                     .map(|binding| binding.userid())
                     .map(|uid| Email::try_from(uid).ok())
                     .flatten()
@@ -337,8 +335,7 @@ pub trait Database: Sync + Send {
             .ok_or_else(|| failure::err_msg("Key not in database!"))
             .and_then(|bytes| TPK::from_bytes(bytes.as_ref()))?;
 
-        let is_revoked = tpk_full.revocation_status()
-            != RevocationStatus::NotAsFarAsWeKnow;
+        let is_revoked = is_status_revoked(tpk_full.revocation_status());
 
         let unparsed_uids = tpk_full
             .userids()
@@ -361,7 +358,7 @@ pub trait Database: Sync + Send {
                 if let Ok(email) = Email::try_from(uid) {
                     if !known_addresses.contains(&email) {
                         None
-                    } else if binding.revoked(None) != RevocationStatus::NotAsFarAsWeKnow {
+                    } else if is_status_revoked(binding.revoked(None)) {
                         Some((email, EmailAddressStatus::Revoked))
                     } else if published_uids.contains(uid) {
                         Some((email, EmailAddressStatus::Published))

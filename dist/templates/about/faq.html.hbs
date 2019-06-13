@@ -93,13 +93,13 @@
     </a></h3>
 
     <p>
-      This is a problem with current versions of GnuPG.  If you are
-      trying to update a key from Hagrid that includes only
-      non-identity information, GnuPG will complain complain about the
-      key not having a userid:
+      This is a problem with current versions of GnuPG.  If you attempt to
+      update a key from <span class="brand">keys.openpgp.org</span> that
+      contains no <a href="/about">identity information</a>, GnuPG will refuse
+      to process the key:
     </p>
     <blockquote>
-      $ gpg --receive-keys A2604867523C7ED8<br>
+      $ gpg --receive-keys A2604867523C7ED8<br />
       gpg: key A2604867523C7ED8: no user ID
     </blockquote>
     <p>

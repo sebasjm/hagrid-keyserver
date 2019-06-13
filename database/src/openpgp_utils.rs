@@ -2,10 +2,19 @@ use failure::Fallible as Result;
 
 use openpgp::{
     TPK,
+    RevocationStatus,
     armor::{Writer, Kind},
     packet::{UserID, Tag},
     serialize::Serialize as OpenPgpSerialize,
 };
+
+pub fn is_status_revoked(status: RevocationStatus) -> bool {
+    match status {
+        RevocationStatus::Revoked(_) => true,
+        RevocationStatus::CouldBe(_) => false,
+        RevocationStatus::NotAsFarAsWeKnow => false,
+    }
+}
 
 pub fn tpk_to_string(tpk: &TPK) -> Result<Vec<u8>> {
     let mut buf = Vec::new();
