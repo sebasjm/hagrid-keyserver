@@ -128,13 +128,17 @@ pub fn pks_add_form_data(
 
 #[post("/pks/add", format = "application/x-www-form-urlencoded", data = "<data>")]
 pub fn pks_add_form(
+    state: rocket::State<HagridState>,
     db: rocket::State<KeyDatabase>,
     tokens_stateless: rocket::State<tokens::Service>,
     rate_limiter: rocket::State<RateLimiter>,
     data: Data,
 ) -> MyResponse {
     match vks_web::upload_post_form(db, tokens_stateless, rate_limiter, data) {
-        Ok(_) => MyResponse::plain("Ok".into()),
+        Ok(_) => {
+            let msg = format!("Upload successful. Note that identity information will only be published with verification! see {}/about/usage#gnupg-upload", state.base_uri);
+            MyResponse::plain(msg)
+        }
         Err(err) => MyResponse::ise(err),
     }
 }
