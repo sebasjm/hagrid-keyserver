@@ -30,11 +30,17 @@ impl Fairing for MaintenanceMode {
     }
 
     fn on_request(&self, request: &mut Request, _: &Data) {
-        if !self.is_relevant_path(request.uri().path()) { 
-            return;
-        }
-        if let Some(message) = self.get_maintenance_message() {
-            request.set_uri(uri!(maintenance_error: message));
+        let message = match self.get_maintenance_message() {
+            Some(message) => message,
+            None => return,
+        };
+
+        let path = request.uri().path();
+        if self.is_relevant_path_api(path) || request.method() == Method::Put {
+            request.set_uri(uri!(maintenance_error_api: message));
+            request.set_method(Method::Get);
+        } else if self.is_relevant_path_web(path) {
+            request.set_uri(uri!(maintenance_error_web: message));
             request.set_method(Method::Get);
         }
     }
@@ -45,9 +51,13 @@ impl MaintenanceMode {
         MaintenanceMode { maintenance_file }
     }
 
-    fn is_relevant_path(&self, path: &str) -> bool {
+    fn is_relevant_path_api(&self, path: &str) -> bool {
         path.starts_with("/vks/v1/upload") ||
-            path.starts_with("/upload") ||
+            path.starts_with("/pks/add")
+    }
+
+    fn is_relevant_path_web(&self, path: &str) -> bool {
+        path.starts_with("/upload") ||
             path.starts_with("/manage") ||
             path.starts_with("/verify")
     }
@@ -60,12 +70,17 @@ impl MaintenanceMode {
     }
 }
 
-#[get("/maintenance/<message>")]
-pub fn maintenance_error(message: String) -> MyResponse {
+#[get("/maintenance/api/<message>")]
+pub fn maintenance_error_api(message: String) -> MyResponse {
+    MyResponse::MaintenancePlain(message)
+}
+
+#[get("/maintenance/web/<message>")]
+pub fn maintenance_error_web(message: String) -> MyResponse {
     let ctx = templates::MaintenanceMode{
         message,
         version: env!("VERGEN_SEMVER").to_string(),
         commit: env!("VERGEN_SHA_SHORT").to_string(),
     };
-    MyResponse::ServerError(Template::render("maintenance", ctx))
+    MyResponse::Maintenance(Template::render("maintenance", ctx))
 }

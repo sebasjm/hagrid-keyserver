@@ -51,6 +51,10 @@ pub enum MyResponse {
     BadRequest(Template),
     #[response(status = 400, content_type = "html")]
     BadRequestPlain(String),
+    #[response(status = 503, content_type = "html")]
+    Maintenance(Template),
+    #[response(status = 503, content_type = "plain")]
+    MaintenancePlain(String),
 }
 
 impl MyResponse {
@@ -311,7 +315,8 @@ fn rocket_factory(rocket: rocket::Rocket) -> Result<rocket::Rocket> {
         manage::vks_manage_post,
         manage::vks_manage_unpublish,
         // Maintenance error page
-        maintenance::maintenance_error,
+        maintenance::maintenance_error_api,
+        maintenance::maintenance_error_web,
     ];
 
     let db_service = configure_db_service(rocket.config())?;
