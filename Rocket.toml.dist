@@ -34,6 +34,7 @@ maintenance_file = "maintenance"
 
 [production]
 base-URI = "https://keys.openpgp.org"
+base-URI-Onion = "https://keys.openpgp.org"
 from = "keys.openpgp.org <noreply@keys.openpgp.org>"
 x-accel-redirect = true
 token_secret = "generated production secret"

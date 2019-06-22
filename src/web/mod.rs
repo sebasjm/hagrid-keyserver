@@ -1,5 +1,7 @@
 use rocket;
 use rocket::http::Header;
+use rocket::request;
+use rocket::outcome::Outcome;
 use rocket::response::NamedFile;
 use rocket::config::Config;
 use rocket_contrib::templates::Template;
@@ -198,10 +200,39 @@ pub struct HagridState {
 
     /// XXX
     base_uri: String,
+    base_uri_onion: String,
 
     /// 
     x_accel_redirect: bool,
     x_accel_prefix: Option<PathBuf>,
+}
+
+#[derive(Debug)]
+enum RequestOrigin {
+    Direct(String),
+    OnionService(String),
+}
+
+impl<'a, 'r> request::FromRequest<'a, 'r> for RequestOrigin {
+    type Error = ();
+
+    fn from_request(request: &'a request::Request<'r>) -> request::Outcome<Self, Self::Error> {
+        let hagrid_state = request.guard::<rocket::State<HagridState>>().unwrap();
+        let result = match request.headers().get("x-is-tor").next() {
+            Some(_) => RequestOrigin::OnionService(hagrid_state.base_uri_onion.clone()),
+            None => RequestOrigin::Direct(hagrid_state.base_uri.clone()),
+        };
+        Outcome::Success(result)
+    }
+}
+
+impl RequestOrigin {
+    fn get_base_uri(&self) -> &str {
+        match self {
+            RequestOrigin::Direct(uri) => uri.as_str(),
+            RequestOrigin::OnionService(uri) => uri.as_str(),
+        }
+    }
 }
 
 pub fn key_to_response_plain(
@@ -359,10 +390,14 @@ fn configure_hagrid_state(config: &Config) -> Result<HagridState> {
 
     // State
     let base_uri = config.get_str("base-URI")?.to_string();
+    let base_uri_onion = config.get_str("base-URI-Onion")
+        .map(|c| c.to_string())
+        .unwrap_or(base_uri.clone());
     Ok(HagridState {
         assets_dir,
         keys_external_dir: keys_external_dir,
-        base_uri: base_uri.clone(),
+        base_uri,
+        base_uri_onion,
         x_accel_redirect: config.get_bool("x-accel-redirect")?,
         x_accel_prefix,
     })
