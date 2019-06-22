@@ -218,7 +218,7 @@ impl<'a, 'r> request::FromRequest<'a, 'r> for RequestOrigin {
 
     fn from_request(request: &'a request::Request<'r>) -> request::Outcome<Self, Self::Error> {
         let hagrid_state = request.guard::<rocket::State<HagridState>>().unwrap();
-        let result = match request.headers().get("x-is-tor").next() {
+        let result = match request.headers().get("x-is-onion").next() {
             Some(_) => RequestOrigin::OnionService(hagrid_state.base_uri_onion.clone()),
             None => RequestOrigin::Direct(hagrid_state.base_uri.clone()),
         };
@@ -491,6 +491,7 @@ pub mod tests {
 
     /// Fake base URI to use in tests.
     const BASE_URI: &'static str = "http://local.connection";
+    const BASE_URI_ONION: &'static str = "http://local.connection.onion";
 
     /// Creates a configuration and empty state dir for testing purposes.
     ///
@@ -520,6 +521,7 @@ pub mod tests {
             .extra("token_dir", base_dir.join("tokens").to_str().unwrap())
             .extra("maintenance_file", base_dir.join("maintenance").to_str().unwrap())
             .extra("base-URI", BASE_URI)
+            .extra("base-URI-Onion", BASE_URI_ONION)
             .extra("from", "from@example.com")
             .extra("token_secret", "hagrid")
             .extra("token_validity", 3600)
@@ -847,6 +849,10 @@ pub mod tests {
             &client,
             &format!("/search?q={}", addr),
             &tpk, nr_uids);
+        check_hr_response_onion(
+            &client,
+            &format!("/search?q={}", addr),
+            &tpk, nr_uids);
     }
 
     /// Asserts that the given URI returns a TPK matching the given
@@ -923,6 +929,26 @@ pub mod tests {
         }
         assert!(n > 0);
     }
+
+    /// Asserts that the given URI returns human readable response
+    /// page that contains an onion URI pointing to the TPK.
+    pub fn check_hr_response_onion(client: &Client, uri: &str, tpk: &TPK,
+                             nr_uids: usize) {
+        let mut response = client
+            .get(uri)
+            .header(Header::new("X-Is-Onion", "true"))
+            .dispatch();
+        assert_eq!(response.status(), Status::Ok);
+        let body = response.body_string().unwrap();
+        assert!(body.contains("found"));
+        assert!(body.contains(&tpk.fingerprint().to_hex()));
+
+        // Extract the links.
+        let link_re = regex::Regex::new(
+            &format!("{}(/vks/[^ \t\n\"<]*)", BASE_URI_ONION)).unwrap();
+        assert!(link_re.is_match(&body));
+    }
+
 
     /// Asserts that we can get the given TPK back using the various
     /// by-fingerprint or by-keyid lookup mechanisms.
