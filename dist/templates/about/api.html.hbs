@@ -145,25 +145,31 @@
   "token": "..."
 }
           </pre>
+        </div>
       </div>
     </li>
   </ul>
 
   <h3>Error handling</h3>
   <p>
-    If a request fails for any reason,
+    If a GET request fails for any reason,
     a suitable HTTP status code will be returned.
-    In this case,
-    the response body will be
+    The response will be a plaintext error message.
+    If a key is not found,
+    the HTTP status code will be <tt>404</tt>.
+  </p>
+  <p>
+    If a POST request fails for any reason,
+    a suitable HTTP status code will be returned.
+    The response body will be
     a JSON object
     with a single <code>error</code> attribute.
-    A request may fail
-    with an error code of 503
+    A POST request may fail
+    with a HTTP 503 error
     at any time
     if the server is undergoing
     database maintenance.
-    For this reason,
-    <strong>clients should handle 503 errors gracefully.</strong>
+    <strong>Clients should handle errors gracefully for POST requests.</strong>
   </p>
 
   <div class="example">
@@ -171,7 +177,7 @@
       Example response:
       <pre>
 {
-  "error": "We are currently undergoing scheduled database maintenance!",
+  "error": "We are currently undergoing scheduled database maintenance!"
 }
       </pre>
     </div>
