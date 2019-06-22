@@ -14,11 +14,7 @@ use rate_limiter::RateLimiter;
 use tokens;
 
 use web;
-use web::{
-    HagridState,
-    MyResponse,
-    vks_web,
-};
+use web::{HagridState, RequestOrigin, MyResponse, vks_web};
 
 #[derive(Debug)]
 pub enum Hkp {
@@ -128,7 +124,7 @@ pub fn pks_add_form_data(
 
 #[post("/pks/add", format = "application/x-www-form-urlencoded", data = "<data>")]
 pub fn pks_add_form(
-    state: rocket::State<HagridState>,
+    request_origin: RequestOrigin,
     db: rocket::State<KeyDatabase>,
     tokens_stateless: rocket::State<tokens::Service>,
     rate_limiter: rocket::State<RateLimiter>,
@@ -136,7 +132,7 @@ pub fn pks_add_form(
 ) -> MyResponse {
     match vks_web::upload_post_form(db, tokens_stateless, rate_limiter, data) {
         Ok(_) => {
-            let msg = format!("Upload successful. Note that identity information will only be published with verification! see {}/about/usage#gnupg-upload", state.base_uri);
+            let msg = format!("Upload successful. Note that identity information will only be published with verification! see {}/about/usage#gnupg-upload", request_origin.get_base_uri());
             MyResponse::plain(msg)
         }
         Err(err) => MyResponse::ise(err),

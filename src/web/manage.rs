@@ -4,7 +4,7 @@ use rocket::request::Form;
 
 use failure::Fallible as Result;
 
-use web::{HagridState, MyResponse, templates::General};
+use web::{RequestOrigin, MyResponse, templates::General};
 use web::vks_web;
 use database::{Database, KeyDatabase, types::Email, types::Fingerprint};
 use mail;
@@ -62,7 +62,7 @@ pub fn vks_manage() -> Result<MyResponse> {
 
 #[get("/manage/<token>")]
 pub fn vks_manage_key(
-   state: rocket::State<HagridState>,
+   request_origin: RequestOrigin,
    db: State<KeyDatabase>,
    token: String,
    token_service: rocket::State<tokens::Service>,
@@ -91,7 +91,7 @@ pub fn vks_manage_key(
                     key_link,
                     uid_status,
                     token,
-                    base_uri: state.base_uri.clone(),
+                    base_uri: request_origin.get_base_uri().to_owned(),
                     version: env!("VERGEN_SEMVER").to_string(),
                     commit: env!("VERGEN_SHA_SHORT").to_string(),
                 };
@@ -165,19 +165,19 @@ pub fn vks_manage_post(
 
 #[post("/manage/unpublish", data="<request>")]
 pub fn vks_manage_unpublish(
-    state: rocket::State<HagridState>,
+    request_origin: RequestOrigin,
     db: rocket::State<KeyDatabase>,
     token_service: rocket::State<tokens::Service>,
     request: Form<forms::ManageDelete>,
 ) -> MyResponse {
-    match vks_manage_unpublish_or_fail(state, db, token_service, request) {
+    match vks_manage_unpublish_or_fail(request_origin, db, token_service, request) {
         Ok(response) => response,
         Err(e) => MyResponse::ise(e),
     }
 }
 
 pub fn vks_manage_unpublish_or_fail(
-    state: rocket::State<HagridState>,
+    request_origin: RequestOrigin,
     db: rocket::State<KeyDatabase>,
     token_service: rocket::State<tokens::Service>,
     request: Form<forms::ManageDelete>,
@@ -185,5 +185,5 @@ pub fn vks_manage_unpublish_or_fail(
     let verify_token = token_service.check::<StatelessVerifyToken>(&request.token)?;
     let email = request.address.parse::<Email>()?;
     db.set_email_unpublished(&verify_token.fpr, &email)?;
-    Ok(vks_manage_key(state, db, request.token.to_owned(), token_service))
+    Ok(vks_manage_key(request_origin, db, request.token.to_owned(), token_service))
 }

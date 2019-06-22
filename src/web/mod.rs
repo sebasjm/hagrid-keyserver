@@ -208,7 +208,7 @@ pub struct HagridState {
 }
 
 #[derive(Debug)]
-enum RequestOrigin {
+pub enum RequestOrigin {
     Direct(String),
     OnionService(String),
 }

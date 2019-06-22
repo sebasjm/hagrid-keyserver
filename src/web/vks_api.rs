@@ -11,7 +11,7 @@ use tokens;
 use rate_limiter::RateLimiter;
 
 use web;
-use web::{HagridState, MyResponse};
+use web::{HagridState, RequestOrigin, MyResponse};
 use web::vks;
 use web::vks::response::*;
 
@@ -87,9 +87,9 @@ pub fn upload_json(
 
 #[post("/vks/v1/upload", rank = 2)]
 pub fn upload_fallback(
-    state: rocket::State<HagridState>,
+    request_origin: RequestOrigin,
 ) -> JsonErrorResponse {
-    let error_msg = format!("expected application/json data. see {}/about/api for api docs.", state.base_uri);
+    let error_msg = format!("expected application/json data. see {}/about/api for api docs.", request_origin.get_base_uri());
     JsonErrorResponse(Status::BadRequest, error_msg)
 }
 
@@ -112,9 +112,9 @@ pub fn request_verify_json(
 
 #[post("/vks/v1/request-verify", rank = 2)]
 pub fn request_verify_fallback(
-    state: rocket::State<HagridState>,
+    request_origin: RequestOrigin,
 ) -> JsonErrorResponse {
-    let error_msg = format!("expected application/json data. see {}/about/api for api docs.", state.base_uri);
+    let error_msg = format!("expected application/json data. see {}/about/api for api docs.", request_origin.get_base_uri());
     JsonErrorResponse(Status::BadRequest, error_msg)
 }
 

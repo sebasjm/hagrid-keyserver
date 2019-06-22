@@ -12,7 +12,7 @@ use rocket::Data;
 use database::{KeyDatabase, StatefulTokens, Query, Database};
 use mail;
 use tokens;
-use web::{HagridState,MyResponse};
+use web::{RequestOrigin, MyResponse};
 use rate_limiter::RateLimiter;
 
 use std::io::Read;
@@ -231,18 +231,18 @@ pub fn upload_post_form_data(
 
 #[get("/search?<q>")]
 pub fn search(
-    state: rocket::State<HagridState>,
+    request_origin: RequestOrigin,
     db: rocket::State<KeyDatabase>,
     q: String,
 ) -> MyResponse {
     match q.parse::<Query>() {
-        Ok(query) => key_to_response(state, db, q, query),
+        Ok(query) => key_to_response(request_origin, db, q, query),
         Err(e) => MyResponse::bad_request("index", e),
     }
 }
 
 fn key_to_response(
-    state: rocket::State<HagridState>,
+    request_origin: RequestOrigin,
     db: rocket::State<KeyDatabase>,
     query_string: String,
     query: Query,
@@ -255,7 +255,7 @@ fn key_to_response(
 
     let context = template::Search{
         query: query_string,
-        base_uri: state.base_uri.clone(),
+        base_uri: request_origin.get_base_uri().to_owned(),
         fpr: fp.to_string(),
         version: env!("VERGEN_SEMVER").to_string(),
         commit: env!("VERGEN_SHA_SHORT").to_string(),
@@ -270,7 +270,7 @@ pub fn quick_upload(
     db: rocket::State<KeyDatabase>,
     tokens_stateless: rocket::State<tokens::Service>,
     rate_limiter: rocket::State<RateLimiter>,
-    state: rocket::State<HagridState>,
+    request_origin: RequestOrigin,
     data: Data,
 ) -> MyResponse {
     use std::io::Cursor;
@@ -284,7 +284,7 @@ pub fn quick_upload(
                         &db,
                         &tokens_stateless,
                         &rate_limiter,
-                        Cursor::new(buf)), &state.base_uri)
+                        Cursor::new(buf)), request_origin.get_base_uri())
 }
 
 #[get("/upload/<token>", rank = 2)]
