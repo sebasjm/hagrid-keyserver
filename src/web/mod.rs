@@ -4,6 +4,7 @@ use rocket::response::NamedFile;
 use rocket::config::Config;
 use rocket_contrib::templates::Template;
 use rocket::http::uri::Uri;
+use rocket_contrib::json::JsonValue;
 
 use serde::Serialize;
 use handlebars::Handlebars;
@@ -53,6 +54,8 @@ pub enum MyResponse {
     BadRequestPlain(String),
     #[response(status = 503, content_type = "html")]
     Maintenance(Template),
+    #[response(status = 503, content_type = "json")]
+    MaintenanceJson(JsonValue),
     #[response(status = 503, content_type = "plain")]
     MaintenancePlain(String),
 }
@@ -315,8 +318,9 @@ fn rocket_factory(rocket: rocket::Rocket) -> Result<rocket::Rocket> {
         manage::vks_manage_post,
         manage::vks_manage_unpublish,
         // Maintenance error page
-        maintenance::maintenance_error_api,
         maintenance::maintenance_error_web,
+        maintenance::maintenance_error_json,
+        maintenance::maintenance_error_plain,
     ];
 
     let db_service = configure_db_service(rocket.config())?;

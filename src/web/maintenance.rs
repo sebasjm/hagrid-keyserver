@@ -36,10 +36,13 @@ impl Fairing for MaintenanceMode {
         };
 
         let path = request.uri().path();
-        if self.is_relevant_path_api(path) || request.method() == Method::Put {
-            request.set_uri(uri!(maintenance_error_api: message));
+        if self.is_request_json(path) {
+            request.set_uri(uri!(maintenance_error_json: message));
             request.set_method(Method::Get);
-        } else if self.is_relevant_path_web(path) {
+        } else if self.is_request_plain(path, request.method()) {
+            request.set_uri(uri!(maintenance_error_plain: message));
+            request.set_method(Method::Get);
+        } else if self.is_request_web(path) {
             request.set_uri(uri!(maintenance_error_web: message));
             request.set_method(Method::Get);
         }
@@ -51,12 +54,16 @@ impl MaintenanceMode {
         MaintenanceMode { maintenance_file }
     }
 
-    fn is_relevant_path_api(&self, path: &str) -> bool {
+    fn is_request_json(&self, path: &str) -> bool {
         path.starts_with("/vks/v1/upload") ||
-            path.starts_with("/pks/add")
+            path.starts_with("/vks/v1/request-verify")
     }
 
-    fn is_relevant_path_web(&self, path: &str) -> bool {
+    fn is_request_plain(&self, path: &str, method: Method) -> bool {
+        path.starts_with("/pks/add") || method == Method::Put
+    }
+
+    fn is_request_web(&self, path: &str) -> bool {
         path.starts_with("/upload") ||
             path.starts_with("/manage") ||
             path.starts_with("/verify")
@@ -70,9 +77,19 @@ impl MaintenanceMode {
     }
 }
 
-#[get("/maintenance/api/<message>")]
-pub fn maintenance_error_api(message: String) -> MyResponse {
+#[get("/maintenance/plain/<message>")]
+pub fn maintenance_error_plain(message: String) -> MyResponse {
     MyResponse::MaintenancePlain(message)
+}
+
+#[derive(Serialize)]
+struct JsonErrorMessage {
+    message: String,
+}
+
+#[get("/maintenance/json/<message>")]
+pub fn maintenance_error_json(message: String) -> MyResponse {
+    MyResponse::MaintenanceJson(json!(JsonErrorMessage{ message }))
 }
 
 #[get("/maintenance/web/<message>")]
