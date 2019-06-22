@@ -1,7 +1,5 @@
 //! Deletes (address, key)-binding(s), and/or a key(s).
 
-#![feature(try_from)]
-
 use std::convert::TryInto;
 use std::path::PathBuf;
 

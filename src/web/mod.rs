@@ -70,8 +70,7 @@ impl MyResponse {
     }
 
     pub fn key(armored_key: String, fp: &Fingerprint) -> Self {
-        use rocket::http::hyper::header::{ContentDisposition, DispositionType,
-                                          DispositionParam, Charset};
+        use rocket::http::hyper::header::{DispositionType, DispositionParam, Charset};
         MyResponse::Key(
             armored_key,
             ContentDisposition {
@@ -85,8 +84,7 @@ impl MyResponse {
     }
 
     pub fn x_accel_redirect(x_accel_path: String, fp: &Fingerprint) -> Self {
-        use rocket::http::hyper::header::{ContentDisposition, DispositionType,
-                                          DispositionParam, Charset};
+        use rocket::http::hyper::header::{DispositionType, DispositionParam, Charset};
         // nginx expects percent-encoded URIs
         let x_accel_path = Uri::percent_encode(&x_accel_path).into_owned();
         MyResponse::XAccelRedirect(
