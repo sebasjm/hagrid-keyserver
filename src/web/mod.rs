@@ -426,6 +426,8 @@ fn configure_maintenance_mode(config: &Config) -> Result<MaintenanceMode> {
 pub mod tests {
     use regex;
     use std::fs;
+    use std::fs::File;
+    use std::io::Write;
     use std::path::Path;
     use tempfile::{tempdir, TempDir};
     use super::rocket;
@@ -483,6 +485,7 @@ pub mod tests {
             .extra("keys_external_dir", base_dir.join("keys_external").to_str().unwrap())
             .extra("tmp_dir", base_dir.join("tmp").to_str().unwrap())
             .extra("token_dir", base_dir.join("tokens").to_str().unwrap())
+            .extra("maintenance_file", base_dir.join("maintenance").to_str().unwrap())
             .extra("base-URI", BASE_URI)
             .extra("from", "from@example.com")
             .extra("token_secret", "hagrid")
@@ -549,6 +552,43 @@ pub mod tests {
         assert!(response.body_string().unwrap().contains("any verified e-mail address"));
 
         assert_consistency(client.rocket());
+    }
+
+    #[test]
+    fn maintenance() {
+        let (tmpdir, client) = client().unwrap();
+
+        let maintenance_path = tmpdir.path().join("maintenance");
+        let mut file = File::create(&maintenance_path).unwrap();
+        file.write_all(b"maintenance-message").unwrap();
+
+        // Check that endpoints return a maintenance message
+        check_maintenance(&client, "/upload", ContentType::HTML);
+        check_maintenance(&client, "/manage", ContentType::HTML);
+        check_maintenance(&client, "/verify", ContentType::HTML);
+        check_maintenance(&client, "/pks/add", ContentType::Plain);
+        check_maintenance(&client, "/vks/v1/upload", ContentType::JSON);
+        check_maintenance(&client, "/vks/v1/request-verify", ContentType::JSON);
+
+        // Extra check for the shortcut "PUT" endpoint
+        let mut response = client.put("/").dispatch();
+        assert_eq!(response.status(), Status::ServiceUnavailable);
+        assert_eq!(response.content_type(), Some(ContentType::Plain));
+        assert!(response.body_string().unwrap().contains("maintenance-message"));
+
+        fs::remove_file(&maintenance_path).unwrap();
+        // Check that we see the upload form.
+        let mut response = client.get("/upload").dispatch();
+        assert_eq!(response.status(), Status::Ok);
+        assert_eq!(response.content_type(), Some(ContentType::HTML));
+        assert!(!response.body_string().unwrap().contains("maintenance-message"));
+    }
+
+    fn check_maintenance(client: &Client, uri: &str, content_type: ContentType) {
+        let mut response = client.get(uri).dispatch();
+        assert_eq!(response.status(), Status::ServiceUnavailable);
+        assert_eq!(response.content_type(), Some(content_type));
+        assert!(response.body_string().unwrap().contains("maintenance-message"));
     }
 
     #[test]
