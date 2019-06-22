@@ -145,11 +145,37 @@
   "token": "..."
 }
           </pre>
-        <div>
-        </div>
       </div>
     </li>
   </ul>
+
+  <h3>Error handling</h3>
+  <p>
+    If a request fails for any reason,
+    a suitable HTTP status code will be returned.
+    In this case,
+    the response body will be
+    a JSON object
+    with a single <code>error</code> attribute.
+    A request may fail
+    with an error code of 503
+    at any time
+    if the server is undergoing
+    database maintenance.
+    For this reason,
+    <strong>clients should handle 503 errors gracefully.</strong>
+  </p>
+
+  <div class="example">
+    <div>
+      Example response:
+      <pre>
+{
+  "error": "We are currently undergoing scheduled database maintenance!",
+}
+      </pre>
+    </div>
+  </div>
 
   <h2>HTTP Keyserver Protocol (HKP) Interface</h2>
   <p>
