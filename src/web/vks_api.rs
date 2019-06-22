@@ -96,6 +96,7 @@ pub fn upload_fallback(
 #[post("/vks/v1/request-verify", format = "json", data="<data>")]
 pub fn request_verify_json(
     db: rocket::State<KeyDatabase>,
+    request_origin: RequestOrigin,
     token_stateful: rocket::State<StatefulTokens>,
     token_stateless: rocket::State<tokens::Service>,
     mail_service: rocket::State<mail::Service>,
@@ -105,7 +106,7 @@ pub fn request_verify_json(
     let data = json_or_error(data)?;
     let json::VerifyRequest { token, addresses } = data.into_inner();
     let result = vks::request_verify(
-        db, token_stateful, token_stateless, mail_service,
+        db, request_origin, token_stateful, token_stateless, mail_service,
         rate_limiter, token, addresses);
     upload_ok_json(result)
 }

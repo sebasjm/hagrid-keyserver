@@ -31,7 +31,6 @@ mod context {
 
 pub struct Service {
     from: Mailbox,
-    base_uri: String,
     domain: String,
     templates: Handlebars,
     transport: Transport,
@@ -65,21 +64,20 @@ impl Service {
             ?.to_string();
         Ok(Self {
             from: from.parse().unwrap(),
-            base_uri: base_uri,
             domain: domain,
             templates: templates,
             transport: transport,
         })
     }
 
-    pub fn send_verification(&self, tpk_name: String, userid: &Email,
+    pub fn send_verification(&self, base_uri: &str, tpk_name: String, userid: &Email,
                              token: &str)
                              -> Result<()> {
         let ctx = context::Verification {
             primary_fp: tpk_name,
-            uri: format!("{}/verify/{}", self.base_uri, token),
+            uri: format!("{}/verify/{}", base_uri, token),
             userid: userid.to_string(),
-            base_uri: self.base_uri.clone(),
+            base_uri: base_uri.to_owned(),
             domain: self.domain.clone(),
         };
 
@@ -91,12 +89,12 @@ impl Service {
         )
     }
 
-    pub fn send_manage_token(&self, tpk_name: String, recipient: &Email,
+    pub fn send_manage_token(&self, base_uri: &str, tpk_name: String, recipient: &Email,
                              link_path: &str) -> Result<()> {
         let ctx = context::Manage {
             primary_fp: tpk_name,
-            uri: format!("{}{}", self.base_uri, link_path),
-            base_uri: self.base_uri.clone(),
+            uri: format!("{}{}", base_uri, link_path),
+            base_uri: base_uri.to_owned(),
             domain: self.domain.clone(),
         };
 

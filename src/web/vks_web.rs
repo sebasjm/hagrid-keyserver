@@ -290,6 +290,7 @@ pub fn quick_upload(
 #[get("/upload/<token>", rank = 2)]
 pub fn quick_upload_proceed(
     db: rocket::State<KeyDatabase>,
+    request_origin: RequestOrigin,
     token_stateful: rocket::State<StatefulTokens>,
     token_stateless: rocket::State<tokens::Service>,
     mail_service: rocket::State<mail::Service>,
@@ -297,7 +298,7 @@ pub fn quick_upload_proceed(
     token: String,
 ) -> MyResponse {
     let result = vks::request_verify(
-        db, token_stateful, token_stateless, mail_service,
+        db, request_origin, token_stateful, token_stateless, mail_service,
         rate_limiter, token, vec!());
     MyResponse::upload_response(result)
 }
@@ -388,6 +389,7 @@ fn process_multipart(
 #[post("/upload/request-verify", format = "application/x-www-form-urlencoded", data="<request>")]
 pub fn request_verify_form(
     db: rocket::State<KeyDatabase>,
+    request_origin: RequestOrigin,
     token_stateful: rocket::State<StatefulTokens>,
     token_stateless: rocket::State<tokens::Service>,
     mail_service: rocket::State<mail::Service>,
@@ -396,7 +398,7 @@ pub fn request_verify_form(
 ) -> MyResponse {
     let forms::VerifyRequest { token, address } = request.into_inner();
     let result = vks::request_verify(
-        db, token_stateful, token_stateless, mail_service,
+        db, request_origin, token_stateful, token_stateless, mail_service,
         rate_limiter, token, vec!(address));
     MyResponse::upload_response(result)
 }
@@ -404,6 +406,7 @@ pub fn request_verify_form(
 #[post("/upload/request-verify", format = "multipart/form-data", data="<request>")]
 pub fn request_verify_form_data(
     db: rocket::State<KeyDatabase>,
+    request_origin: RequestOrigin,
     token_stateful: rocket::State<StatefulTokens>,
     token_stateless: rocket::State<tokens::Service>,
     mail_service: rocket::State<mail::Service>,
@@ -412,7 +415,7 @@ pub fn request_verify_form_data(
 ) -> MyResponse {
     let forms::VerifyRequest { token, address } = request.into_inner();
     let result = vks::request_verify(
-        db, token_stateful, token_stateless, mail_service,
+        db, request_origin, token_stateful, token_stateless, mail_service,
         rate_limiter, token, vec!(address));
     MyResponse::upload_response(result)
 }

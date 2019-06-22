@@ -797,6 +797,44 @@ pub mod tests {
     }
 
     #[test]
+    fn upload_verify_onion() {
+        let (tmpdir, client) = client().unwrap();
+        let filemail_into = tmpdir.path().join("filemail");
+
+        // Generate a key and upload it.
+        let (tpk, _) = TPKBuilder::autocrypt(
+            None, Some("foo@invalid.example.com"))
+            .generate().unwrap();
+
+        let mut tpk_serialized = Vec::new();
+        tpk.serialize(&mut tpk_serialized).unwrap();
+        let token = vks_publish_submit_get_token(&client, &tpk_serialized);
+
+        // Check the verification link
+        let encoded = ::url::form_urlencoded::Serializer::new(String::new())
+            .append_pair("token", &token)
+            .append_pair("address", "foo@invalid.example.com")
+            .finish();
+
+        let response = client.post("/upload/request-verify")
+            .header(ContentType::Form)
+            .header(Header::new("X-Is-Onion", "true"))
+            .body(encoded.as_bytes())
+            .dispatch();
+        assert_eq!(response.status(), Status::Ok);
+
+        // Now check for the verification mail.
+        let pattern = format!("{}(/verify/[^ \t\n]*)", BASE_URI_ONION);
+        let confirm_uri = pop_mail_capture_pattern(&filemail_into, &pattern);
+
+        let response = client.get(&confirm_uri).dispatch();
+        assert_eq!(response.status(), Status::Ok);
+
+        assert_consistency(client.rocket());
+    }
+
+
+    #[test]
     fn upload_curl_shortcut() {
         let (_tmpdir, client) = client().unwrap();
 

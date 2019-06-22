@@ -112,6 +112,7 @@ pub fn vks_manage_key(
 #[post("/manage", data="<request>")]
 pub fn vks_manage_post(
     db: State<KeyDatabase>,
+    request_origin: RequestOrigin,
     mail_service: rocket::State<mail::Service>,
     rate_limiter: rocket::State<RateLimiter>,
     request: Form<forms::ManageRequest>,
@@ -153,7 +154,8 @@ pub fn vks_manage_post(
     let token = token_service.create(&StatelessVerifyToken { fpr });
     let link_path = uri!(vks_manage_key: token).to_string();
 
-    if let Err(e) = mail_service.send_manage_token(fpr_text, &email, &link_path) {
+    let base_uri = request_origin.get_base_uri();
+    if let Err(e) = mail_service.send_manage_token(base_uri, fpr_text, &email, &link_path) {
         return MyResponse::ise(e);
     }
 
