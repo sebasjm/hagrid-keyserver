@@ -29,6 +29,7 @@ mod maintenance;
 mod vks;
 mod vks_web;
 mod vks_api;
+mod debug_web;
 
 use web::maintenance::MaintenanceMode;
 
@@ -337,6 +338,8 @@ fn rocket_factory(rocket: rocket::Rocket) -> Result<rocket::Rocket> {
         vks_web::verify_confirm,
         vks_web::quick_upload,
         vks_web::quick_upload_proceed,
+        // Debug
+        debug_web::debug_info,
         // HKP
         hkp::pks_lookup,
         hkp::pks_add_form,

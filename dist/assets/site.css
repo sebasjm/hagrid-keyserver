@@ -223,6 +223,22 @@ span.email {
   font-size: large;
 }
 
+.debug_link {
+  position: absolute;
+  right: 0px;
+  top: 0px;
+  margin: 10px;
+  font-size: 12px;
+}
+
+.debug_link a {
+  color: transparent;
+}
+
+.debug_link a:hover {
+  color: #bbb;
+}
+
 .attribution {
   position: fixed;
   z-index: -1;
