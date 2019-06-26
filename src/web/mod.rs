@@ -305,6 +305,11 @@ fn apidoc() -> Template {
     Template::render("about/api", templates::General::default())
 }
 
+#[get("/about/stats")]
+fn stats() -> Template {
+    Template::render("about/stats", templates::General::default())
+}
+
 pub fn serve() -> Result<()> {
     Err(rocket_factory(rocket::ignite())?.launch().into())
 }
@@ -320,6 +325,7 @@ fn rocket_factory(rocket: rocket::Rocket) -> Result<rocket::Rocket> {
         faq,
         usage,
         files,
+        stats,
         // VKSv1
         vks_api::vks_v1_by_email,
         vks_api::vks_v1_by_fingerprint,
