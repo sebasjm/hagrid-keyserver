@@ -118,20 +118,49 @@
             upload keys that can only sign.</li>
     </ol>
 
-    <h3 id="sks-pool"><a href="#sks-pool">Is this server part of the "SKS" pool?</a>
-    </h3>
+    <h3 id="sks-pool"><a href="#sks-pool">Is this server part of the "SKS" pool?</a></h3>
 
-    <p>No. The "append-only" federation model of the SKS pool leads to various
-        problems, that make both operation and use of those servers very
-        difficult.  There is also no simple way to store information about
-        e-mail verification in a federated way.
+    <p>
+        No. The federation model of the SKS pool has various problems in terms
+        of reliability, abuse-resistance, privacy, and usability. We might do
+        something similar to it, but <span class="brand">keys.openpgp.org</span>
+        will never be part of the SKS pool itself.
     </p>
-    <p>We do plan to explore options for a distributed service in the future, so
-        users can choose between different service operators again.
+
+    <h3 id="federation"><a href="#federation">Is keys.openpgp.org federated? Can I help by running an instance?</a></h3>
+
+    <p>
+        For the moment, no.
+        We do plan to decentralize <span class="brand">keys.openpgp.org</span>
+        at some point.
+        With multiple servers
+        run by independent operators,
+        we can further improve the reliability
+        of this service.
     </p>
+
+    <p>
+        Several folks offered to help out
+        by "running a Hagrid server instance".
+        We very much appreciate the offer,
+        but we will probably never have an "open" federation model like SKS,
+        where everyone can run an instance and become part of a "pool".
+        This is for two reasons:
+    </p>
+    <ol>
+        <li>
+            Federation with open participation requires all data to be public.
+            This significantly impacts the privacy of our users, because it
+            allows anyone to scrape a list of all e-mail addresses.
+        </li>
+        <li>
+            Servers run as a hobby by casual administrators do not meet our
+            standards for reliability and performance.
+        </li>
+    </ol>
 
     <h3 id="older-gnupg"><a href="#older-gnupg">
-	I have trouble updating some keys with GnuPG.  Is there a bug?
+      I have trouble updating some keys with GnuPG.  Is there a bug?
     </a></h3>
 
     <p>
