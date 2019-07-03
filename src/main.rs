@@ -23,6 +23,7 @@ extern crate handlebars;
 extern crate lettre;
 extern crate lettre_email;
 extern crate tempfile;
+extern crate uuid;
 
 #[cfg(test)]
 extern crate regex;

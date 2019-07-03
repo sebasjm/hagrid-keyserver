@@ -6,6 +6,7 @@ use lettre::{Transport as LettreTransport, SendmailTransport, file::FileTranspor
 use lettre_email::{Mailbox,EmailBuilder};
 use url;
 use serde::Serialize;
+use uuid::Uuid;
 
 use database::types::Email;
 use Result;
@@ -136,7 +137,8 @@ impl Service {
             .alternative(
                 html.ok_or(failure::err_msg("Email template failed to render"))?,
                 txt.ok_or(failure::err_msg("Email template failed to render"))?,
-            );
+            )
+            .message_id(format!("<{}@{}>", Uuid::new_v4(), self.domain));
 
         let email = to.iter().fold(email, |email, to| email.to(to.to_string()));
 
