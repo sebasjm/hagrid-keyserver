@@ -3,6 +3,7 @@ name = "hagrid"
 version = "0.1.0"
 authors = ["Kai Michaelis <kai@sequoia-pgp.org>"]
 build = "build.rs"
+default-run = "hagrid"
 
 [workspace]
 members = [
