@@ -58,6 +58,27 @@
         <span class="brand">keys.openpgp.org</span>.
     </p>
 
+    <h3 id="verify-multiple"><a href="#verify-multiple">Can I verify more than
+            one key for some e-mail address?</a></h3>
+
+    <p>
+        An e-mail address can only be associated with a single key.
+        When an address is verified for a new key,
+        it will no longer appear in any key
+        for which it was previously verified.
+        <a href="/about">Non-identity information</a> will still be distributed
+        for all keys.
+    </p>
+
+    <p>
+        This means a search by e-mail address
+        will only return a single key,
+        not multiple candidates.
+        This eliminates an impossible choice for the user
+        ("Which key is the right one?"),
+        and makes key discovery by e-mail much more convenient.
+    </p>
+
     <h3 id="third-party-signatures"><a href="#third-party-signatures">
             Do you distribute "third party signatures"?</a></h3>
 
