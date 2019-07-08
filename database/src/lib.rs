@@ -67,10 +67,9 @@ impl FromStr for Query {
             return Err(failure::err_msg(
                     "Search by Short Key ID is not supported, sorry!"));
         }
-        let term_nospace = term.replace(" ", "");
-        if let Ok(fp) = Fingerprint::from_str(&term_nospace) {
+        if let Ok(fp) = Fingerprint::from_str(term) {
             Ok(ByFingerprint(fp))
-        } else if let Ok(keyid) = KeyID::from_str(&term_nospace) {
+        } else if let Ok(keyid) = KeyID::from_str(term) {
             Ok(ByKeyID(keyid))
         } else if let Ok(email) = Email::from_str(term) {
             Ok(ByEmail(email))
