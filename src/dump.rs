@@ -1,16 +1,18 @@
-// from https://gitlab.com/sequoia-pgp/dump.sequoia-pgp.org/blob/master/src/dump.rs
-// plus *very* slight adaptions for seqoia 0.8
+// from https://gitlab.com/sequoia-pgp/sequoia/blob/master/tool/src/commands/dump.rs
 
 use std::io::{self, Read};
+use time;
 
-use sequoia_openpgp::constants::SymmetricAlgorithm;
-use sequoia_openpgp::conversions::hex;
-use sequoia_openpgp::{Packet, Result};
-use sequoia_openpgp::packet::ctb::CTB;
-use sequoia_openpgp::packet::{Header, BodyLength, Signature};
-use sequoia_openpgp::packet::signature::subpacket::{Subpacket, SubpacketValue};
-use sequoia_openpgp::crypto::{SessionKey, s2k::S2K};
-use sequoia_openpgp::parse::{map::Map, Parse, PacketParserResult};
+extern crate sequoia_openpgp as openpgp;
+use self::openpgp::constants::SymmetricAlgorithm;
+use self::openpgp::conversions::hex;
+use self::openpgp::crypto::mpis;
+use self::openpgp::{Packet, Result};
+use self::openpgp::packet::ctb::CTB;
+use self::openpgp::packet::{Header, BodyLength, Signature};
+use self::openpgp::packet::signature::subpacket::{Subpacket, SubpacketValue};
+use self::openpgp::crypto::{SessionKey, s2k::S2K};
+use self::openpgp::parse::{map::Map, Parse, PacketParserResult};
 
 const TIMEFMT: &'static str = "%Y-%m-%dT%H:%M";
 
@@ -24,14 +26,17 @@ pub enum Kind {
     Unknown,
 }
 
-pub fn dump(input: &mut dyn io::Read, output: &mut dyn io::Write, mpis: bool, hex: bool,
-            sk: Option<&SessionKey>)
-        -> Result<Kind> {
+pub fn dump<W>(input: &mut dyn io::Read, output: &mut dyn io::Write,
+               mpis: bool, hex: bool, sk: Option<&SessionKey>,
+               width: W)
+               -> Result<Kind>
+    where W: Into<Option<usize>>
+{
     let mut ppr
-        = sequoia_openpgp::parse::PacketParserBuilder::from_reader(input)?
+        = self::openpgp::parse::PacketParserBuilder::from_reader(input)?
         .map(hex).finalize()?;
     let mut message_encrypted = false;
-    let width = 32 * 4 + 80;
+    let width = width.into().unwrap_or(80);
     let mut dumper = PacketDumper::new(width, mpis);
 
     while let PacketParserResult::Some(mut pp) = ppr {
@@ -232,7 +237,7 @@ impl PacketDumper {
                   header: Option<&Header>, p: &Packet, map: Option<&Map>,
                   additional_fields: Option<&Vec<String>>)
                   -> Result<()> {
-        use sequoia_openpgp::Packet::*;
+        use self::openpgp::Packet::*;
 
         if let Some(h) = header {
             write!(output, "{} CTB, {}: ",
@@ -283,40 +288,40 @@ impl PacketDumper {
                                            level <= {} and data)", n - 1)?,
                 }
                 if self.mpis {
-                    use sequoia_openpgp::crypto::mpis::Signature::*;
                     writeln!(output, "{}", i)?;
                     writeln!(output, "{}  Signature:", i)?;
 
                     let ii = format!("{}    ", i);
                     match s.mpis() {
-                        RSA { s } =>
+                        mpis::Signature::RSA { s } =>
                             self.dump_mpis(output, &ii,
-                                           &[&s.value],
+                                           &[s.value()],
                                            &["s"])?,
-                        DSA { r, s } =>
+                        mpis::Signature::DSA { r, s } =>
                             self.dump_mpis(output, &ii,
-                                           &[&r.value, &s.value],
+                                           &[r.value(), s.value()],
                                            &["r", "s"])?,
-                        Elgamal { r, s } =>
+                        mpis::Signature::Elgamal { r, s } =>
                             self.dump_mpis(output, &ii,
-                                           &[&r.value, &s.value],
+                                           &[r.value(), s.value()],
                                            &["r", "s"])?,
-                        EdDSA { r, s } =>
+                        mpis::Signature::EdDSA { r, s } =>
                             self.dump_mpis(output, &ii,
-                                           &[&r.value, &s.value],
+                                           &[r.value(), s.value()],
                                            &["r", "s"])?,
-                        ECDSA { r, s } =>
+                        mpis::Signature::ECDSA { r, s } =>
                             self.dump_mpis(output, &ii,
-                                           &[&r.value, &s.value],
+                                           &[r.value(), s.value()],
                                            &["r", "s"])?,
-                        Unknown { mpis, rest } => {
+                        mpis::Signature::Unknown { mpis, rest } => {
                             let keys: Vec<String> =
                                 (0..mpis.len()).map(
                                     |i| format!("mpi{}", i)).collect();
                             self.dump_mpis(
                                 output, &ii,
-                                &mpis.iter().map(|m| m.value.iter().as_slice())
-                                    .collect::<Vec<_>>()[..],
+                                &mpis.iter().map(|m| {
+                                    m.value().iter().as_slice()
+                                }).collect::<Vec<_>>()[..],
                                 &keys.iter().map(|k| k.as_str())
                                     .collect::<Vec<_>>()[..],
                             )?;
@@ -349,48 +354,48 @@ impl PacketDumper {
                     writeln!(output, "{}  Pk size: {} bits", i, bits)?;
                 }
                 if self.mpis {
-                    use sequoia_openpgp::crypto::mpis::PublicKey::*;
                     writeln!(output, "{}", i)?;
                     writeln!(output, "{}  Public Key:", i)?;
 
                     let ii = format!("{}    ", i);
                     match k.mpis() {
-                        RSA { e, n } =>
+                        mpis::PublicKey::RSA { e, n } =>
                             self.dump_mpis(output, &ii,
-                                           &[&e.value, &n.value],
+                                           &[e.value(), n.value()],
                                            &["e", "n"])?,
-                        DSA { p, q, g, y } =>
+                        mpis::PublicKey::DSA { p, q, g, y } =>
                             self.dump_mpis(output, &ii,
-                                           &[&p.value, &q.value, &g.value,
-                                             &y.value],
+                                           &[p.value(), q.value(), g.value(),
+                                             y.value()],
                                            &["p", "q", "g", "y"])?,
-                        Elgamal { p, g, y } =>
+                        mpis::PublicKey::Elgamal { p, g, y } =>
                             self.dump_mpis(output, &ii,
-                                           &[&p.value, &g.value, &y.value],
+                                           &[p.value(), g.value(), y.value()],
                                            &["p", "g", "y"])?,
-                        EdDSA { curve, q } => {
+                        mpis::PublicKey::EdDSA { curve, q } => {
                             writeln!(output, "{}  Curve: {}", ii, curve)?;
-                            self.dump_mpis(output, &ii, &[&q.value], &["q"])?;
+                            self.dump_mpis(output, &ii, &[q.value()], &["q"])?;
                         },
-                        ECDSA { curve, q } => {
+                        mpis::PublicKey::ECDSA { curve, q } => {
                             writeln!(output, "{}  Curve: {}", ii, curve)?;
-                            self.dump_mpis(output, &ii, &[&q.value], &["q"])?;
+                            self.dump_mpis(output, &ii, &[q.value()], &["q"])?;
                         },
-                        ECDH { curve, q, hash, sym } => {
+                        mpis::PublicKey::ECDH { curve, q, hash, sym } => {
                             writeln!(output, "{}  Curve: {}", ii, curve)?;
                             writeln!(output, "{}  Hash algo: {}", ii, hash)?;
                             writeln!(output, "{}  Symmetric algo: {}", ii,
                                      sym)?;
-                            self.dump_mpis(output, &ii, &[&q.value], &["q"])?;
+                            self.dump_mpis(output, &ii, &[q.value()], &["q"])?;
                         },
-                        Unknown { mpis, rest } => {
+                        mpis::PublicKey::Unknown { mpis, rest } => {
                             let keys: Vec<String> =
                                 (0..mpis.len()).map(
                                     |i| format!("mpi{}", i)).collect();
                             self.dump_mpis(
                                 output, &ii,
-                                &mpis.iter().map(|m| m.value.iter().as_slice())
-                                    .collect::<Vec<_>>()[..],
+                                &mpis.iter().map(|m| {
+                                    m.value().iter().as_slice()
+                                }).collect::<Vec<_>>()[..],
                                 &keys.iter().map(|k| k.as_str())
                                     .collect::<Vec<_>>()[..],
                             )?;
@@ -400,44 +405,46 @@ impl PacketDumper {
                     }
 
                     if let Some(secrets) = k.secret() {
-                        use sequoia_openpgp::crypto::mpis::SecretKey::*;
+                        use self::openpgp::packet::key::SecretKey;
                         writeln!(output, "{}", i)?;
                         writeln!(output, "{}  Secret Key:", i)?;
 
                         let ii = format!("{}    ", i);
                         match secrets {
-                            sequoia_openpgp::packet::key::SecretKey::Unencrypted {
-                                mpis,
-                            } => match mpis {
-                                RSA { d, p, q, u } =>
+                            SecretKey::Unencrypted(ref u) => match u.mpis()
+                            {
+                                mpis::SecretKey::RSA { d, p, q, u } =>
                                     self.dump_mpis(output, &ii,
-                                                   &[&d.value, &p.value, &q.value,
-                                                     &u.value],
+                                                   &[d.value(), p.value(),
+                                                     q.value(), u.value()],
                                                    &["d", "p", "q", "u"])?,
-                                DSA { x } =>
-                                    self.dump_mpis(output, &ii, &[&x.value],
+                                mpis::SecretKey::DSA { x } =>
+                                    self.dump_mpis(output, &ii, &[x.value()],
                                                    &["x"])?,
-                                Elgamal { x } =>
-                                    self.dump_mpis(output, &ii, &[&x.value],
+                                mpis::SecretKey::Elgamal { x } =>
+                                    self.dump_mpis(output, &ii, &[x.value()],
                                                    &["x"])?,
-                                EdDSA { scalar } =>
-                                    self.dump_mpis(output, &ii, &[&scalar.value],
+                                mpis::SecretKey::EdDSA { scalar } =>
+                                    self.dump_mpis(output, &ii,
+                                                   &[scalar.value()],
                                                    &["scalar"])?,
-                                ECDSA { scalar } =>
-                                    self.dump_mpis(output, &ii, &[&scalar.value],
+                                mpis::SecretKey::ECDSA { scalar } =>
+                                    self.dump_mpis(output, &ii,
+                                                   &[scalar.value()],
                                                    &["scalar"])?,
-                                ECDH { scalar } =>
-                                    self.dump_mpis(output, &ii, &[&scalar.value],
+                                mpis::SecretKey::ECDH { scalar } =>
+                                    self.dump_mpis(output, &ii,
+                                                   &[scalar.value()],
                                                    &["scalar"])?,
-                                Unknown { mpis, rest } => {
+                                mpis::SecretKey::Unknown { mpis, rest } => {
                                     let keys: Vec<String> =
                                         (0..mpis.len()).map(
                                             |i| format!("mpi{}", i)).collect();
                                     self.dump_mpis(
                                         output, &ii,
-                                        &mpis.iter()
-                                            .map(|m| m.value.iter().as_slice())
-                                            .collect::<Vec<_>>()[..],
+                                        &mpis.iter().map(|m| {
+                                            m.value().iter().as_slice()
+                                        }).collect::<Vec<_>>()[..],
                                         &keys.iter().map(|k| k.as_str())
                                             .collect::<Vec<_>>()[..],
                                     )?;
@@ -446,15 +453,13 @@ impl PacketDumper {
                                                    &["rest"])?;
                                 },
                             },
-                            sequoia_openpgp::packet::key::SecretKey::Encrypted {
-                                s2k, algorithm, ciphertext,
-                            } => {
+                            SecretKey::Encrypted(ref e) => {
                                 writeln!(output, "{}", i)?;
                                 write!(output, "{}  S2K: ", ii)?;
-                                self.dump_s2k(output, &ii, s2k)?;
+                                self.dump_s2k(output, &ii, e.s2k())?;
                                 writeln!(output, "{}  Sym. algo: {}", ii,
-                                         algorithm)?;
-                                self.dump_mpis(output, &ii, &[&ciphertext[..]],
+                                         e.algo())?;
+                                self.dump_mpis(output, &ii, &[e.ciphertext()],
                                                &["ciphertext"])?;
                             },
                         }
@@ -474,7 +479,7 @@ impl PacketDumper {
             },
 
             UserAttribute(ref u) => {
-                use sequoia_openpgp::packet::user_attribute::{Subpacket, Image};
+                use self::openpgp::packet::user_attribute::{Subpacket, Image};
                 writeln!(output, "User Attribute Packet")?;
 
                 for subpacket in u.subpackets() {
@@ -532,32 +537,32 @@ impl PacketDumper {
                 writeln!(output, "{}  Recipient: {}", i, p.recipient())?;
                 writeln!(output, "{}  Pk algo: {}", i, p.pk_algo())?;
                 if self.mpis {
-                    use sequoia_openpgp::crypto::mpis::Ciphertext::*;
                     writeln!(output, "{}", i)?;
                     writeln!(output, "{}  Encrypted session key:", i)?;
 
                     let ii = format!("{}    ", i);
                     match p.esk() {
-                        RSA { c } =>
+                        mpis::Ciphertext::RSA { c } =>
                             self.dump_mpis(output, &ii,
-                                           &[&c.value],
+                                           &[c.value()],
                                            &["c"])?,
-                        Elgamal { e, c } =>
+                        mpis::Ciphertext::Elgamal { e, c } =>
                             self.dump_mpis(output, &ii,
-                                           &[&e.value, &c.value],
+                                           &[e.value(), c.value()],
                                            &["e", "c"])?,
-                        ECDH { e, key } =>
+                        mpis::Ciphertext::ECDH { e, key } =>
                             self.dump_mpis(output, &ii,
-                                           &[&e.value, key],
+                                           &[e.value(), key],
                                            &["e", "key"])?,
-                        Unknown { mpis, rest } => {
+                        mpis::Ciphertext::Unknown { mpis, rest } => {
                             let keys: Vec<String> =
                                 (0..mpis.len()).map(
                                     |i| format!("mpi{}", i)).collect();
                             self.dump_mpis(
                                 output, &ii,
-                                &mpis.iter().map(|m| m.value.iter().as_slice())
-                                    .collect::<Vec<_>>()[..],
+                                &mpis.iter().map(|m| {
+                                    m.value().iter().as_slice()
+                                }).collect::<Vec<_>>()[..],
                                 &keys.iter().map(|k| k.as_str())
                                     .collect::<Vec<_>>()[..],
                             )?;
@@ -572,7 +577,7 @@ impl PacketDumper {
                 writeln!(output, "Symmetric-key Encrypted Session Key Packet")?;
                 writeln!(output, "{}  Version: {}", i, s.version())?;
                 match s {
-                    sequoia_openpgp::packet::SKESK::V4(ref s) => {
+                    self::openpgp::packet::SKESK::V4(ref s) => {
                         writeln!(output, "{}  Symmetric algo: {}", i,
                                  s.symmetric_algo())?;
                         write!(output, "{}  S2K: ", i)?;
@@ -583,7 +588,7 @@ impl PacketDumper {
                         }
                     },
 
-                    sequoia_openpgp::packet::SKESK::V5(ref s) => {
+                    self::openpgp::packet::SKESK::V5(ref s) => {
                         writeln!(output, "{}  Symmetric algo: {}", i,
                                  s.symmetric_algo())?;
                         writeln!(output, "{}  AEAD: {}", i,
@@ -771,11 +776,11 @@ impl PacketDumper {
                 writeln!(output, "{}    Hash: {}", i, hash)?;
                 writeln!(output, "{}    Salt: {}", i, hex::encode(salt))?;
             },
-            Iterated { hash, ref salt, .. } => {
+            Iterated { hash, ref salt, hash_bytes } => {
                 writeln!(output, "Iterated")?;
                 writeln!(output, "{}    Hash: {}", i, hash)?;
                 writeln!(output, "{}    Salt: {}", i, hex::encode(salt))?;
-                // writeln!(output, "{}    Iterations: {}", i, iterations)?;
+                writeln!(output, "{}    Hash bytes: {}", i, hash_bytes)?;
             },
             Private(n) =>
                 writeln!(output, "Private({})", n)?,

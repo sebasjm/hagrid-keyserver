@@ -30,7 +30,9 @@ pub fn debug_info(
         &mut result,
         false,
         false,
-        None);
+        None,
+        32 * 4 + 80,
+    );
     match dump_result {
         Ok(Kind::TPK) => {
             match String::from_utf8(result) {

@@ -16,7 +16,7 @@ hagrid-database = { path = "database" }
 failure = "0.1.5"
 rocket = "0"
 rocket_codegen = "0"
-sequoia-openpgp =  { version = "0.8", default-features = false }
+sequoia-openpgp =  { version = "0.9", default-features = false }
 multipart = "0"
 log = "0"
 serde = "1.0"
