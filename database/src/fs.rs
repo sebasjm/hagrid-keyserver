@@ -478,7 +478,6 @@ impl Database for Filesystem {
     /// Note that this operation may take a long time, and is
     /// generally only useful for testing.
     fn check_consistency(&self) -> Result<()> {
-        use std::collections::HashMap;
         use failure::format_err;
 
         // A cache of all TPKs, for quick lookups.
