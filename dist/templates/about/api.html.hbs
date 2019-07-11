@@ -183,6 +183,23 @@
     </div>
   </div>
 
+  <h3 id="rate-limiting"><a href="#rate-limiting">Rate Limiting</a></h3>
+
+  <p>
+    Requests to the <span class="brand">keys.openpgp.org</span> API are rate
+    limited:
+  </p>
+  <ul>
+    <li>Requests by fingerprint or key id are limited to a rate of five requests
+      per second. Excessive requests are delayed to match this rate. Short
+      bursts are allowed.
+    </li>
+    <li>Requests by e-mail address are limited to five requests per minute.
+      Excessive requests will fail with <tt>error 503</tt>. Short bursts are
+      allowed.
+    </li>
+  </ul>
+
   <h2>HTTP Keyserver Protocol (HKP) Interface</h2>
   <p>
     Hagrid implements a subset of
@@ -244,6 +261,9 @@
       </p>
     </li>
   </ul>
+
+  <a href="#rate-limiting">Rate limiting</a> applies as for the VKS interface
+  above.
 
   <h4>Limitations</h4>
 
