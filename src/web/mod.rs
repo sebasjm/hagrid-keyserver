@@ -1,5 +1,5 @@
 use rocket;
-use rocket::http::Header;
+use rocket::http::{Header, Status};
 use rocket::request;
 use rocket::outcome::Outcome;
 use rocket::response::NamedFile;
@@ -7,6 +7,7 @@ use rocket::config::Config;
 use rocket_contrib::templates::Template;
 use rocket::http::uri::Uri;
 use rocket_contrib::json::JsonValue;
+use rocket::response::status::Custom;
 
 use serde::Serialize;
 use handlebars::Handlebars;
@@ -310,6 +311,23 @@ fn stats() -> Template {
     Template::render("about/stats", templates::General::default())
 }
 
+#[get("/errors/<code>/<template>")]
+fn errors(
+    code: u16,
+    template: String,
+) -> Result<Custom<Template>> {
+    if !template.chars().all(|x| x == '-' || char::is_ascii_alphabetic(&x)) {
+        return Err(failure::err_msg("bad request"));
+    }
+    let status_code = Status::from_code(code)
+        .ok_or(failure::err_msg("bad request"))?;
+    let response_body = Template::render(
+        format!("errors/{}-{}", code, template),
+        templates::General::default()
+    );
+    Ok(Custom(status_code, response_body))
+}
+
 pub fn serve() -> Result<()> {
     Err(rocket_factory(rocket::ignite())?.launch().into())
 }
@@ -326,6 +344,7 @@ fn rocket_factory(rocket: rocket::Rocket) -> Result<rocket::Rocket> {
         usage,
         files,
         stats,
+        errors,
         // VKSv1
         vks_api::vks_v1_by_email,
         vks_api::vks_v1_by_fingerprint,
