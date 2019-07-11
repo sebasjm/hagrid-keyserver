@@ -125,7 +125,7 @@ pub fn vks_v1_by_fingerprint(state: rocket::State<HagridState>,
                          fpr: String) -> MyResponse {
     let query = match fpr.parse::<Fingerprint>() {
         Ok(fpr) => Query::ByFingerprint(fpr),
-        Err(e) => return MyResponse::bad_request("index", e),
+        Err(_) => return MyResponse::bad_request_plain("malformed fingerprint"),
     };
 
     web::key_to_response_plain(state, db, query)
@@ -135,9 +135,10 @@ pub fn vks_v1_by_fingerprint(state: rocket::State<HagridState>,
 pub fn vks_v1_by_email(state: rocket::State<HagridState>,
                    db: rocket::State<KeyDatabase>,
                    email: String) -> MyResponse {
+    let email = email.replace("%40", "@");
     let query = match email.parse::<Email>() {
         Ok(email) => Query::ByEmail(email),
-        Err(e) => return MyResponse::bad_request("index", e),
+        Err(_) => return MyResponse::bad_request_plain("malformed e-mail address"),
     };
 
     web::key_to_response_plain(state, db, query)
@@ -149,7 +150,7 @@ pub fn vks_v1_by_keyid(state: rocket::State<HagridState>,
                    kid: String) -> MyResponse {
     let query = match kid.parse::<KeyID>() {
         Ok(keyid) => Query::ByKeyID(keyid),
-        Err(e) => return MyResponse::bad_request("index", e),
+        Err(_) => return MyResponse::bad_request_plain("malformed key id"),
     };
 
     web::key_to_response_plain(state, db, query)
