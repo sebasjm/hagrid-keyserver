@@ -369,6 +369,7 @@ fn rocket_factory(rocket: rocket::Rocket) -> Result<rocket::Rocket> {
         hkp::pks_lookup,
         hkp::pks_add_form,
         hkp::pks_add_form_data,
+        hkp::pks_internal_index,
         // EManage
         manage::vks_manage,
         manage::vks_manage_key,

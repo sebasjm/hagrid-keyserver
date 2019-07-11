@@ -166,6 +166,17 @@ pub fn pks_lookup(state: rocket::State<HagridState>,
     }
 }
 
+#[get("/pks/internal/index/<query_string>")]
+pub fn pks_internal_index(
+    db: rocket::State<KeyDatabase>,
+    query_string: String,
+) -> MyResponse {
+    match query_string.parse() {
+        Ok(query) => key_to_hkp_index(db, query),
+        Err(_) => MyResponse::bad_request_plain("Invalid search query!")
+    }
+}
+
 fn key_to_hkp_index(db: rocket::State<KeyDatabase>, query: Query)
                         -> MyResponse {
     use sequoia_openpgp::RevocationStatus;
