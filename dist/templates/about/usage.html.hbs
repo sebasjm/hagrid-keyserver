@@ -10,35 +10,67 @@
         write to us and we'll try to add it.
     </p>
 
-    <h2 style="margin-left: 3%;"><img src="/assets/img/enigmail.svg" style="display: inline; height: 2em; vertical-align: -30%; padding-right: 10px;" /> Enigmail</h2>
+    <h2>
+        <div><img src="/assets/img/enigmail.svg"></div>
+        Enigmail
+    </h2>
     <p>
-        Enigmail will support <span class="brand">keys.openpgp.org</span> out
-        of the box in an upcoming version. Stay tuned!
+        <a href="https://enigmail.net" target="_blank">Enigmail</a> for Thunderbird
+        uses <span class="brand">keys.openpgp.org</span> by default since
+        version 2.0.12.
+    </p>
+    <p>Full support is available since Enigmail 2.1
+        (for <a href="https://www.thunderbird.net/en-US/thunderbird/68.0beta/releasenotes/" target="_blank">Thunderbird 68</a> or newer):
         <ul>
             <li>Keys will be kept up to date automatically.</li>
-            <li>During creation, you can optionally upload and verify your key.</li>
+            <li>During key creation, you can optionally upload and verify your key.</li>
+            <li>Keys can be discovered by e-mail address.</li>
         </ul>
     </p>
 
-    <h2 style="margin-left: 3%;"><img src="/assets/img/openkeychain.svg" style="display: inline; height: 2em; vertical-align: -30%; padding-right: 10px;" /> OpenKeychain</h2>
+    <h2>
+        <div><img src="/assets/img/openkeychain.svg"></div>
+        OpenKeychain
+    </h2>
     <p>
-        OpenKeychain will support <span class="brand">keys.openpgp.org</span>
-        out of the box in an upcoming version. Stay tuned!
+        <a href="https://www.openkeychain.org/">OpenKeychain</a> for Android
+        uses <span class="brand">keys.openpgp.org</span> by default
+        since July 2019.
         <ul>
             <li>Keys will be kept up to date automatically.</li>
-            <li>During creation, you can optionally upload and verify your key.</li>
+            <li>Keys can be discovered by e-mail address.</li>
         </ul>
     </p>
 
-    <h2 style="margin-left: 3%;"><img src="/assets/img/gnupg.svg" style="display: inline; height: 2em; vertical-align: -30%; padding-right: 10px;" /> GnuPG</h2>
+    <p>
+        Note that there is no built-in support for upload and e-mail verification so far.
+    </p>
 
-    To configure GnuPG to use <span class="brand">keys.openpgp.org</span>
-    as keyserver, add this line to your <tt>gpg.conf</tt> file:
-    <blockquote>
-        keyserver hkps://keys.openpgp.org
-    </blockquote>
+    <h2>
+        <div><img src="/assets/img/gpgtools.png"></div>
+        GPG Suite for Mac
+    </h2>
+    <p>
+        <a href="https://gpgtools.org/">GPG Suite for Mac</a> for Mac
+        will support <span class="brand">keys.openpgp.org</span> out of the box
+        in an upcoming release.
+    </p>
 
-    <h3>Retrieving keys</h3>
+    <h2>
+        <div><img src="/assets/img/gnupg.svg" /></div>
+        GnuPG
+    </h2>
+
+    <p>
+        To configure <a href="https://gnupg.org">GnuPG</a>
+        to use <span class="brand">keys.openpgp.org</span> as keyserver,
+        add this line to your <tt>gpg.conf</tt> file:
+        <blockquote>
+            keyserver hkps://keys.openpgp.org
+        </blockquote>
+    </p>
+
+    <h4>Retrieving keys</h4>
     <ul>
         <li>
             To locate the key of a user, by email address:
@@ -53,7 +85,7 @@
         </li>
     </ul>
 
-    <h3 id="gnupg-upload">Uploading your key</h3>
+    <h4 id="gnupg-upload"><a href="#gnupg-upload">Uploading your key</a></h4>
     <p>
         Keys can be uploaded with GnuPG's <tt>--send-keys</tt> command, but
         identity information can't be verified that way to make the key
@@ -77,7 +109,7 @@
         </li>
     </ul>
 
-    <h3>Usage via Tor</h3>
+    <h4>Usage via Tor</h4>
     <p>
         For users who want to be extra-careful,
         <span class="brand">keys.openpgp.org</span> can be reached anonymously as an

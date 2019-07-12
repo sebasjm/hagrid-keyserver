@@ -43,11 +43,23 @@ a.brand {
   color: #050505;
 }
 
-h3:target {
+.usage h2 div {
+  display: inline-block;
+  width: 2.5em;
+  text-align: center;
+}
+
+.usage h2 div img {
+  display: inline-block;
+  height: 2em;
+  vertical-align: -30%;
+}
+
+h4:target, h3:target {
   background-color: #ffa;
 }
 
-h3 a, h3 a:visited {
+h4 a, h4 a:visited, h3 a, h3 a:visited {
   color: #050505;
 }
 
