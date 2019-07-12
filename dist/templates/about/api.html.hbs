@@ -194,8 +194,8 @@
       per second. Excessive requests are delayed to match this rate. Short
       bursts are allowed.
     </li>
-    <li>Requests by e-mail address are limited to five requests per minute.
-      Excessive requests will fail with <tt>error 503</tt>. Short bursts are
+    <li>Requests by e-mail address are limited to one request per minute.
+      Excessive requests will fail with <tt>error 429</tt>. Short bursts are
       allowed.
     </li>
   </ul>
@@ -274,11 +274,13 @@
 
   <ul>
     <li>No support for <code>op=vindex</code>,</li>
-    <li>only exact matches for user IDs are returned (i.e. <code>exact=on</code> is
+    <li>only exact matches by e-mail address, fingerprint or long key id are
+      returned,</li>
+    <li>all parameters and options other than <code>op</code> and
+      <code>search</code> are ignored,</li>
+    <li>output is always machine readable (i.e. <code>options=mr</code> is
       always assumed),</li>
-    <li>the <code>fingerprint</code> variable is ignored,</li>
-    <li>the <code>nm</code> option is ignored,</li>
-    <li><code>op=index</code> returns either one or no keys,</li>
+    <li>all requests return either one or no keys,</li>
     <li>uploads are restricted to 1 MiB,</li>
     <li>all packets that aren't public keys, user IDs or signatures are filtered out.</li>
   </ul>
