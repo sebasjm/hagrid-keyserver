@@ -1,6 +1,6 @@
 use failure::Fallible as Result;
 
-use database::{Database, KeyDatabase, StatefulTokens, EmailAddressStatus, TpkStatus};
+use database::{Database, KeyDatabase, StatefulTokens, EmailAddressStatus, TpkStatus, ImportResult};
 use database::types::{Fingerprint,Email};
 use mail;
 use tokens::{self, StatelessSerializable};
@@ -29,6 +29,8 @@ pub mod request {
 }
 
 pub mod response {
+    use database::types::Email;
+
     #[derive(Debug,Serialize,Deserialize,PartialEq,Eq)]
     pub enum EmailStatus {
         #[serde(rename = "unpublished")]
@@ -50,6 +52,8 @@ pub mod response {
             is_revoked: bool,
             status: HashMap<String,EmailStatus>,
             count_unparsed: usize,
+            is_new_key: bool,
+            primary_uid: Option<Email>,
         },
         OkMulti { key_fprs: Vec<String> },
         Error(String),
@@ -144,8 +148,10 @@ fn process_key_single(
 ) -> response::UploadResponse {
     let fp = Fingerprint::try_from(tpk.fingerprint()).unwrap();
 
-    let tpk_status = match db.merge(tpk) {
-        Ok(import_result) => import_result.into_tpk_status(),
+    let (tpk_status, is_new_key) = match db.merge(tpk) {
+        Ok(ImportResult::New(tpk_status)) => (tpk_status, true),
+        Ok(ImportResult::Updated(tpk_status)) => (tpk_status, false),
+        Ok(ImportResult::Unchanged(tpk_status)) => (tpk_status, false),
         Err(_) => return UploadResponse::err(&format!(
             "Something went wrong processing key {}", fp)),
     };
@@ -163,7 +169,7 @@ fn process_key_single(
 
     let token = tokens_stateless.create(&verify_state);
 
-    show_upload_verify(rate_limiter, token, tpk_status, verify_state)
+    show_upload_verify(rate_limiter, token, tpk_status, verify_state, is_new_key)
 }
 
 pub fn request_verify(
@@ -183,7 +189,7 @@ pub fn request_verify(
 
     if tpk_status.is_revoked {
         return show_upload_verify(
-                &rate_limiter, token, tpk_status, verify_state);
+                &rate_limiter, token, tpk_status, verify_state, false);
     }
 
     let emails_requested: Vec<_> = addresses.into_iter()
@@ -205,7 +211,7 @@ pub fn request_verify(
         }
     }
 
-    show_upload_verify(&rate_limiter, token, tpk_status, verify_state)
+    show_upload_verify(&rate_limiter, token, tpk_status, verify_state, false)
 }
 
 fn check_tpk_state(
@@ -270,10 +276,19 @@ fn show_upload_verify(
     token: String,
     tpk_status: TpkStatus,
     verify_state: VerifyTpkState,
+    is_new_key: bool,
 ) -> response::UploadResponse {
     let key_fpr = verify_state.fpr.to_string();
     if tpk_status.is_revoked {
-        return response::UploadResponse::Ok { token, key_fpr, count_unparsed: 0, is_revoked: true, status: HashMap::new() };
+        return response::UploadResponse::Ok {
+            token,
+            key_fpr,
+            count_unparsed: 0,
+            is_revoked: true,
+            status: HashMap::new(),
+            is_new_key: false,
+            primary_uid: None,
+        };
     }
 
     let status: HashMap<_,_> = tpk_status.email_status
@@ -292,8 +307,12 @@ fn show_upload_verify(
             }
         })
         .collect();
+    let primary_uid = tpk_status.email_status
+        .get(0)
+        .map(|(email, _)| email)
+        .cloned();
 
     let count_unparsed = tpk_status.unparsed_uids;
 
-    response::UploadResponse::Ok { token, key_fpr, count_unparsed, is_revoked: false, status }
+    response::UploadResponse::Ok { token, key_fpr, count_unparsed, is_revoked: false, status, is_new_key, primary_uid }
 }

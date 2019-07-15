@@ -120,7 +120,7 @@ impl MyResponse {
 
     fn upload_response(response: UploadResponse) -> Self {
         match response {
-            UploadResponse::Ok { token, key_fpr, is_revoked, count_unparsed, status } =>
+            UploadResponse::Ok { token, key_fpr, is_revoked, count_unparsed, status, .. } =>
                 Self::upload_ok(token, key_fpr, is_revoked, count_unparsed, status),
             UploadResponse::OkMulti { key_fprs } =>
                 Self::upload_ok_multi(key_fprs),

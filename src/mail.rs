@@ -28,6 +28,14 @@ mod context {
         pub base_uri: String,
         pub domain: String,
     }
+
+    #[derive(Serialize, Clone)]
+    pub struct Welcome {
+        pub primary_fp: String,
+        pub uri: String,
+        pub base_uri: String,
+        pub domain: String,
+    }
 }
 
 pub struct Service {
@@ -103,6 +111,24 @@ impl Service {
             &[recipient],
             &format!("Manage your key on {}", self.domain),
             "manage",
+            ctx,
+        )
+    }
+
+    pub fn send_welcome(&self, base_uri: &str, tpk_name: String, userid: &Email,
+                             token: &str)
+                             -> Result<()> {
+        let ctx = context::Welcome {
+            primary_fp: tpk_name,
+            uri: format!("{}/upload/{}", base_uri, token),
+            base_uri: base_uri.to_owned(),
+            domain: self.domain.clone(),
+        };
+
+        self.send(
+            &vec![userid],
+            &format!("Your key upload on {}", self.domain),
+            "welcome",
             ctx,
         )
     }

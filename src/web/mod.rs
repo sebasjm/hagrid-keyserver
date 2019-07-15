@@ -455,12 +455,16 @@ fn configure_mail_service(config: &Config) -> Result<mail::Service> {
     let verify_txt = template_dir.join("email/publish-txt.hbs");
     let manage_html = template_dir.join("email/manage-html.hbs");
     let manage_txt = template_dir.join("email/manage-txt.hbs");
+    let welcome_html = template_dir.join("email/welcome-html.hbs");
+    let welcome_txt = template_dir.join("email/welcome-txt.hbs");
 
     let mut handlebars = Handlebars::new();
     handlebars.register_template_file("verify-html", verify_html)?;
     handlebars.register_template_file("verify-txt", verify_txt)?;
     handlebars.register_template_file("manage-html", manage_html)?;
     handlebars.register_template_file("manage-txt", manage_txt)?;
+    handlebars.register_template_file("welcome-html", welcome_html)?;
+    handlebars.register_template_file("welcome-txt", welcome_txt)?;
 
     let filemail_into = config.get_str("filemail_into")
         .ok().map(|p| PathBuf::from(p));

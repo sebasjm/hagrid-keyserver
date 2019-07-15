@@ -14,7 +14,9 @@ use rate_limiter::RateLimiter;
 use tokens;
 
 use web;
+use mail;
 use web::{HagridState, RequestOrigin, MyResponse, vks_web};
+use web::vks::response::UploadResponse;
 
 #[derive(Debug)]
 pub enum Hkp {
@@ -128,15 +130,38 @@ pub fn pks_add_form(
     db: rocket::State<KeyDatabase>,
     tokens_stateless: rocket::State<tokens::Service>,
     rate_limiter: rocket::State<RateLimiter>,
-    cont_type: &ContentType,
+    mail_service: rocket::State<mail::Service>,
     data: Data,
 ) -> MyResponse {
-    match vks_web::process_post_form_data(db, tokens_stateless, rate_limiter, cont_type, data) {
+    match vks_web::process_post_form(db, tokens_stateless, rate_limiter, data) {
+        Ok(UploadResponse::Ok { is_new_key, key_fpr, primary_uid, token, .. }) => {
+            let msg = if is_new_key && send_welcome_mail(&request_origin, &mail_service, key_fpr, primary_uid, token) {
+                "Upload successful. This is a new key, a welcome mail has been sent!".to_owned()
+            } else {
+                format!("Upload successful. Note that identity information will only be published after verification! see {}/about/usage#gnupg-upload", request_origin.get_base_uri())
+            };
+            MyResponse::plain(msg)
+        }
         Ok(_) => {
-            let msg = format!("Upload successful. Note that identity information will only be published with verification! see {}/about/usage#gnupg-upload", request_origin.get_base_uri());
+            let msg = format!("Upload successful. Note that identity information will only be published after verification! see {}/about/usage#gnupg-upload", request_origin.get_base_uri());
             MyResponse::plain(msg)
         }
         Err(err) => MyResponse::ise(err),
+    }
+}
+
+fn send_welcome_mail(
+    request_origin: &RequestOrigin,
+    mail_service: &mail::Service,
+    fpr: String,
+    primary_uid: Option<Email>,
+    token: String,
+) -> bool {
+    if let Some(primary_uid) = primary_uid {
+        mail_service.send_welcome(
+            request_origin.get_base_uri(), fpr, &primary_uid, &token).is_ok()
+    } else {
+        false
     }
 }
 
@@ -307,9 +332,9 @@ mod tests {
         let body = response.body_string().unwrap();
         eprintln!("response: {}", body);
 
-        // Check that we do not get a confirmation mail.
-        let confirm_mail = pop_mail(filemail_into.as_path()).unwrap();
-        assert!(confirm_mail.is_none());
+        // Check that we get a welcome mail
+        let welcome_mail = pop_mail(filemail_into.as_path()).unwrap();
+        assert!(welcome_mail.is_some());
 
         // We should not be able to look it up by email address.
         check_null_responses_by_email(&client, "foo@invalid.example.com");
@@ -320,6 +345,16 @@ mod tests {
 
         // And check that we can see the human-readable result page.
         check_hr_responses_by_fingerprint(&client, &tpk, 0);
+
+        // Upload the same key again, make sure the welcome mail is not sent again
+        let mut response = client.post("/pks/add")
+            .body(post_data.as_bytes())
+            .header(ContentType::Form)
+            .dispatch();
+        assert_eq!(response.status(), Status::Ok);
+
+        let welcome_mail = pop_mail(filemail_into.as_path()).unwrap();
+        assert!(welcome_mail.is_none());
 
         assert_consistency(client.rocket());
     }
@@ -357,8 +392,11 @@ mod tests {
             .header(ContentType::Form)
             .dispatch();
         assert_eq!(response.status(), Status::Ok);
-        let confirm_mail = pop_mail(filemail_into.as_path()).unwrap();
-        assert!(confirm_mail.is_none());
+
+        // Check that there is no welcome mail (since we uploaded two)
+        let welcome_mail = pop_mail(filemail_into.as_path()).unwrap();
+        assert!(welcome_mail.is_none());
+
         check_mr_responses_by_fingerprint(&client, &tpk_0, 0);
         check_mr_responses_by_fingerprint(&client, &tpk_1, 0);
         check_hr_responses_by_fingerprint(&client, &tpk_0, 0);
