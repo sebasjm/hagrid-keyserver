@@ -20,8 +20,10 @@ extern crate rocket_contrib;
 
 extern crate sequoia_openpgp;
 extern crate handlebars;
+extern crate lazy_static;
 extern crate lettre;
 extern crate lettre_email;
+extern crate rocket_prometheus;
 extern crate tempfile;
 extern crate uuid;
 
@@ -32,11 +34,13 @@ extern crate ring;
 
 extern crate hagrid_database as database;
 mod mail;
+mod anonymize_utils;
 mod web;
 mod tokens;
 mod sealed_state;
 mod rate_limiter;
 mod dump;
+mod counters;
 
 fn main() {
     if let Err(e) = web::serve() {

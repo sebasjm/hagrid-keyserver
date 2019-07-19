@@ -3,6 +3,7 @@ use failure::Fallible as Result;
 use database::{Database, KeyDatabase, StatefulTokens, EmailAddressStatus, TpkStatus, ImportResult};
 use database::types::{Fingerprint,Email};
 use mail;
+use counters;
 use tokens::{self, StatelessSerializable};
 use rate_limiter::RateLimiter;
 use web::RequestOrigin;
@@ -111,6 +112,7 @@ pub fn process_key(
         tpks.push(match tpk {
             Ok(t) => {
                 if t.is_tsk() {
+                    counters::KEY_UPLOAD_SECRET.inc();
                     return UploadResponse::err("Whoops, please don't upload secret keys!");
                 }
                 t
@@ -126,6 +128,17 @@ pub fn process_key(
     }
 }
 
+fn log_db_merge(import_result: Result<ImportResult>) -> Result<ImportResult> {
+    match import_result {
+        Ok(ImportResult::New(_)) => counters::KEY_UPLOAD_NEW.inc(),
+        Ok(ImportResult::Updated(_)) => counters::KEY_UPLOAD_UPDATED.inc(),
+        Ok(ImportResult::Unchanged(_)) => counters::KEY_UPLOAD_UNCHANGED.inc(),
+        Err(_) => counters::KEY_UPLOAD_ERROR.inc(),
+    };
+
+    import_result
+}
+
 fn process_key_multiple(
     db: &KeyDatabase,
     tpks: Vec<TPK>,
@@ -134,7 +147,7 @@ fn process_key_multiple(
         .into_iter()
         .flat_map(|tpk| Fingerprint::try_from(tpk.fingerprint())
                 .map(|fpr| (fpr, tpk)))
-        .flat_map(|(fpr, tpk)| db.merge(tpk).map(|_| fpr.to_string()))
+        .flat_map(|(fpr, tpk)| log_db_merge(db.merge(tpk)).map(|_| fpr.to_string()))
         .collect();
 
     response::UploadResponse::OkMulti { key_fprs }
@@ -148,7 +161,7 @@ fn process_key_single(
 ) -> response::UploadResponse {
     let fp = Fingerprint::try_from(tpk.fingerprint()).unwrap();
 
-    let (tpk_status, is_new_key) = match db.merge(tpk) {
+    let (tpk_status, is_new_key) = match log_db_merge(db.merge(tpk)) {
         Ok(ImportResult::New(tpk_status)) => (tpk_status, true),
         Ok(ImportResult::Updated(tpk_status)) => (tpk_status, false),
         Ok(ImportResult::Unchanged(tpk_status)) => (tpk_status, false),
@@ -266,7 +279,9 @@ fn check_publish_token(
 ) -> Result<(Fingerprint,Email)> {
     let payload = token_service.pop_token("verify", &token)?;
     let (fingerprint, email) = serde_json::from_str(&payload)?;
+
     db.set_email_published(&fingerprint, &email)?;
+    counters::KEY_ADDRESS_PUBLISHED.inc_email(&email);
 
     Ok((fingerprint, email))
 }

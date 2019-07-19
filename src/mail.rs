@@ -7,6 +7,7 @@ use lettre_email::{Mailbox,EmailBuilder};
 use url;
 use serde::Serialize;
 use uuid::Uuid;
+use counters;
 
 use database::types::Email;
 use Result;
@@ -90,6 +91,8 @@ impl Service {
             domain: self.domain.clone(),
         };
 
+        counters::MAIL_SEND_VERIFY.inc_email(userid);
+
         self.send(
             &vec![userid],
             &format!("Verify {} for your key on {}", userid, self.domain),
@@ -106,6 +109,8 @@ impl Service {
             base_uri: base_uri.to_owned(),
             domain: self.domain.clone(),
         };
+
+        counters::MAIL_SEND_MANAGE.inc_email(recipient);
 
         self.send(
             &[recipient],
@@ -124,6 +129,8 @@ impl Service {
             base_uri: base_uri.to_owned(),
             domain: self.domain.clone(),
         };
+
+        counters::MAIL_SEND_WELCOME.inc_email(userid);
 
         self.send(
             &vec![userid],

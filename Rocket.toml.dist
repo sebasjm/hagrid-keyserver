@@ -16,6 +16,7 @@ token_dir = "state/tokens"
 tmp_dir = "state/tmp"
 mail_rate_limit = 60
 maintenance_file = "state/maintenance"
+enable_prometheus = false
 
 [staging]
 base-URI = "https://keys.openpgp.org"
@@ -31,6 +32,7 @@ token_dir = "tokens"
 tmp_dir = "tmp"
 mail_rate_limit = 60
 maintenance_file = "maintenance"
+enable_prometheus = false
 
 [production]
 base-URI = "https://keys.openpgp.org"
@@ -47,3 +49,4 @@ token_dir = "tokens"
 tmp_dir = "tmp"
 mail_rate_limit = 3600
 maintenance_file = "maintenance"
+enable_prometheus = false

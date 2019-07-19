@@ -8,6 +8,7 @@ use web::{RequestOrigin, MyResponse, templates::General};
 use web::vks_web;
 use database::{Database, KeyDatabase, types::Email, types::Fingerprint};
 use mail;
+use counters;
 use rate_limiter::RateLimiter;
 use tokens::{self, StatelessSerializable};
 
@@ -186,6 +187,9 @@ pub fn vks_manage_unpublish_or_fail(
 ) -> Result<MyResponse> {
     let verify_token = token_service.check::<StatelessVerifyToken>(&request.token)?;
     let email = request.address.parse::<Email>()?;
+
     db.set_email_unpublished(&verify_token.fpr, &email)?;
+    counters::KEY_ADDRESS_UNPUBLISHED.inc_email(&email);
+
     Ok(vks_manage_key(request_origin, db, request.token.to_owned(), token_service))
 }

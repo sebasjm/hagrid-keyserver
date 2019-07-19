@@ -9,6 +9,8 @@ use rocket::http::uri::Uri;
 use rocket_contrib::json::JsonValue;
 use rocket::response::status::Custom;
 
+use rocket_prometheus::PrometheusMetrics;
+
 use serde::Serialize;
 use handlebars::Handlebars;
 
@@ -16,6 +18,7 @@ use std::path::PathBuf;
 
 use mail;
 use tokens;
+use counters;
 use rate_limiter::RateLimiter;
 
 use database::{Database, KeyDatabase, Query};
@@ -332,7 +335,7 @@ pub fn serve() -> Result<()> {
     Err(rocket_factory(rocket::ignite())?.launch().into())
 }
 
-fn rocket_factory(rocket: rocket::Rocket) -> Result<rocket::Rocket> {
+fn rocket_factory(mut rocket: rocket::Rocket) -> Result<rocket::Rocket> {
     let routes = routes![
         // infra
         root,
@@ -389,7 +392,9 @@ fn rocket_factory(rocket: rocket::Rocket) -> Result<rocket::Rocket> {
     let rate_limiter = configure_rate_limiter(rocket.config())?;
     let maintenance_mode = configure_maintenance_mode(rocket.config())?;
 
-    Ok(rocket
+    let prometheus = configure_prometheus(rocket.config());
+
+    rocket = rocket
        .attach(Template::fairing())
        .attach(maintenance_mode)
        .manage(hagrid_state)
@@ -398,8 +403,24 @@ fn rocket_factory(rocket: rocket::Rocket) -> Result<rocket::Rocket> {
        .manage(mail_service)
        .manage(db_service)
        .manage(rate_limiter)
-       .mount("/", routes)
-      )
+       .mount("/", routes);
+
+    if let Some(prometheus) = prometheus {
+        rocket = rocket
+            .attach(prometheus.clone())
+            .mount("/metrics", prometheus);
+    }
+
+    Ok(rocket)
+}
+
+fn configure_prometheus(config: &Config) -> Option<PrometheusMetrics> {
+    if !config.get_bool("enable_prometheus").unwrap_or(false) {
+        return None;
+    }
+    let prometheus = PrometheusMetrics::new();
+    counters::register_counters(&prometheus.registry());
+    return Some(prometheus);
 }
 
 fn configure_db_service(config: &Config) -> Result<KeyDatabase> {
