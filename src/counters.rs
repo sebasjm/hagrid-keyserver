@@ -7,15 +7,15 @@ use database::types::Email;
 
 lazy_static! {
     static ref KEY_UPLOAD: LabelCounter =
-        LabelCounter::new("key_upload", "Uploaded keys", &["result"]);
+        LabelCounter::new("hagrid_key_upload", "Uploaded keys", &["result"]);
 
     static ref MAIL_SENT: LabelCounter =
-        LabelCounter::new("mail_sent", "Sent verification mails", &["type", "domain"]);
+        LabelCounter::new("hagrid_mail_sent", "Sent verification mails", &["type", "domain"]);
 
     static ref KEY_ADDRESS_PUBLISHED: LabelCounter =
-        LabelCounter::new("key_address_published", "Verified email addresses", &["domain"]);
+        LabelCounter::new("hagrid_key_address_published", "Verified email addresses", &["domain"]);
     static ref KEY_ADDRESS_UNPUBLISHED: LabelCounter =
-        LabelCounter::new("key_address_unpublished", "Unpublished email addresses", &["domain"]);
+        LabelCounter::new("hagrid_key_address_unpublished", "Unpublished email addresses", &["domain"]);
 }
 
 pub fn register_counters(registry: &prometheus::Registry) {
