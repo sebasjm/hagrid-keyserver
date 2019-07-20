@@ -91,7 +91,7 @@ impl Service {
             domain: self.domain.clone(),
         };
 
-        counters::MAIL_SEND_VERIFY.inc_email(userid);
+        counters::inc_mail_sent("verify", userid);
 
         self.send(
             &vec![userid],
@@ -110,7 +110,7 @@ impl Service {
             domain: self.domain.clone(),
         };
 
-        counters::MAIL_SEND_MANAGE.inc_email(recipient);
+        counters::inc_mail_sent("manage", recipient);
 
         self.send(
             &[recipient],
@@ -130,7 +130,7 @@ impl Service {
             domain: self.domain.clone(),
         };
 
-        counters::MAIL_SEND_WELCOME.inc_email(userid);
+        counters::inc_mail_sent("welcome", userid);
 
         self.send(
             &vec![userid],

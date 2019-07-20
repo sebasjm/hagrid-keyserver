@@ -112,7 +112,7 @@ pub fn process_key(
         tpks.push(match tpk {
             Ok(t) => {
                 if t.is_tsk() {
-                    counters::KEY_UPLOAD_SECRET.inc();
+                    counters::inc_key_upload("secret");
                     return UploadResponse::err("Whoops, please don't upload secret keys!");
                 }
                 t
@@ -130,10 +130,10 @@ pub fn process_key(
 
 fn log_db_merge(import_result: Result<ImportResult>) -> Result<ImportResult> {
     match import_result {
-        Ok(ImportResult::New(_)) => counters::KEY_UPLOAD_NEW.inc(),
-        Ok(ImportResult::Updated(_)) => counters::KEY_UPLOAD_UPDATED.inc(),
-        Ok(ImportResult::Unchanged(_)) => counters::KEY_UPLOAD_UNCHANGED.inc(),
-        Err(_) => counters::KEY_UPLOAD_ERROR.inc(),
+        Ok(ImportResult::New(_)) => counters::inc_key_upload("new"),
+        Ok(ImportResult::Updated(_)) => counters::inc_key_upload("updated"),
+        Ok(ImportResult::Unchanged(_)) => counters::inc_key_upload("unchanged"),
+        Err(_) => counters::inc_key_upload("error"),
     };
 
     import_result
@@ -281,7 +281,7 @@ fn check_publish_token(
     let (fingerprint, email) = serde_json::from_str(&payload)?;
 
     db.set_email_published(&fingerprint, &email)?;
-    counters::KEY_ADDRESS_PUBLISHED.inc_email(&email);
+    counters::inc_address_published(&email);
 
     Ok((fingerprint, email))
 }

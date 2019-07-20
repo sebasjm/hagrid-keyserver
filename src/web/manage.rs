@@ -189,7 +189,7 @@ pub fn vks_manage_unpublish_or_fail(
     let email = request.address.parse::<Email>()?;
 
     db.set_email_unpublished(&verify_token.fpr, &email)?;
-    counters::KEY_ADDRESS_UNPUBLISHED.inc_email(&email);
+    counters::inc_address_unpublished(&email);
 
     Ok(vks_manage_key(request_origin, db, request.token.to_owned(), token_service))
 }
