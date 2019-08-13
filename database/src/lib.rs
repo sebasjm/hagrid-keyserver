@@ -5,6 +5,8 @@ use std::convert::TryFrom;
 use std::path::PathBuf;
 use std::str::FromStr;
 
+use chrono::prelude::Utc;
+
 extern crate failure;
 use failure::Error;
 use failure::Fallible as Result;
@@ -20,6 +22,7 @@ extern crate time;
 extern crate url;
 extern crate hex;
 extern crate walkdir;
+extern crate chrono;
 
 use tempfile::NamedTempFile;
 
@@ -214,9 +217,11 @@ pub trait Database: Sync + Send {
             return Err(failure::err_msg("Not a well-formed key!"));
         }
 
-        let published_uids: Vec<UserID> = self
+        let published_tpk_old = self
             .by_fpr(&fpr_primary)
-            .and_then(|bytes| TPK::from_bytes(bytes.as_ref()).ok())
+            .and_then(|bytes| TPK::from_bytes(bytes.as_ref()).ok());
+        let published_uids: Vec<UserID> = published_tpk_old
+            .as_ref()
             .map(|tpk| tpk.userids()
                  .map(|binding| binding.userid().clone())
                  .collect()
@@ -308,6 +313,13 @@ pub trait Database: Sync + Send {
         self.move_tmp_to_full(full_tpk_tmp, &fpr_primary)?;
         self.move_tmp_to_published(published_tpk_tmp, &fpr_primary)?;
 
+        let published_tpk_changed = published_tpk_old
+            .map(|tpk| tpk != published_tpk_clean)
+            .unwrap_or(true);
+        if published_tpk_changed {
+            self.update_write_log(&fpr_primary);
+        }
+
         for fpr in fpr_not_linked {
             if let Err(e) = self.link_fpr(&fpr, &fpr_primary) {
                 info!("Error ensuring symlink! {} {} {:?}",
@@ -327,6 +339,18 @@ pub trait Database: Sync + Send {
         } else {
             Ok(ImportResult::New(TpkStatus { is_revoked, email_status, unparsed_uids }))
         }
+    }
+
+    fn update_write_log(&self, fpr_primary: &Fingerprint) {
+        let log_name = self.get_current_log_filename();
+        println!("{}", log_name);
+        if let Err(e) = self.write_log_append(&log_name, fpr_primary) {
+            error!("Error writing to log! {} {} {}", &log_name, &fpr_primary, e);
+        }
+    }
+
+    fn get_current_log_filename(&self) -> String {
+        Utc::now().format("%Y-%m-%d").to_string()
     }
 
     fn get_tpk_status(&self, fpr_primary: &Fingerprint, known_addresses: &[Email]) -> Result<TpkStatus> {
@@ -433,6 +457,7 @@ pub trait Database: Sync + Send {
         let published_tpk_tmp = self.write_to_temp(&tpk_to_string(&published_tpk_clean)?)?;
 
         self.move_tmp_to_published(published_tpk_tmp, &fpr_primary)?;
+        self.update_write_log(&fpr_primary);
 
         if let Err(e) = self.link_email(&email_new, &fpr_primary) {
             info!("Error ensuring email symlink! {} -> {} {:?}",
@@ -516,6 +541,7 @@ pub trait Database: Sync + Send {
         let published_tpk_tmp = self.write_to_temp(&tpk_to_string(&published_tpk_clean)?)?;
 
         self.move_tmp_to_published(published_tpk_tmp, &fpr_primary)?;
+        self.update_write_log(&fpr_primary);
 
         for unpublished_email in unpublished_emails {
             if let Err(e) = self.unlink_email(&unpublished_email, &fpr_primary) {
@@ -600,6 +626,7 @@ pub trait Database: Sync + Send {
     fn move_tmp_to_full(&self, content: NamedTempFile, fpr: &Fingerprint) -> Result<()>;
     fn move_tmp_to_published(&self, content: NamedTempFile, fpr: &Fingerprint) -> Result<()>;
     fn write_to_quarantine(&self, fpr: &Fingerprint, content: &[u8]) -> Result<()>;
+    fn write_log_append(&self, filename: &str, fpr_primary: &Fingerprint) -> Result<()>;
 
     fn check_consistency(&self) -> Result<()>;
 }
