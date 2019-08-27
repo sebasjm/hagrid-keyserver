@@ -11,6 +11,8 @@ use rocket::response::status::Custom;
 
 use rocket_prometheus::PrometheusMetrics;
 
+use gettext_macros::{compile_i18n, include_i18n, init_i18n};
+
 use serde::Serialize;
 use handlebars::Handlebars;
 
@@ -335,6 +337,8 @@ pub fn serve() -> Result<()> {
     Err(rocket_factory(rocket::ignite())?.launch().into())
 }
 
+init_i18n!("hagrid", en, de);
+
 fn rocket_factory(mut rocket: rocket::Rocket) -> Result<rocket::Rocket> {
     let routes = routes![
         // infra
@@ -398,6 +402,7 @@ fn rocket_factory(mut rocket: rocket::Rocket) -> Result<rocket::Rocket> {
     rocket = rocket
        .attach(Template::fairing())
        .attach(maintenance_mode)
+       .manage(include_i18n!())
        .manage(hagrid_state)
        .manage(stateless_token_service)
        .manage(stateful_token_service)
@@ -414,6 +419,8 @@ fn rocket_factory(mut rocket: rocket::Rocket) -> Result<rocket::Rocket> {
 
     Ok(rocket)
 }
+
+compile_i18n!();
 
 fn configure_prometheus(config: &Config) -> Option<PrometheusMetrics> {
     if !config.get_bool("enable_prometheus").unwrap_or(false) {

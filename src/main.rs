@@ -27,6 +27,10 @@ extern crate rocket_prometheus;
 extern crate tempfile;
 extern crate uuid;
 
+extern crate gettext;
+extern crate gettext_macros;
+extern crate rocket_i18n;
+
 #[cfg(test)]
 extern crate regex;
 
@@ -51,6 +55,7 @@ fn main() {
             cause = c;
         }
         eprintln!();
+
         ::std::process::exit(2);
     }
 }
