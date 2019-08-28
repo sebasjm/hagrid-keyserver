@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use failure;
 use handlebars::Handlebars;
@@ -11,6 +11,8 @@ use crate::counters;
 
 use crate::database::types::Email;
 use crate::Result;
+
+use rocket_i18n::I18n;
 
 mod context {
     #[derive(Serialize, Clone)]
@@ -53,36 +55,33 @@ enum Transport {
 
 impl Service {
     /// Sends mail via sendmail.
-    pub fn sendmail(from: String, base_uri: String, templates: Handlebars)
-                    -> Result<Self> {
-        Self::new(from, base_uri, templates, Transport::Sendmail)
+    pub fn sendmail(from: String, base_uri: String, template_dir: PathBuf) -> Result<Self> {
+        Self::new(from, base_uri, template_dir, Transport::Sendmail)
     }
 
     /// Sends mail by storing it in the given directory.
-    pub fn filemail(from: String, base_uri: String, templates: Handlebars,
-                    path: PathBuf)
-                    -> Result<Self> {
-        Self::new(from, base_uri, templates, Transport::Filemail(path))
+    pub fn filemail(from: String, base_uri: String, template_dir: PathBuf, path: PathBuf) -> Result<Self> {
+        Self::new(from, base_uri, template_dir, Transport::Filemail(path))
     }
 
-    fn new(from: String, base_uri: String, templates: Handlebars,
-           transport: Transport)
+    fn new(from: String, base_uri: String, template_dir: PathBuf, transport: Transport)
            -> Result<Self> {
+        let templates = load_handlebars(template_dir)?;
         let domain =
             url::Url::parse(&base_uri)
             ?.host_str().ok_or_else(|| failure::err_msg("No host in base-URI"))
             ?.to_string();
-        Ok(Self {
-            from: from.parse().unwrap(),
-            domain: domain,
-            templates: templates,
-            transport: transport,
-        })
+        Ok(Self { from: from.parse().unwrap(), domain, templates, transport })
     }
 
-    pub fn send_verification(&self, base_uri: &str, tpk_name: String, userid: &Email,
-                             token: &str)
-                             -> Result<()> {
+    pub fn send_verification(
+        &self,
+        i18n: &I18n,
+        base_uri: &str,
+        tpk_name: String,
+        userid: &Email,
+        token: &str
+    ) -> Result<()> {
         let ctx = context::Verification {
             primary_fp: tpk_name,
             uri: format!("{}/verify/{}", base_uri, token),
@@ -95,14 +94,22 @@ impl Service {
 
         self.send(
             &vec![userid],
+            // i18n!(i18n.catalog, "Verify {} for your key on {}"; userid, self.domain),
             &format!("Verify {} for your key on {}", userid, self.domain),
             "verify",
+            i18n.lang,
             ctx,
         )
     }
 
-    pub fn send_manage_token(&self, base_uri: &str, tpk_name: String, recipient: &Email,
-                             link_path: &str) -> Result<()> {
+    pub fn send_manage_token(
+        &self,
+        i18n: &I18n,
+        base_uri: &str,
+        tpk_name: String,
+        recipient: &Email,
+        link_path: &str,
+    ) -> Result<()> {
         let ctx = context::Manage {
             primary_fp: tpk_name,
             uri: format!("{}{}", base_uri, link_path),
@@ -114,15 +121,22 @@ impl Service {
 
         self.send(
             &[recipient],
+            // i18n!(i18n.catalog, "Manage your key on {}"; self.domain),
             &format!("Manage your key on {}", self.domain),
             "manage",
+            i18n.lang,
             ctx,
         )
     }
 
-    pub fn send_welcome(&self, base_uri: &str, tpk_name: String, userid: &Email,
-                             token: &str)
-                             -> Result<()> {
+    pub fn send_welcome(
+        &self,
+        i18n: &I18n,
+        base_uri: &str,
+        tpk_name: String,
+        userid: &Email,
+        token: &str
+    ) -> Result<()> {
         let ctx = context::Welcome {
             primary_fp: tpk_name,
             uri: format!("{}/upload/{}", base_uri, token),
@@ -134,43 +148,46 @@ impl Service {
 
         self.send(
             &vec![userid],
+            // i18n!(i18n.catalog, "Your key upload on {}"; self.domain),
             &format!("Your key upload on {}", self.domain),
             "welcome",
+            i18n.lang,
             ctx,
         )
     }
 
-    fn send<T>(&self, to: &[&Email], subject: &str, template: &str, ctx: T)
-               -> Result<()>
-        where T: Serialize + Clone,
-    {
-        let tmpl_html = format!("{}-html", template);
-        let tmpl_txt = format!("{}-txt", template);
-        let (html, txt) = {
-            if let (Ok(inner_html), Ok(inner_txt)) = (
-                self.templates.render(&tmpl_html, &ctx),
-                self.templates.render(&tmpl_txt, &ctx),
-            ) {
-                (Some(inner_html), Some(inner_txt))
-            } else {
-                (None, None)
-            }
-        };
+    fn render_template(&self, template: &str, locale: &str, ctx: impl Serialize + Clone) -> Result<(String, String)> {
+        let html = self.templates.render(&format!("{}/{}.htm", locale, template), &ctx)
+            .or_else(|_| self.templates.render(&format!("{}.htm", template), &ctx))
+            .map_err(|_| failure::err_msg("Email template failed to render"))?;
+        let txt = self.templates.render(&format!("{}/{}.txt", locale, template), &ctx)
+            .or_else(|_| self.templates.render(&format!("{}.txt", template), &ctx))
+            .map_err(|_| failure::err_msg("Email template failed to render"))?;
+
+        Ok((html, txt))
+    }
+
+    fn send(
+        &self,
+        to: &[&Email],
+        subject: &str,
+        template: &str,
+        locale: &str,
+        ctx: impl Serialize + Clone
+    ) -> Result<()> {
+        let (html, txt) = self.render_template(template, locale, ctx)?;
 
         if cfg!(debug_assertions) {
             for recipient in to.iter() {
                 println!("To: {}", recipient.to_string());
             }
-            println!("{}", txt.as_ref().unwrap().to_string());
+            println!("{}", &txt);
         }
 
         let email = EmailBuilder::new()
             .from(self.from.clone())
             .subject(subject)
-            .alternative(
-                html.ok_or(failure::err_msg("Email template failed to render"))?,
-                txt.ok_or(failure::err_msg("Email template failed to render"))?,
-            )
+            .alternative(html, txt)
             .message_id(format!("<{}@{}>", Uuid::new_v4(), self.domain));
 
         let email = to.iter().fold(email, |email, to| email.to(to.to_string()));
@@ -191,3 +208,32 @@ impl Service {
         Ok(())
     }
 }
+
+fn load_handlebars(template_dir: PathBuf) -> Result<Handlebars> {
+    let mut handlebars = Handlebars::new();
+
+    let mut glob_path = template_dir.join("**").join("*");
+    glob_path.set_extension("hbs");
+    let glob_path = glob_path.to_str().expect("valid glob path string");
+
+    for path in glob::glob(glob_path).unwrap().flatten() {
+        let template_name = remove_extension(path.strip_prefix(&template_dir)?);
+        handlebars.register_template_file(&template_name.to_string_lossy(), &path)?;
+    }
+
+    Ok(handlebars)
+}
+
+fn remove_extension<P: AsRef<Path>>(path: P) -> PathBuf {
+    let path = path.as_ref();
+    let stem = match path.file_stem() {
+        Some(stem) => stem,
+        None => return path.to_path_buf()
+    };
+
+    match path.parent() {
+        Some(parent) => parent.join(stem),
+        None => PathBuf::from(stem)
+    }
+}
+

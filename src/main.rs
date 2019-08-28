@@ -26,10 +26,12 @@ extern crate lettre_email;
 extern crate rocket_prometheus;
 extern crate tempfile;
 extern crate uuid;
+extern crate glob;
 
 extern crate gettext;
 extern crate gettext_macros;
 extern crate rocket_i18n;
+extern crate runtime_fmt;
 
 #[cfg(test)]
 extern crate regex;
@@ -37,14 +39,19 @@ extern crate regex;
 extern crate ring;
 
 extern crate hagrid_database as database;
+
+use gettext_macros::init_i18n;
+
+init_i18n!("hagrid", en, de);
+
 mod mail;
 mod anonymize_utils;
-mod web;
 mod tokens;
 mod sealed_state;
 mod rate_limiter;
 mod dump;
 mod counters;
+mod web;
 
 fn main() {
     if let Err(e) = web::serve() {

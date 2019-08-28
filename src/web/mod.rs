@@ -11,10 +11,9 @@ use rocket::response::status::Custom;
 
 use rocket_prometheus::PrometheusMetrics;
 
-use gettext_macros::{compile_i18n, include_i18n, init_i18n};
+use gettext_macros::{compile_i18n, include_i18n};
 
 use serde::Serialize;
-use handlebars::Handlebars;
 
 use std::path::PathBuf;
 
@@ -337,7 +336,7 @@ pub fn serve() -> Result<()> {
     Err(rocket_factory(rocket::ignite())?.launch().into())
 }
 
-init_i18n!("hagrid", en, de);
+compile_i18n!();
 
 fn rocket_factory(mut rocket: rocket::Rocket) -> Result<rocket::Rocket> {
     let routes = routes![
@@ -420,8 +419,6 @@ fn rocket_factory(mut rocket: rocket::Rocket) -> Result<rocket::Rocket> {
     Ok(rocket)
 }
 
-compile_i18n!();
-
 fn configure_prometheus(config: &Config) -> Option<PrometheusMetrics> {
     if !config.get_bool("enable_prometheus").unwrap_or(false) {
         return None;
@@ -477,31 +474,18 @@ fn configure_stateless_token_service(config: &Config) -> Result<tokens::Service>
 
 fn configure_mail_service(config: &Config) -> Result<mail::Service> {
     // Mail service
-    let template_dir: PathBuf = config.get_str("template_dir")?.into();
+    let email_template_dir: PathBuf = config.get_str("email_template_dir")?.into();
+
     let base_uri = config.get_str("base-URI")?.to_string();
     let from = config.get_str("from")?.to_string();
-    let verify_html = template_dir.join("email/publish-html.hbs");
-    let verify_txt = template_dir.join("email/publish-txt.hbs");
-    let manage_html = template_dir.join("email/manage-html.hbs");
-    let manage_txt = template_dir.join("email/manage-txt.hbs");
-    let welcome_html = template_dir.join("email/welcome-html.hbs");
-    let welcome_txt = template_dir.join("email/welcome-txt.hbs");
-
-    let mut handlebars = Handlebars::new();
-    handlebars.register_template_file("verify-html", verify_html)?;
-    handlebars.register_template_file("verify-txt", verify_txt)?;
-    handlebars.register_template_file("manage-html", manage_html)?;
-    handlebars.register_template_file("manage-txt", manage_txt)?;
-    handlebars.register_template_file("welcome-html", welcome_html)?;
-    handlebars.register_template_file("welcome-txt", welcome_txt)?;
 
     let filemail_into = config.get_str("filemail_into")
         .ok().map(|p| PathBuf::from(p));
 
     if let Some(path) = filemail_into {
-        mail::Service::filemail(from, base_uri, handlebars, path)
+        mail::Service::filemail(from, base_uri, email_template_dir, path)
     } else {
-        mail::Service::sendmail(from, base_uri, handlebars)
+        mail::Service::sendmail(from, base_uri, email_template_dir)
     }
 }
 
@@ -573,6 +557,9 @@ pub mod tests {
             .root(root.path().to_path_buf())
             .extra("template_dir",
                    ::std::env::current_dir().unwrap().join("dist/templates")
+                   .to_str().unwrap())
+            .extra("email_template_dir",
+                   ::std::env::current_dir().unwrap().join("dist/email-templates")
                    .to_str().unwrap())
             .extra("assets_dir",
                    ::std::env::current_dir().unwrap().join("dist/assets")
@@ -714,7 +701,7 @@ pub mod tests {
         check_hr_responses_by_fingerprint(&client, &tpk, 0);
 
         // Check the verification link
-        check_verify_link(&client, &token, "foo@invalid.example.com");
+        check_verify_link(&client, &token, "foo@invalid.example.com", "");
 
         // Now check for the verification mail.
         check_mails_and_verify_email(&client, filemail_into.as_path());
@@ -742,6 +729,25 @@ pub mod tests {
         check_hr_responses_by_fingerprint(&client, &tpk, 0);
 
         assert_consistency(client.rocket());
+    }
+
+    #[test]
+    fn upload_verify_lang() {
+        let (tmpdir, client) = client().unwrap();
+        let filemail_into = tmpdir.path().join("filemail");
+
+        // Generate a key and upload it.
+        let (tpk, _) = TPKBuilder::autocrypt(
+            None, Some("foo@invalid.example.com"))
+            .generate().unwrap();
+
+        let mut tpk_serialized = Vec::new();
+        tpk.serialize(&mut tpk_serialized).unwrap();
+        let token = vks_publish_submit_get_token(&client, &tpk_serialized);
+
+        check_verify_link(&client, &token, "foo@invalid.example.com", "de, en");
+        let mail_content = pop_mail(&filemail_into).unwrap().unwrap();
+        assert!(mail_content.contains("dies ist eine automatische Nachricht"))
     }
 
     #[test]
@@ -818,7 +824,7 @@ pub mod tests {
         check_hr_responses_by_fingerprint(&client, &tpk_2, 0);
 
         // Check the verification link
-        check_verify_link(&client, &token_1, "foo@invalid.example.com");
+        check_verify_link(&client, &token_1, "foo@invalid.example.com", "");
         check_verify_link_json(&client, &token_2, "bar@invalid.example.com");
 
         // Now check for the verification mails.
@@ -1075,7 +1081,7 @@ pub mod tests {
             &tpk, nr_uids);
     }
 
-    fn check_verify_link(client: &Client, token: &str, address: &str) {
+    fn check_verify_link(client: &Client, token: &str, address: &str, lang: &'static str) {
         let encoded = ::url::form_urlencoded::Serializer::new(String::new())
             .append_pair("token", token)
             .append_pair("address", address)
@@ -1083,6 +1089,7 @@ pub mod tests {
 
         let response = client.post("/upload/request-verify")
             .header(ContentType::Form)
+            .header(Header::new("Accept-Language", lang))
             .body(encoded.as_bytes())
             .dispatch();
         assert_eq!(response.status(), Status::Ok);

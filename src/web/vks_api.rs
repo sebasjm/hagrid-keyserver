@@ -2,6 +2,8 @@ use rocket_contrib::json::{Json,JsonValue,JsonError};
 use rocket::request::Request;
 use rocket::response::{self, Response, Responder};
 use rocket::http::{ContentType,Status};
+use rocket::State;
+use rocket_i18n::{I18n, Translations};
 use std::io::Cursor;
 
 use crate::database::{KeyDatabase, StatefulTokens, Query};
@@ -23,6 +25,7 @@ pub mod json {
     pub struct VerifyRequest {
         pub token: String,
         pub addresses: Vec<String>,
+        pub locale: Option<Vec<String>>,
     }
 
     #[derive(Deserialize)]
@@ -93,9 +96,24 @@ pub fn upload_fallback(
     JsonErrorResponse(Status::BadRequest, error_msg)
 }
 
+fn get_locale(
+    langs: State<Translations>,
+    locales: Vec<String>,
+) -> I18n {
+    locales
+        .iter()
+        .flat_map(|lang| lang.split(|c| c == '-' || c == ';' || c == '_').next())
+        .flat_map(|lang| langs.iter().find(|(trans, _)| trans == &lang))
+        .next()
+        .or_else(|| langs.iter().find(|(trans, _)| trans == &"en"))
+        .map(|(lang, catalog)| I18n { catalog: catalog.clone(), lang })
+        .expect("Expected to have an english translation!")
+}
+
 #[post("/vks/v1/request-verify", format = "json", data="<data>")]
 pub fn request_verify_json(
     db: rocket::State<KeyDatabase>,
+    langs: State<Translations>,
     request_origin: RequestOrigin,
     token_stateful: rocket::State<StatefulTokens>,
     token_stateless: rocket::State<tokens::Service>,
@@ -104,10 +122,11 @@ pub fn request_verify_json(
     data: Result<Json<json::VerifyRequest>, JsonError>,
 ) -> JsonResult {
     let data = json_or_error(data)?;
-    let json::VerifyRequest { token, addresses } = data.into_inner();
+    let json::VerifyRequest { token, addresses, locale } = data.into_inner();
+    let i18n = get_locale(langs, locale.unwrap_or_default());
     let result = vks::request_verify(
         db, request_origin, token_stateful, token_stateless, mail_service,
-        rate_limiter, token, addresses);
+        rate_limiter, i18n, token, addresses);
     upload_ok_json(result)
 }
 

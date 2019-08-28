@@ -17,6 +17,7 @@ tmp_dir = "state/tmp"
 mail_rate_limit = 60
 maintenance_file = "state/maintenance"
 enable_prometheus = false
+email_template_dir = "dist/email-templates"
 
 [staging]
 base-URI = "https://keys.openpgp.org"
@@ -33,6 +34,7 @@ tmp_dir = "tmp"
 mail_rate_limit = 60
 maintenance_file = "maintenance"
 enable_prometheus = false
+email_template_dir = "email-templates"
 
 [production]
 base-URI = "https://keys.openpgp.org"
@@ -50,3 +52,4 @@ tmp_dir = "tmp"
 mail_rate_limit = 3600
 maintenance_file = "maintenance"
 enable_prometheus = false
+email_template_dir = "email-templates"

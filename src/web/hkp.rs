@@ -5,6 +5,7 @@ use rocket::Outcome;
 use rocket::http::{ContentType, Status};
 use rocket::request::{self, Request, FromRequest};
 use rocket::http::uri::Uri;
+use rocket_i18n::I18n;
 
 use crate::database::{Database, Query, KeyDatabase};
 use crate::database::types::{Email, Fingerprint, KeyID};
@@ -131,11 +132,12 @@ pub fn pks_add_form(
     tokens_stateless: rocket::State<tokens::Service>,
     rate_limiter: rocket::State<RateLimiter>,
     mail_service: rocket::State<mail::Service>,
+    i18n: I18n,
     data: Data,
 ) -> MyResponse {
     match vks_web::process_post_form(db, tokens_stateless, rate_limiter, data) {
         Ok(UploadResponse::Ok { is_new_key, key_fpr, primary_uid, token, .. }) => {
-            let msg = if is_new_key && send_welcome_mail(&request_origin, &mail_service, key_fpr, primary_uid, token) {
+            let msg = if is_new_key && send_welcome_mail(&request_origin, &mail_service, &i18n, key_fpr, primary_uid, token) {
                 "Upload successful. This is a new key, a welcome mail has been sent!".to_owned()
             } else {
                 format!("Upload successful. Note that identity information will only be published after verification! see {}/about/usage#gnupg-upload", request_origin.get_base_uri())
@@ -153,13 +155,14 @@ pub fn pks_add_form(
 fn send_welcome_mail(
     request_origin: &RequestOrigin,
     mail_service: &mail::Service,
+    i18n: &I18n,
     fpr: String,
     primary_uid: Option<Email>,
     token: String,
 ) -> bool {
     if let Some(primary_uid) = primary_uid {
         mail_service.send_welcome(
-            request_origin.get_base_uri(), fpr, &primary_uid, &token).is_ok()
+            i18n, request_origin.get_base_uri(), fpr, &primary_uid, &token).is_ok()
     } else {
         false
     }

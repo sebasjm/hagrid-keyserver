@@ -1,6 +1,7 @@
 use rocket;
 use rocket::State;
 use rocket::request::Form;
+use rocket_i18n::I18n;
 
 use failure::Fallible as Result;
 
@@ -116,6 +117,7 @@ pub fn vks_manage_post(
     request_origin: RequestOrigin,
     mail_service: rocket::State<mail::Service>,
     rate_limiter: rocket::State<RateLimiter>,
+    i18n: I18n,
     request: Form<forms::ManageRequest>,
     token_service: rocket::State<tokens::Service>,
 ) -> MyResponse {
@@ -156,7 +158,7 @@ pub fn vks_manage_post(
     let link_path = uri!(vks_manage_key: token).to_string();
 
     let base_uri = request_origin.get_base_uri();
-    if let Err(e) = mail_service.send_manage_token(base_uri, fpr_text, &email, &link_path) {
+    if let Err(e) = mail_service.send_manage_token(&i18n, base_uri, fpr_text, &email, &link_path) {
         return MyResponse::ise(e);
     }
 

@@ -8,6 +8,8 @@ use crate::tokens::{self, StatelessSerializable};
 use crate::rate_limiter::RateLimiter;
 use crate::web::RequestOrigin;
 
+use rocket_i18n::I18n;
+
 use sequoia_openpgp::TPK;
 
 use std::io::Read;
@@ -192,6 +194,7 @@ pub fn request_verify(
     token_stateless: rocket::State<tokens::Service>,
     mail_service: rocket::State<mail::Service>,
     rate_limiter: rocket::State<RateLimiter>,
+    i18n: I18n,
     token: String,
     addresses: Vec<String>,
 ) -> response::UploadResponse {
@@ -218,7 +221,7 @@ pub fn request_verify(
     for email in emails_requested {
         let rate_limit_ok = rate_limiter.action_perform(format!("verify-{}", &email));
         if rate_limit_ok {
-            if send_verify_email(&request_origin, &mail_service, &token_stateful, &verify_state.fpr, &email).is_err() {
+            if send_verify_email(&request_origin, &mail_service, &token_stateful, &i18n, &verify_state.fpr, &email).is_err() {
                 return UploadResponse::err(&format!("error sending email to {}", &email));
             }
         }
@@ -241,6 +244,7 @@ fn send_verify_email(
     request_origin: &RequestOrigin,
     mail_service: &mail::Service,
     token_stateful: &StatefulTokens,
+    i18n: &I18n,
     fpr: &Fingerprint,
     email: &Email,
 ) -> Result<()> {
@@ -249,6 +253,7 @@ fn send_verify_email(
     let token_verify = token_stateful.new_token("verify", token_str.as_bytes())?;
 
     mail_service.send_verification(
+        i18n,
         request_origin.get_base_uri(),
         fpr.to_string(),
         &email,

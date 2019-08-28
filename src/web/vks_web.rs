@@ -8,6 +8,7 @@ use multipart::server::Multipart;
 use rocket::http::ContentType;
 use rocket::request::Form;
 use rocket::Data;
+use rocket_i18n::I18n;
 
 use crate::database::{KeyDatabase, StatefulTokens, Query, Database};
 use crate::mail;
@@ -310,11 +311,12 @@ pub fn quick_upload_proceed(
     token_stateless: rocket::State<tokens::Service>,
     mail_service: rocket::State<mail::Service>,
     rate_limiter: rocket::State<RateLimiter>,
+    i18n: I18n,
     token: String,
 ) -> MyResponse {
     let result = vks::request_verify(
         db, request_origin, token_stateful, token_stateless, mail_service,
-        rate_limiter, token, vec!());
+        rate_limiter, i18n, token, vec!());
     MyResponse::upload_response(result)
 }
 
@@ -416,12 +418,13 @@ pub fn request_verify_form(
     token_stateless: rocket::State<tokens::Service>,
     mail_service: rocket::State<mail::Service>,
     rate_limiter: rocket::State<RateLimiter>,
+    i18n: I18n,
     request: Form<forms::VerifyRequest>,
 ) -> MyResponse {
     let forms::VerifyRequest { token, address } = request.into_inner();
     let result = vks::request_verify(
         db, request_origin, token_stateful, token_stateless, mail_service,
-        rate_limiter, token, vec!(address));
+        rate_limiter, i18n, token, vec!(address));
     MyResponse::upload_response(result)
 }
 
@@ -433,12 +436,13 @@ pub fn request_verify_form_data(
     token_stateless: rocket::State<tokens::Service>,
     mail_service: rocket::State<mail::Service>,
     rate_limiter: rocket::State<RateLimiter>,
+    i18n: I18n,
     request: Form<forms::VerifyRequest>,
 ) -> MyResponse {
     let forms::VerifyRequest { token, address } = request.into_inner();
     let result = vks::request_verify(
         db, request_origin, token_stateful, token_stateless, mail_service,
-        rate_limiter, token, vec!(address));
+        rate_limiter, i18n, token, vec!(address));
     MyResponse::upload_response(result)
 }
 
