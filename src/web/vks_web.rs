@@ -110,7 +110,7 @@ impl MyResponse {
             UploadResponse::Ok { token, .. } => {
                 let uri = uri!(quick_upload_proceed: token);
                 let text = format!(
-                    "Key successfully uploaded. Proceed here:\n{}{}\n",
+                    "Key successfully uploaded. Proceed with verification here:\n{}{}\n",
                     base_uri,
                     uri
                 );
