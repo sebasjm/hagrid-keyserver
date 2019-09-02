@@ -9,10 +9,11 @@ use serde::Serialize;
 use uuid::Uuid;
 use crate::counters;
 
+use rocket_i18n::I18n;
+use gettext_macros::i18n;
+
 use crate::database::types::Email;
 use crate::Result;
-
-use rocket_i18n::I18n;
 
 mod context {
     #[derive(Serialize, Clone)]
@@ -94,8 +95,7 @@ impl Service {
 
         self.send(
             &vec![userid],
-            // i18n!(i18n.catalog, "Verify {} for your key on {}"; userid, self.domain),
-            &format!("Verify {} for your key on {}", userid, self.domain),
+            &i18n!(i18n.catalog, "Verify {} for your key on {}"; userid, self.domain),
             "verify",
             i18n.lang,
             ctx,
@@ -121,8 +121,7 @@ impl Service {
 
         self.send(
             &[recipient],
-            // i18n!(i18n.catalog, "Manage your key on {}"; self.domain),
-            &format!("Manage your key on {}", self.domain),
+            &i18n!(i18n.catalog, "Manage your key on {}"; self.domain),
             "manage",
             i18n.lang,
             ctx,
@@ -148,8 +147,7 @@ impl Service {
 
         self.send(
             &vec![userid],
-            // i18n!(i18n.catalog, "Your key upload on {}"; self.domain),
-            &format!("Your key upload on {}", self.domain),
+            &i18n!(i18n.catalog, "Your key upload on {}"; self.domain),
             "welcome",
             i18n.lang,
             ctx,
