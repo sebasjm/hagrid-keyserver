@@ -553,7 +553,7 @@ pub mod tests {
     /// duration of your test.  To debug the test, mem::forget it to
     /// prevent cleanup.
     pub fn configuration() -> Result<(TempDir, rocket::Config)> {
-        use rocket::config::{Config, Environment};
+        use rocket::config::Environment;
 
         let root = tempdir()?;
         let filemail = root.path().join("filemail");
