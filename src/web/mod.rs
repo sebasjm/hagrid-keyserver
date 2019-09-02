@@ -16,14 +16,14 @@ use handlebars::Handlebars;
 
 use std::path::PathBuf;
 
-use mail;
-use tokens;
-use counters;
-use rate_limiter::RateLimiter;
+use crate::mail;
+use crate::tokens;
+use crate::counters;
+use crate::rate_limiter::RateLimiter;
 
-use database::{Database, KeyDatabase, Query};
-use database::types::Fingerprint;
-use Result;
+use crate::database::{Database, KeyDatabase, Query};
+use crate::database::types::Fingerprint;
+use crate::Result;
 
 use std::convert::TryInto;
 
@@ -35,7 +35,7 @@ mod vks_web;
 mod vks_api;
 mod debug_web;
 
-use web::maintenance::MaintenanceMode;
+use crate::web::maintenance::MaintenanceMode;
 
 use rocket::http::hyper::header::ContentDisposition;
 
@@ -528,7 +528,7 @@ pub mod tests {
     use sequoia_openpgp::parse::Parse;
     use sequoia_openpgp::serialize::Serialize;
 
-    use database::*;
+    use crate::database::*;
     use super::*;
 
     // for some reason, this is no longer public in lettre itself
@@ -1025,7 +1025,7 @@ pub mod tests {
     /// Asserts that the given URI returns human readable response
     /// page that contains an onion URI pointing to the TPK.
     pub fn check_hr_response_onion(client: &Client, uri: &str, tpk: &TPK,
-                             nr_uids: usize) {
+                             _nr_uids: usize) {
         let mut response = client
             .get(uri)
             .header(Header::new("X-Is-Onion", "true"))

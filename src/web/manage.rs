@@ -4,13 +4,13 @@ use rocket::request::Form;
 
 use failure::Fallible as Result;
 
-use web::{RequestOrigin, MyResponse, templates::General};
-use web::vks_web;
-use database::{Database, KeyDatabase, types::Email, types::Fingerprint};
-use mail;
-use counters;
-use rate_limiter::RateLimiter;
-use tokens::{self, StatelessSerializable};
+use crate::web::{RequestOrigin, MyResponse, templates::General};
+use crate::web::vks_web;
+use crate::database::{Database, KeyDatabase, types::Email, types::Fingerprint};
+use crate::mail;
+use crate::counters;
+use crate::rate_limiter::RateLimiter;
+use crate::tokens::{self, StatelessSerializable};
 
 #[derive(Debug,Serialize,Deserialize)]
 struct StatelessVerifyToken {
@@ -68,7 +68,7 @@ pub fn vks_manage_key(
    token: String,
    token_service: rocket::State<tokens::Service>,
 ) -> MyResponse {
-    use database::types::Fingerprint;
+    use crate::database::types::Fingerprint;
     use std::convert::TryFrom;
     if let Ok(StatelessVerifyToken { fpr }) = token_service.check(&token) {
         match db.lookup(&database::Query::ByFingerprint(fpr)) {

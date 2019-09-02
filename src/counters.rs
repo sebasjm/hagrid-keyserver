@@ -1,9 +1,9 @@
 use lazy_static::lazy_static;
 use rocket_prometheus::prometheus;
 
-use anonymize_utils;
+use crate::anonymize_utils;
 
-use database::types::Email;
+use crate::database::types::Email;
 
 lazy_static! {
     static ref KEY_UPLOAD: LabelCounter =

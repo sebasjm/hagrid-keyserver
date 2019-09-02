@@ -1,7 +1,7 @@
 use lazy_static::lazy_static;
 use std::collections::HashSet;
 
-use database::types::Email;
+use crate::database::types::Email;
 
 // from https://github.com/mailcheck/mailcheck/wiki/List-of-Popular-Domains
 lazy_static! {

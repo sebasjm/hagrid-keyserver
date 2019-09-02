@@ -9,17 +9,17 @@ use rocket::http::ContentType;
 use rocket::request::Form;
 use rocket::Data;
 
-use database::{KeyDatabase, StatefulTokens, Query, Database};
-use mail;
-use tokens;
-use web::{RequestOrigin, MyResponse};
-use rate_limiter::RateLimiter;
+use crate::database::{KeyDatabase, StatefulTokens, Query, Database};
+use crate::mail;
+use crate::tokens;
+use crate::web::{RequestOrigin, MyResponse};
+use crate::rate_limiter::RateLimiter;
 
 use std::io::Read;
 use std::collections::HashMap;
 
-use web::vks;
-use web::vks::response::*;
+use crate::web::vks;
+use crate::web::vks::response::*;
 
 const UPLOAD_LIMIT: u64 = 1024 * 1024; // 1 MiB.
 

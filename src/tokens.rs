@@ -1,8 +1,8 @@
-use sealed_state::SealedState;
+use crate::sealed_state::SealedState;
 
 use serde_json;
 use serde::{Serialize,de::DeserializeOwned};
-use Result;
+use crate::Result;
 
 pub trait StatelessSerializable : Serialize + DeserializeOwned {
 }

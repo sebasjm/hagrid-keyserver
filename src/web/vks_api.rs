@@ -4,19 +4,19 @@ use rocket::response::{self, Response, Responder};
 use rocket::http::{ContentType,Status};
 use std::io::Cursor;
 
-use database::{KeyDatabase, StatefulTokens, Query};
-use database::types::{Email, Fingerprint, KeyID};
-use mail;
-use tokens;
-use rate_limiter::RateLimiter;
+use crate::database::{KeyDatabase, StatefulTokens, Query};
+use crate::database::types::{Email, Fingerprint, KeyID};
+use crate::mail;
+use crate::tokens;
+use crate::rate_limiter::RateLimiter;
 
-use web;
-use web::{HagridState, RequestOrigin, MyResponse};
-use web::vks;
-use web::vks::response::*;
+use crate::web;
+use crate::web::{HagridState, RequestOrigin, MyResponse};
+use crate::web::vks;
+use crate::web::vks::response::*;
 
 pub mod json {
-    use web::vks::response::EmailStatus;
+    use crate::web::vks::response::EmailStatus;
     use std::collections::HashMap;
 
     #[derive(Deserialize)]

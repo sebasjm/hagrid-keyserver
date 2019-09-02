@@ -7,10 +7,10 @@ use lettre_email::{Mailbox,EmailBuilder};
 use url;
 use serde::Serialize;
 use uuid::Uuid;
-use counters;
+use crate::counters;
 
-use database::types::Email;
-use Result;
+use crate::database::types::Email;
+use crate::Result;
 
 mod context {
     #[derive(Serialize, Clone)]

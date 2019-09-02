@@ -9,7 +9,7 @@ extern crate structopt;
 use structopt::StructOpt;
 
 extern crate hagrid_database as database;
-use database::{Query, Database, KeyDatabase};
+use crate::database::{Query, Database, KeyDatabase};
 
 #[derive(Debug, StructOpt)]
 #[structopt(

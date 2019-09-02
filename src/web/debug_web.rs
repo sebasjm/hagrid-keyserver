@@ -1,9 +1,9 @@
 use std::io;
 
-use dump::{self, Kind};
-use web::MyResponse;
+use crate::dump::{self, Kind};
+use crate::web::MyResponse;
 
-use database::{Database, KeyDatabase, Query};
+use crate::database::{Database, KeyDatabase, Query};
 
 #[get("/debug?<q>")]
 pub fn debug_info(

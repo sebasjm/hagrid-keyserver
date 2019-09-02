@@ -1,12 +1,12 @@
 use failure::Fallible as Result;
 
-use database::{Database, KeyDatabase, StatefulTokens, EmailAddressStatus, TpkStatus, ImportResult};
-use database::types::{Fingerprint,Email};
-use mail;
-use counters;
-use tokens::{self, StatelessSerializable};
-use rate_limiter::RateLimiter;
-use web::RequestOrigin;
+use crate::database::{Database, KeyDatabase, StatefulTokens, EmailAddressStatus, TpkStatus, ImportResult};
+use crate::database::types::{Fingerprint,Email};
+use crate::mail;
+use crate::counters;
+use crate::tokens::{self, StatelessSerializable};
+use crate::rate_limiter::RateLimiter;
+use crate::web::RequestOrigin;
 
 use sequoia_openpgp::TPK;
 
@@ -30,7 +30,7 @@ pub mod request {
 }
 
 pub mod response {
-    use database::types::Email;
+    use crate::database::types::Email;
 
     #[derive(Debug,Serialize,Deserialize,PartialEq,Eq)]
     pub enum EmailStatus {

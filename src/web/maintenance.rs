@@ -6,7 +6,7 @@ use rocket::http::Method;
 use std::fs;
 use std::path::PathBuf;
 
-use web::MyResponse;
+use crate::web::MyResponse;
 
 pub struct MaintenanceMode {
     maintenance_file: PathBuf,

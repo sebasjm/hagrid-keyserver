@@ -6,17 +6,17 @@ use rocket::http::{ContentType, Status};
 use rocket::request::{self, Request, FromRequest};
 use rocket::http::uri::Uri;
 
-use database::{Database, Query, KeyDatabase};
-use database::types::{Email, Fingerprint, KeyID};
+use crate::database::{Database, Query, KeyDatabase};
+use crate::database::types::{Email, Fingerprint, KeyID};
 
-use rate_limiter::RateLimiter;
+use crate::rate_limiter::RateLimiter;
 
-use tokens;
+use crate::tokens;
 
-use web;
-use mail;
-use web::{HagridState, RequestOrigin, MyResponse, vks_web};
-use web::vks::response::UploadResponse;
+use crate::web;
+use crate::mail;
+use crate::web::{HagridState, RequestOrigin, MyResponse, vks_web};
+use crate::web::vks::response::UploadResponse;
 
 #[derive(Debug)]
 pub enum Hkp {
@@ -295,7 +295,7 @@ mod tests {
     use sequoia_openpgp::tpk::TPKBuilder;
     use sequoia_openpgp::serialize::Serialize;
 
-    use web::tests::*;
+    use crate::web::tests::*;
 
     #[test]
     fn hkp() {
@@ -347,7 +347,7 @@ mod tests {
         check_hr_responses_by_fingerprint(&client, &tpk, 0);
 
         // Upload the same key again, make sure the welcome mail is not sent again
-        let mut response = client.post("/pks/add")
+        let response = client.post("/pks/add")
             .body(post_data.as_bytes())
             .header(ContentType::Form)
             .dispatch();
