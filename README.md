@@ -4,7 +4,7 @@ Hagrid
 Hagrid is a verifying OpenPGP key server.
 
 You can find general instructions and an API documentation at the running
-instance at [https://keys.openpgp.org](keys.openpgp.org).
+instance at [https://keys.openpgp.org](https://keys.openpgp.org).
 
 License
 -------
