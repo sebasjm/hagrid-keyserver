@@ -1,0 +1,18 @@
+{{#> layout}}
+  <div class="row" id="container">
+    <form method="POST" action="/verify/{{token}}" id="postform">
+    <p>
+        Please click here to complete the verification process:
+        <input type="submit" value="Validate"/>
+    </p>
+    </form>
+    <p style="display: none" id="pleasewait">
+        Please wait while your email address is verified…
+    </p>
+    <p style="display: none" id="failed">
+        Something went wrong:
+    </p>
+  </div>
+
+  <script src="/assets/js/upload-verify.js" type="text/javascript"></script>
+{{/layout}}

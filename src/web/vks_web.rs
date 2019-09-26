@@ -38,6 +38,11 @@ mod forms {
 
 mod template {
     #[derive(Serialize)]
+    pub struct VerifyForm {
+        pub token: String,
+    }
+
+    #[derive(Serialize)]
     pub struct Verify {
         pub verified: bool,
         pub key_fpr: String,
@@ -437,7 +442,7 @@ pub fn request_verify_form_data(
     MyResponse::upload_response(result)
 }
 
-#[get("/verify/<token>")]
+#[post("/verify/<token>")]
 pub fn verify_confirm(
     db: rocket::State<KeyDatabase>,
     token_service: rocket::State<StatefulTokens>,
@@ -461,3 +466,11 @@ pub fn verify_confirm(
     }
 }
 
+#[get("/verify/<token>")]
+pub fn verify_confirm_form(
+    token: String,
+) -> MyResponse {
+    MyResponse::ok("upload/verification-form", template::VerifyForm {
+        token
+    })
+}

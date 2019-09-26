@@ -364,6 +364,7 @@ fn rocket_factory(mut rocket: rocket::Rocket) -> Result<rocket::Rocket> {
         vks_web::request_verify_form,
         vks_web::request_verify_form_data,
         vks_web::verify_confirm,
+        vks_web::verify_confirm_form,
         vks_web::quick_upload,
         vks_web::quick_upload_proceed,
         // Debug
@@ -1095,7 +1096,7 @@ pub mod tests {
         let pattern = format!("{}(/verify/[^ \t\n]*)", BASE_URI);
         let confirm_uri = pop_mail_capture_pattern(filemail_path, &pattern);
 
-        let response = client.get(&confirm_uri).dispatch();
+        let response = client.post(&confirm_uri).dispatch();
         assert_eq!(response.status(), Status::Ok);
     }
 
