@@ -267,3 +267,14 @@ span.email {
 .attribution a {
   color: #ccc;
 }
+
+input.textbutton {
+  padding: 0px;
+  border: none;
+  background: none;
+  margin: 0px;
+  cursor: pointer;
+  color: blue;
+  font-family: inherit;
+  font-size: inherit;
+}

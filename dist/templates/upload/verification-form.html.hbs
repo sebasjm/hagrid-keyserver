@@ -1,16 +1,11 @@
 {{#> layout}}
   <div class="row" id="container">
-    <form method="POST" action="/verify/{{token}}" id="postform">
     <p>
-        Please click here to complete the verification process:
-        <input type="submit" value="Validate"/>
-    </p>
-    </form>
-    <p style="display: none" id="pleasewait">
-        Please wait while your email address is verified…
-    </p>
-    <p style="display: none" id="failed">
-        Something went wrong:
+      Verifying your email address…
+
+      <form method="POST" action="/verify/{{token}}" id="postform">
+        If the process doesn't complete after a few seconds, <input type="submit" class="textbutton" value="click here" />.
+      </form>
     </p>
   </div>
 
