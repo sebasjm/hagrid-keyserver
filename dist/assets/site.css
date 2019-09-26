@@ -233,6 +233,7 @@ span.fingerprint {
 span.email {
   font-family: monospace;
   font-size: large;
+  white-space: nowrap;
 }
 
 .debug_link {
