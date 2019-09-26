@@ -263,7 +263,7 @@ pub fn verify_confirm(
 ) -> response::PublishResponse {
     let (fingerprint, email) = match check_publish_token(&db, &token_service, token) {
         Ok(x) => x,
-        Err(_) => return PublishResponse::err("token verification failed"),
+        Err(_) => return PublishResponse::err("Invalid verification token!"),
     };
 
     response::PublishResponse::Ok {

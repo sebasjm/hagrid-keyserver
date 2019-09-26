@@ -446,10 +446,13 @@ pub fn request_verify_form_data(
 pub fn verify_confirm(
     db: rocket::State<KeyDatabase>,
     token_service: rocket::State<StatefulTokens>,
+    rate_limiter: rocket::State<RateLimiter>,
     token: String,
 ) -> MyResponse {
+    let rate_limit_id = format!("verify-token-{}", &token);
     match vks::verify_confirm(db, token_service, token) {
         PublishResponse::Ok { fingerprint, email } => {
+            rate_limiter.action_perform(rate_limit_id);
             let userid_link = uri!(search: &email).to_string();
             let context = template::Verify {
                 verified: true,
@@ -462,7 +465,15 @@ pub fn verify_confirm(
 
             MyResponse::ok("upload/publish-result", context)
         },
-        PublishResponse::Error(error) => MyResponse::plain(error),
+        PublishResponse::Error(error) => {
+            if rate_limiter.action_check(rate_limit_id) {
+                MyResponse::bad_request(
+                    "400-plain", failure::err_msg(error))
+            } else {
+                MyResponse::bad_request(
+                    "upload/already-verified", failure::err_msg(""))
+            }
+        }
     }
 }
 

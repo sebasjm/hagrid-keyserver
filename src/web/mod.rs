@@ -1098,6 +1098,10 @@ pub mod tests {
 
         let response = client.post(&confirm_uri).dispatch();
         assert_eq!(response.status(), Status::Ok);
+
+        let mut response_second = client.post(&confirm_uri).dispatch();
+        assert_eq!(response_second.status(), Status::BadRequest);
+        assert!(response_second.body_string().unwrap().contains("already verified"));
     }
 
     fn check_mails_and_confirm_deletion(client: &Client, filemail_path: &Path, address: &str) {
