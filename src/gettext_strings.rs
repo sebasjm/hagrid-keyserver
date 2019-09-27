@@ -29,6 +29,7 @@ fn _dummy() {
     t!("Your key <span class=\"fingerprint\">{{ key_fpr }}</span> is now published for the identity <a href=\"{{userid_link}}\" target=\"_blank\"><span class=\"email\">{{ userid }}</span></a>.");
     t!("Verification failed! Perhaps the link you used was expired?");
     t!("You can <a href=\"/upload\">try uploading again</a>.");
+    t!("Upload your key");
     t!("Your public key");
     t!("Upload");
     t!("Need more info? Check our <a target=\"_blank\" href=\"/about\">intro</a> and <a target=\"_blank\" href=\"/about/usage\">usage guide</a>!");
@@ -45,10 +46,8 @@ fn _dummy() {
     t!("Send Verification Mail");
     t!("This key contains one identity that could not be parsed as an email address.<br /> This identity can't be published on <span class=\"brand\">keys.openpgp.org</span>.  (<a href=\"/about/faq#non-email-uids\" target=\"_blank\">why?</a>)");
     t!("This key contains {{ count_unparsed }} identities that could not be parsed as an email address.<br /> These identities can't be published on <span class=\"brand\">keys.openpgp.org</span>.  (<a href=\"/about/faq#non-email-uids\" target=\"_blank\">why?</a>)");
-    t!("This key contains one revoked identity, which is not published.");
-    t!("(<a href=\"/about/faq#revoked-uids\" target=\"_blank\">Why?</a>)");
-    t!("This key contains {{ count_revoked }} revoked identities, which are not published.");
-    t!("(<a href=\"/about/faq#revoked-uids\" target=\"_blank\">Why?</a>)");
+    t!("This key contains one revoked identity, which is not published. (<a href=\"/about/faq#revoked-uids\" target=\"_blank\">Why?</a>)");
+    t!("This key contains {{ count_revoked }} revoked identities, which are not published. (<a href=\"/about/faq#revoked-uids\" target=\"_blank\">Why?</a>)");
     t!("Your keys have been successfully uploaded:");
     t!("<strong>Note:</strong> To make keys searchable by address, you must upload them individually.");
     t!("Verifying your email address…");
@@ -65,11 +64,9 @@ fn _dummy() {
     t!("Greetings from the <a rel=\"nofollow\" href=\"{{ base_uri }}\" style=\"text-decoration:none; color: #333\"><tt>keys.openpgp.org</tt></a> team");
 
     t!("Hi,");
-    t!("this is an automated message from {{domain}}. If you didn't");
-    t!("request this message, please ignore it.");
+    t!("this is an automated message from {{domain}}. If you didn't\nrequest this message, please ignore it.");
     t!("OpenPGP key: {{primary_fp}}");
-    t!("To manage and delete listed addresses on this key, please follow");
-    t!("the link below:");
+    t!("To manage and delete listed addresses on this key, please follow\nthe link below:");
     t!("You can find more info at {{base_uri}}/about");
     t!("Greetings from the keys.openpgp.org team");
 
@@ -83,11 +80,9 @@ fn _dummy() {
     t!("Greetings from the <a rel=\"nofollow\" href=\"{{base_uri}}\" style=\"text-decoration:none; color: #333\"><tt>keys.openpgp.org</tt></a> team");
 
     t!("Hi,");
-    t!("this is an automated message from {{domain}}. If you didn't");
-    t!("request this message, please ignore it.");
+    t!("this is an automated message from {{domain}}. If you didn't\nrequest this message, please ignore it.");
     t!("OpenPGP key: {{primary_fp}}");
-    t!("To let others find this key from your email address \"{{userid}}\",");
-    t!("please follow the link below:");
+    t!("To let others find this key from your email address \"{{userid}}\",\nplease follow the link below:");
     t!("You can find more info at {{base_uri}}/about");
     t!("Greetings from the keys.openpgp.org team");
 
@@ -101,12 +96,9 @@ fn _dummy() {
     t!("Greetings from the <a rel=\"nofollow\" href=\"{{base_uri}}\" style=\"text-decoration:none; color: #333\"><tt>keys.openpgp.org</tt></a> team");
 
     t!("Hi,");
-    t!("this is an automated message from {{domain}}. If you didn't upload your key");
-    t!("there, please ignore this message.");
+    t!("this is an automated message from {{domain}}. If you didn't upload your key\nthere, please ignore this message.");
     t!("OpenPGP key: {{primary_fp}}");
-    t!("This key was just uploaded for the first time, and is now published without");
-    t!("identity information. If you want to allow others to find this key by e-mail");
-    t!("address, please follow this link:");
+    t!("This key was just uploaded for the first time, and is now published without\nidentity information. If you want to allow others to find this key by e-mail\naddress, please follow this link:");
     t!("You can find more info at {{base_uri}}/about");
     t!("Greetings from the keys.openpgp.org team");
 }

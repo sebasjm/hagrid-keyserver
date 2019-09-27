@@ -1,0 +1,11 @@
+[main]
+host = https://www.transifex.com
+
+[hagrid.hagrid]
+minimum_perc = 100
+source_file = po/hagrid/hagrid.pot
+source_lang = en
+trans.None = po/hagrid/hagrid.pot
+trans.de = po/hagrid/de.po
+type = PO
+
