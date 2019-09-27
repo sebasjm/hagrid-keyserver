@@ -49,29 +49,16 @@ mod template {
         pub key_fpr: String,
         pub userid: String,
         pub userid_link: String,
-        pub commit: String,
-        pub version: String,
     }
 
     #[derive(Serialize)]
     pub struct Search {
         pub query: String,
         pub fpr: String,
-        pub base_uri: String,
-        pub commit: String,
-        pub version: String,
-    }
-
-    #[derive(Serialize)]
-    pub struct Upload {
-        pub commit: String,
-        pub version: String,
     }
 
     #[derive(Serialize)]
     pub struct VerificationSent {
-        pub commit: String,
-        pub version: String,
         pub key_fpr: String,
         pub key_link: String,
         pub is_revoked: bool,
@@ -92,8 +79,6 @@ mod template {
 
     #[derive(Serialize)]
     pub struct UploadOkMultiple {
-        pub commit: String,
-        pub version: String,
         pub keys: Vec<UploadOkKey>,
     }
 
@@ -167,8 +152,6 @@ impl MyResponse {
             .sort_unstable_by(|fst,snd| fst.address.cmp(&snd.address));
 
         let context = template::VerificationSent {
-            version: env!("VERGEN_SEMVER").to_string(),
-            commit: env!("VERGEN_SHA_SHORT").to_string(),
             is_revoked,
             key_fpr,
             key_link,
@@ -195,8 +178,6 @@ impl MyResponse {
             .collect();
 
         let context = template::UploadOkMultiple {
-            version: env!("VERGEN_SEMVER").to_string(),
-            commit: env!("VERGEN_SHA_SHORT").to_string(),
             keys,
         };
 
@@ -206,12 +187,7 @@ impl MyResponse {
 
 #[get("/upload")]
 pub fn upload() -> MyResponse {
-    let context = template::Upload {
-        version: env!("VERGEN_SEMVER").to_string(),
-        commit: env!("VERGEN_SHA_SHORT").to_string(),
-    };
-
-    MyResponse::ok("upload/upload", context)
+    MyResponse::ok("upload/upload", ())
 }
 
 #[post("/upload/submit", format = "multipart/form-data", data = "<data>")]
@@ -247,18 +223,16 @@ pub fn process_post_form_data(
 
 #[get("/search?<q>")]
 pub fn search(
-    request_origin: RequestOrigin,
     db: rocket::State<KeyDatabase>,
     q: String,
 ) -> MyResponse {
     match q.parse::<Query>() {
-        Ok(query) => key_to_response(request_origin, db, q, query),
+        Ok(query) => key_to_response(db, q, query),
         Err(e) => MyResponse::bad_request("index", e),
     }
 }
 
 fn key_to_response(
-    request_origin: RequestOrigin,
     db: rocket::State<KeyDatabase>,
     query_string: String,
     query: Query,
@@ -271,10 +245,7 @@ fn key_to_response(
 
     let context = template::Search{
         query: query_string,
-        base_uri: request_origin.get_base_uri().to_owned(),
         fpr: fp.to_string(),
-        version: env!("VERGEN_SEMVER").to_string(),
-        commit: env!("VERGEN_SHA_SHORT").to_string(),
     };
 
     MyResponse::ok("found", context)
@@ -463,8 +434,6 @@ pub fn verify_confirm(
                 userid: email,
                 key_fpr: fingerprint,
                 userid_link,
-                version: env!("VERGEN_SEMVER").to_string(),
-                commit: env!("VERGEN_SHA_SHORT").to_string(),
             };
 
             MyResponse::ok("upload/publish-result", context)

@@ -1,16 +1,16 @@
-Hi,
+{{ text "Hi," }}
 
-this is an automated message from {{domain}}. If you didn't
-request this message, please ignore it.
+{{ text "this is an automated message from {{domain}}. If you didn't" rerender }}
+{{ text "request this message, please ignore it." }}
 
-OpenPGP key: {{primary_fp}}
+{{ text "OpenPGP key: {{ primary_fp }}" rerender }}
 
-To manage and delete listed addresses on this key, please follow
-the link below:
+{{ text "To manage and delete listed addresses on this key, please follow" }}
+{{ text "the link below:" }}
 
-    {{uri}}
+    {{ uri }}
 
-You can find more info at {{base_uri}}/about
+{{ text "You can find more info at {{ base_uri }}/about" }}
 
-Greetings from the keys.openpgp.org team
+{{ text "Greetings from the keys.openpgp.org team" }}
 

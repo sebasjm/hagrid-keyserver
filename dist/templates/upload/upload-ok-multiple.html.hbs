@@ -1,15 +1,17 @@
 {{#> layout }}
+  {{#with page}}
   <p>
-    Your keys have been successfully uploaded:
+    {{ text "Your keys have been successfully uploaded:" }}
   </p>
 
   <ul>
     {{#each keys}}
-    <li><span class="fingerprint"><a href="{{key_link}}" target="_blank">{{key_fpr}}</a></span></li>
+    <li><span class="fingerprint"><a href="{{ key_link }}" target="_blank">{{ key_fpr }}</a></span></li>
     {{/each}}
   </ul>
 
   <p>
-    <strong>Note:</strong> To make keys searchable by address, you must upload them individually.
+    {{ text "<strong>Note:</strong> To make keys searchable by address, you must upload them individually." }}
   </p>
+  {{/with}}
 {{/layout}}

@@ -1,14 +1,31 @@
 {{#> layout }}
-  {{> search-form}}
-  <p>You can also <a href="/upload">upload</a> or <a href="/manage">manage</a> your key.</p>
+  {{#with page}}
+
+  {{#with error}}
+    <p><strong>Error</strong>: {{ this }}</p>
+  {{/with}}
+
+  <form action="/search" method="GET">
+    <div class="search">
+      <input type="text" class="searchTerm" id="search" name="q" autofocus placeholder="{{ text "Search by Email Address / Key ID / Fingerprint" }}">
+      <button type="submit" class="searchButton button">
+        <img src="/assets/search.svg" style="width: 1em; padding-bottom: 4px;"> {{ text "Search" }}
+      </button>
+    </div>
+  </form>
 
   <p>
-    Find out more <a href="/about">about this service</a>.
+    {{ text "You can also <a href=\"/upload\">upload</a> or <a href=\"/manage\">manage</a> your key." }}
+  </p>
+
+  <p>
+    {{ text "Find out more <a href=\"/about\">about this service</a>." }}
   </p>
 
   <hr />
 
   <p>
-    <strong>News:</strong> <a href="/about/news#2019-09-12-three-months-later">Three months after launch ✨</a> (2019-09-12)
+    <strong>{{ text "News:" }}</strong> <a href="/about/news#2019-09-12-three-months-later">Three months after launch ✨</a> (2019-09-12)
   </p>
+  {{/with}}
 {{/layout}}

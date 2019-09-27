@@ -1,13 +1,17 @@
 {{#> layout}}
-  <div class="row" id="container">
+  {{#with page}}
+  <div id="container">
     <p>
-      Verifying your email address…
+      {{ text "Verifying your email address…" }}
+    </p>
 
+    <p>
       <form method="POST" action="/verify/{{token}}" id="postform">
-        If the process doesn't complete after a few seconds, <input type="submit" class="textbutton" value="click here" />.
+        {{ text "If the process doesn't complete after a few seconds, <input type=\"submit\" class=\"textbutton\" value=\"click here\" />." }}
       </form>
     </p>
   </div>
 
   <script src="/assets/js/upload-verify.js" type="text/javascript"></script>
+  {{/with}}
 {{/layout}}

@@ -51,6 +51,8 @@ mod sealed_state;
 mod rate_limiter;
 mod dump;
 mod counters;
+mod i18n;
+mod gettext_strings;
 mod web;
 
 fn main() {

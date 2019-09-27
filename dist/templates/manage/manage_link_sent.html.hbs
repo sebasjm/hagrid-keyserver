@@ -1,5 +1,7 @@
 {{#> layout }}
+  {{#with page}}
   <p>
-    We have sent an email with further instructions to <span class="email">{{address}}</span>.
+    {{ text "We have sent an email with further instructions to <span class=\"email\">{{ address }}</span>" rerender }}.
   </p>
+  {{/with}}
 {{/layout}}

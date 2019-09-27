@@ -1,11 +1,12 @@
 {{#> layout }}
+  {{#with page}}
   <p>
-    Managing the key <span class="fingerprint"><a href="{{key_link}}" target="_blank">{{key_fpr}}</a></span>.
+    {{ text "Managing the key <span class=\"fingerprint\"><a href=\"{{ key_link }}\" target=\"_blank\">{{ key_fpr }}</a></span>." rerender }}
   </p>
 
   {{#if uid_status}}
   <p style="padding-top: 1em;">
-    Your key is published with the following identity information:
+    {{ text "Your key is published with the following identity information:" }}
   </p>
 
   {{#each uid_status}}
@@ -14,7 +15,7 @@
       <form action="/manage/unpublish" method="post">
         <input type="hidden" name="token" value="{{../token}}" />
         <input type="hidden" name="address" value="{{address}}" />
-        <input type="submit" class="link" value="Delete">
+        <input type="submit" class="link" value="{{ text "Delete" }}">
       </form>
     </div>
     <p>
@@ -24,19 +25,18 @@
   {{/each}}
 
   <p style="line-height: 1.8em;">
-    Clicking "delete" on any address will remove it from this key. It will no longer appear in a search.<br />
-    To add another address, <a href="/upload">upload</a> the key again.
+    {{ text "Clicking \"delete\" on any address will remove it from this key. It will no longer appear in a search.<br /> To add another address, <a href=\"/upload\">upload</a> the key again." }}
   </p>
 
   {{else}}
   <p style="padding-top: 1em;">
-    Your key is published as only non-identity information.
-    (<a href="/about" target="_blank">what does this mean?</a>)
+    {{ text "Your key is published as only non-identity information.  (<a href=\"/about\" target=\"_blank\">what does this mean?</a>)" }}
   </p>
 
   <p>
-    To add an address, <a href="/upload">upload</a> the key again.
+    {{ text "To add an address, <a href=\"/upload\">upload</a> the key again." }}
   </p>
   {{/if}}
 
+  {{/with}}
 {{/layout}}

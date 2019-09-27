@@ -1,18 +1,18 @@
 {{#> layout }}
 <div class="ui">
-  <center><h2>Upload your key</h2></center>
+  <center><h2>{{ text "Upload your key" }}</h2></center>
 
   <form action="/upload/submit" method="POST" enctype="multipart/form-data">
     <div class="upload">
-      <input type="file" id="keytext" name="keytext" autofocus class="fileUpload" placeholder="Your public key"/>
+      <input type="file" id="keytext" name="keytext" autofocus class="fileUpload" placeholder="{{ text "Your public key" }}"/>
       <button type="submit" class="uploadButton button">
-        <img src="/assets/upload.svg" style="width: 1em;"> Upload
+        <img src="/assets/upload.svg" style="width: 1em;"> {{ text "Upload" }}
       </button>
     </div>
   </form>
 
   <p>
-    Need more info? Check our <a target="_blank" href="/about">intro</a> and <a target="_blank" href="/about/usage">usage guide</a>!
+    {{ text "Need more info? Check our <a target=\"_blank\" href=\"/about\">intro</a> and <a target=\"_blank\" href=\"/about/usage\">usage guide</a>!" }}
   </p>
 
   <script src="/assets/js/upload.js" async />

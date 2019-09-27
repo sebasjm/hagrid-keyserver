@@ -1,26 +1,24 @@
-
 <!doctype html>
-<html lang=en>
+<html lang="en">
   <head>
     <meta charset=utf-8>
-    <title>Manage your key on {{domain}}</title>
+    <title>{{ text "Manage your key on {{domain}}" rerender }}</title>
   </head>
   <body>
     <p>
-      Hi,
+      {{ text "Hi," }}
     <p>
-      this is an automated message from <a rel="nofollow" href="{{base_uri}}" style="text-decoration:none; color: #333"><tt>{{domain}}</tt></a>. If you didn't
-      request this message, please ignore it.
+      {{ text "this is an automated message from <a rel=\"nofollow\" href=\"{{ base_uri }}\" style=\"text-decoration:none; color: #333\"><tt>{{ domain }}</tt></a>." rerender }}
+      {{ text "If you didn't request this message, please ignore it." }}
     <p>
-      OpenPGP key: <tt>{{primary_fp}}</tt>
+      {{ text "OpenPGP key: <tt>{{ primary_fp }}</tt>" rerender }}
     <p>
-      To manage and delete listed addresses on this key, please follow
-      the link below:
+      {{ text "To manage and delete listed addresses on this key, please follow the link below:" }}
     <p>
       <a href="{{uri}}">{{uri}}</a>
     <p>
-      You can find more info at <a href="{{base_uri}}/about">{{domain}}/about</a>.
+      {{ text "You can find more info at <a href="{{ base_uri }}/about">{{ domain }}/about</a>." rerender }}
     <p>
-      Greetings from the <a rel="nofollow" href="{{base_uri}}" style="text-decoration:none; color: #333"><tt>keys.openpgp.org</tt></a> team
+      {{ text "Greetings from the <a rel=\"nofollow\" href=\"{{ base_uri }}\" style=\"text-decoration:none; color: #333\"><tt>keys.openpgp.org</tt></a> team" rerender }}
   </body>
 </html>

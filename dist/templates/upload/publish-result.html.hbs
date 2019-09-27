@@ -1,20 +1,19 @@
 {{#> layout}}
-  <div class="row" id="verification-result">
-    {{#if verified }}
+  {{#with page}}
+  <div id="verification-result">
+    {{#if verified}}
     <p>
-      Your key
-      <span class="fingerprint">{{key_fpr}}</span>
-      is now published
-      for the identity <a href="{{userid_link}}" target="_blank"><span class="email">{{ userid }}</span></a>.
+      {{ text "Your key <span class=\"fingerprint\">{{ key_fpr }}</span> is now published for the identity <a href=\"{{userid_link}}\" target=\"_blank\"><span class=\"email\">{{ userid }}</span></a>." rerender }}
     </p>
     {{else}}
     <p>
-      Verification failed! Perhaps the link you used was expired?
+      {{ text "Verification failed! Perhaps the link you used was expired?" }}
     </p>
     <p>
-      You can <a href="/upload">try uploading again</a>.
+      {{ text "You can <a href=\"/upload\">try uploading again</a>." }}
     </p>
     {{/if}}
   </div>
+  {{/with}}
 {{/layout}}
 

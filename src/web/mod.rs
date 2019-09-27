@@ -2,12 +2,13 @@ use rocket;
 use rocket::http::{Header, Status};
 use rocket::request;
 use rocket::outcome::Outcome;
-use rocket::response::NamedFile;
+use rocket::response::{NamedFile, Responder, Response};
 use rocket::config::Config;
-use rocket_contrib::templates::Template;
+use rocket_contrib::templates::{Template, Engines};
 use rocket::http::uri::Uri;
 use rocket_contrib::json::JsonValue;
 use rocket::response::status::Custom;
+use rocket_i18n::I18n;
 
 use rocket_prometheus::PrometheusMetrics;
 
@@ -20,6 +21,7 @@ use std::path::PathBuf;
 use crate::mail;
 use crate::tokens;
 use crate::counters;
+use crate::i18n::I18NHelper;
 use crate::rate_limiter::RateLimiter;
 
 use crate::database::{Database, KeyDatabase, Query};
@@ -40,10 +42,22 @@ use crate::web::maintenance::MaintenanceMode;
 
 use rocket::http::hyper::header::ContentDisposition;
 
+pub struct HagridTemplate(&'static str, serde_json::Value);
+
+impl Responder<'static> for HagridTemplate {
+    fn respond_to(self, req: &rocket::Request) -> std::result::Result<Response<'static>, Status> {
+        let HagridTemplate(tmpl, ctx) = self;
+        let i18n: I18n = req.guard().expect("Error parsing language");
+        let origin: RequestOrigin = req.guard().expect("Error determining request origin");
+        let layout_context = templates::HagridLayout::new(ctx, i18n, origin);
+        Template::render(tmpl, layout_context).respond_to(req)
+    }
+}
+
 #[derive(Responder)]
 pub enum MyResponse {
     #[response(status = 200, content_type = "html")]
-    Success(Template),
+    Success(HagridTemplate),
     #[response(status = 200, content_type = "plain")]
     Plain(String),
     #[response(status = 200, content_type = "application/pgp-keys")]
@@ -53,11 +67,11 @@ pub enum MyResponse {
     #[response(status = 500, content_type = "html")]
     ServerError(Template),
     #[response(status = 404, content_type = "html")]
-    NotFound(Template),
+    NotFound(HagridTemplate),
     #[response(status = 404, content_type = "html")]
     NotFoundPlain(String),
     #[response(status = 400, content_type = "html")]
-    BadRequest(Template),
+    BadRequest(HagridTemplate),
     #[response(status = 400, content_type = "html")]
     BadRequestPlain(String),
     #[response(status = 503, content_type = "html")]
@@ -69,8 +83,14 @@ pub enum MyResponse {
 }
 
 impl MyResponse {
-    pub fn ok<S: Serialize>(tmpl: &'static str, ctx: S) -> Self {
-        MyResponse::Success(Template::render(tmpl, ctx))
+    pub fn ok(tmpl: &'static str, ctx: impl Serialize) -> Self {
+        let context_json = serde_json::to_value(ctx).unwrap();
+        MyResponse::Success(HagridTemplate(tmpl, context_json))
+    }
+
+    pub fn ok_bare(tmpl: &'static str) -> Self {
+        let context_json = serde_json::to_value(templates::Bare { dummy: () }).unwrap();
+        MyResponse::Success(HagridTemplate(tmpl, context_json))
     }
 
     pub fn plain(s: String) -> Self {
@@ -110,7 +130,7 @@ impl MyResponse {
 
     pub fn ise(e: failure::Error) -> Self {
         eprintln!("Internal error: {:?}", e);
-        let ctx = templates::FiveHundred{
+        let ctx = templates::FiveHundred {
             internal_error: e.to_string(),
             version: env!("VERGEN_SEMVER").to_string(),
             commit: env!("VERGEN_SHA_SHORT").to_string(),
@@ -119,12 +139,9 @@ impl MyResponse {
     }
 
     pub fn bad_request(template: &'static str, e: failure::Error) -> Self {
-        let ctx = templates::General {
-            error: Some(format!("{}", e)),
-            version: env!("VERGEN_SEMVER").to_string(),
-            commit: env!("VERGEN_SHA_SHORT").to_string(),
-        };
-        MyResponse::BadRequest(Template::render(template, ctx))
+        let ctx = templates::Error { error: format!("{}", e) };
+        let context_json = serde_json::to_value(ctx).unwrap();
+        MyResponse::BadRequest(HagridTemplate(template, context_json))
     }
 
     pub fn bad_request_plain(message: impl Into<String>) -> Self {
@@ -137,18 +154,18 @@ impl MyResponse {
 
     pub fn not_found(
         tmpl: Option<&'static str>,
-        message: impl Into<Option<String>>
+        message: impl Into<Option<String>>,
     ) -> Self {
-        MyResponse::NotFound(
-            Template::render(
-                tmpl.unwrap_or("index"),
-                templates::General::new(
-                    Some(message.into()
-                         .unwrap_or_else(|| "Key not found".to_owned())))))
+        let ctx = templates::Error { error: message.into()
+                         .unwrap_or_else(|| "Key not found".to_owned()) };
+        let context_json = serde_json::to_value(ctx).unwrap();
+        MyResponse::NotFound(HagridTemplate(tmpl.unwrap_or("index"), context_json))
     }
 }
 
 mod templates {
+    use super::{I18n, RequestOrigin};
+
     #[derive(Serialize)]
     pub struct FiveHundred {
         pub internal_error: String,
@@ -157,42 +174,36 @@ mod templates {
     }
 
     #[derive(Serialize)]
-    pub struct General {
+    pub struct HagridLayout<T: serde::Serialize> {
         pub error: Option<String>,
         pub commit: String,
         pub version: String,
+        pub base_uri: String,
+        pub lang: String,
+        pub page: T,
     }
 
     #[derive(Serialize)]
-    pub struct About {
-        pub base_uri: String,
-        pub commit: String,
-        pub version: String,
+    pub struct Error {
+        pub error: String,
     }
 
-    impl About {
-        pub fn new(base_uri: impl Into<String>) -> Self {
+    #[derive(Serialize)]
+    pub struct Bare {
+        // Dummy value to make sure {{#with page}} always passes
+        pub dummy: (),
+    }
+
+    impl<T: serde::Serialize> HagridLayout<T> {
+        pub fn new(page: T, i18n: I18n, origin: RequestOrigin) -> Self {
             Self {
-                base_uri: base_uri.into(),
+                error: None,
                 version: env!("VERGEN_SEMVER").to_string(),
                 commit: env!("VERGEN_SHA_SHORT").to_string(),
+                base_uri: origin.get_base_uri().to_string(),
+                page: page,
+                lang: i18n.lang.to_string(),
             }
-        }
-    }
-
-    impl General {
-        pub fn new(error: Option<String>) -> Self {
-            Self {
-                error: error,
-                version: env!("VERGEN_SEMVER").to_string(),
-                commit: env!("VERGEN_SHA_SHORT").to_string(),
-            }
-        }
-    }
-
-    impl Default for General {
-        fn default() -> Self {
-            Self::new(None)
         }
     }
 }
@@ -276,47 +287,49 @@ fn files(file: PathBuf, state: rocket::State<HagridState>) -> Option<NamedFile> 
 }
 
 #[get("/")]
-fn root() -> Template {
-    Template::render("index", templates::General::default())
+fn root() -> MyResponse {
+    MyResponse::ok_bare("index")
 }
 
 #[get("/about")]
-fn about() -> Template {
-    Template::render("about/about", templates::General::default())
+fn about() -> MyResponse {
+    MyResponse::ok_bare("about/about")
 }
 
 #[get("/about/news")]
-fn news() -> Template {
-    Template::render("about/news", templates::General::default())
+fn news() -> MyResponse {
+    MyResponse::ok_bare("about/news")
 }
 
 #[get("/about/faq")]
-fn faq() -> Template {
-    Template::render("about/faq", templates::General::default())
+fn faq() -> MyResponse {
+    MyResponse::ok_bare("about/faq")
 }
 
 #[get("/about/usage")]
-fn usage(state: rocket::State<HagridState>) -> Template {
-    Template::render("about/usage", templates::About::new(state.base_uri.clone()))
+fn usage() -> MyResponse {
+    MyResponse::ok_bare("about/usage")
 }
 
 #[get("/about/privacy")]
-fn privacy() -> Template {
-    Template::render("about/privacy", templates::General::default())
+fn privacy() -> MyResponse {
+    MyResponse::ok_bare("about/privacy")
 }
 
 #[get("/about/api")]
-fn apidoc() -> Template {
-    Template::render("about/api", templates::General::default())
+fn apidoc() -> MyResponse {
+    MyResponse::ok_bare("about/api")
 }
 
 #[get("/about/stats")]
-fn stats() -> Template {
-    Template::render("about/stats", templates::General::default())
+fn stats() -> MyResponse {
+    MyResponse::ok_bare("about/stats")
 }
 
 #[get("/errors/<code>/<template>")]
 fn errors(
+    i18n: I18n,
+    origin: RequestOrigin,
     code: u16,
     template: String,
 ) -> Result<Custom<Template>> {
@@ -327,7 +340,7 @@ fn errors(
         .ok_or(failure::err_msg("bad request"))?;
     let response_body = Template::render(
         format!("errors/{}-{}", code, template),
-        templates::General::default()
+        templates::HagridLayout::new(templates::Bare{dummy: ()}, i18n, origin)
     );
     Ok(Custom(status_code, response_body))
 }
@@ -399,7 +412,11 @@ fn rocket_factory(mut rocket: rocket::Rocket) -> Result<rocket::Rocket> {
     let prometheus = configure_prometheus(rocket.config());
 
     rocket = rocket
-       .attach(Template::fairing())
+       .attach(Template::custom(|engines: &mut Engines| {
+           let i18ns = include_i18n!();
+           let i18n_helper = I18NHelper::new(i18ns);
+           engines.handlebars.register_helper("text", Box::new(i18n_helper));
+       }))
        .attach(maintenance_mode)
        .manage(include_i18n!())
        .manage(hagrid_state)

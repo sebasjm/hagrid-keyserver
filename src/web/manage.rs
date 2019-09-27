@@ -5,7 +5,7 @@ use rocket_i18n::I18n;
 
 use failure::Fallible as Result;
 
-use crate::web::{RequestOrigin, MyResponse, templates::General};
+use crate::web::{RequestOrigin, MyResponse};
 use crate::web::vks_web;
 use crate::database::{Database, KeyDatabase, types::Email, types::Fingerprint};
 use crate::mail;
@@ -28,8 +28,6 @@ mod templates {
         pub base_uri: String,
         pub uid_status: Vec<ManageKeyUidStatus>,
         pub token: String,
-        pub commit: String,
-        pub version: String,
     }
 
     #[derive(Serialize)]
@@ -59,7 +57,7 @@ pub mod forms {
 
 #[get("/manage")]
 pub fn vks_manage() -> Result<MyResponse> {
-    Ok(MyResponse::ok("manage/manage", General::default()))
+    Ok(MyResponse::ok_bare("manage/manage"))
 }
 
 #[get("/manage/<token>")]
@@ -94,8 +92,6 @@ pub fn vks_manage_key(
                     uid_status,
                     token,
                     base_uri: request_origin.get_base_uri().to_owned(),
-                    version: env!("VERGEN_SEMVER").to_string(),
-                    commit: env!("VERGEN_SHA_SHORT").to_string(),
                 };
                 MyResponse::ok("manage/manage_key", context)
             },

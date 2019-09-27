@@ -1,27 +1,24 @@
 <!doctype html>
-<html lang="en">
+<html lang="{{lang}}">
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <link rel="stylesheet" href="/assets/site.css?v=18" type="text/css"/>
     <title>keys.openpgp.org</title>
 </head>
-  <body lang="en">
+  <body lang="{{lang}}">
     <div class="card">
       <h1><a class="brand" href="/">keys.openpgp.org</a></h1>
-      {{#with error }}
-      <p><strong>Error</strong>: {{ this }}</p>
-      {{/with}}
       {{> @partial-block }}
       <div class="spacer"></div>
     </div>
     <div class="attribution">
       <p>
         <a href="https://gitlab.com/hagrid-keyserver/hagrid/">Hagrid</a>
-        v{{ version }} built from
+        {{ text "v{{ version }} built from" rerender }}
         <a href="https://gitlab.com/hagrid-keyserver/hagrid/commit/{{ commit }}">{{ commit }}</a>
       </p>
-      <p>Powered by <a href="https://sequoia-pgp.org">Sequoia-PGP</a></p>
-      <p>Background image retrieved from <a href="https://www.toptal.com/designers/subtlepatterns/subtle-grey/">Subtle Patterns</a> under CC BY-SA 3.0</p>
+      <p>{{ text "Powered by <a href=\"https://sequoia-pgp.org\">Sequoia-PGP</a>" }}</p>
+      <p>{{ text "Background image retrieved from <a href=\"https://www.toptal.com/designers/subtlepatterns/subtle-grey/\">Subtle Patterns</a> under CC BY-SA 3.0" }}</p>
     </div>
    </body>
 </html>
