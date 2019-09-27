@@ -1,27 +1,24 @@
 <!doctype html>
-<html lang=en>
+<html lang="{{lang}}">
   <head>
     <meta charset=utf-8>
-    <title>Your key upload on {{domain}}</title>
+    <title>{{ text "Your key upload on {{domain}}" rerender }}</title>
   </head>
   <body>
     <p>
-      Hi,
+      {{ text "Hi," }}
     <p>
-      this is an automated message from <a rel="nofollow" href="{{base_uri}}" style="text-decoration:none; color: #333"><tt>{{domain}}</tt></a>. If you didn't
-      upload your key there, please ignore this message.
+      {{ text "this is an automated message from <a rel=\"nofollow\" href=\"{{base_uri}}\" style=\"text-decoration:none; color: #333\"><tt>{{domain}}</tt></a>. If you didn't upload your key there, please ignore this message." rerender }}
     <p>
-      OpenPGP key: <tt>{{primary_fp}}</tt>
+      {{ text "OpenPGP key: <tt>{{primary_fp}}</tt>" rerender }}
     <p>
-      This key was just uploaded for the first time, and is now published without
-      identity information. If you want to allow others to find this key by e-mail
-      address, please follow this link:
+      {{ text "This key was just uploaded for the first time, and is now published without identity information. If you want to allow others to find this key by e-mail address, please follow this link:" }}
     <p>
       <a href="{{uri}}">{{uri}}</a>
     <p>
-      You can find more info at <a href="{{base_uri}}/about">{{domain}}/about</a>.
+      {{ text "You can find more info at <a href=\"{{base_uri}}/about\">{{domain}}/about</a>." rerender }}
     <p>
-      Greetings from the <a rel="nofollow" href="{{base_uri}}" style="text-decoration:none; color: #333"><tt>keys.openpgp.org</tt></a> team
+      {{ text "Greetings from the <a rel=\"nofollow\" href=\"{{base_uri}}\" style=\"text-decoration:none; color: #333\"><tt>keys.openpgp.org</tt></a> team" rerender }}
   </body>
 </html>
 

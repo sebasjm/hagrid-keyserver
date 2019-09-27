@@ -134,6 +134,7 @@ impl MyResponse {
             internal_error: e.to_string(),
             version: env!("VERGEN_SEMVER").to_string(),
             commit: env!("VERGEN_SHA_SHORT").to_string(),
+            lang: "en".to_string(),
         };
         MyResponse::ServerError(Template::render("500", ctx))
     }
@@ -171,6 +172,7 @@ mod templates {
         pub internal_error: String,
         pub commit: String,
         pub version: String,
+        pub lang: String,
     }
 
     #[derive(Serialize)]

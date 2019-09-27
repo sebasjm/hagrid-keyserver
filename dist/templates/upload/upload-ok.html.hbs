@@ -68,13 +68,11 @@
     {{#if count_revoked}}
       {{#if count_revoked_one}}
     <p style="padding-top: 1em;">
-      {{ text "This key contains one revoked identity, which is not published." }}
-      {{ text "(<a href=\"/about/faq#revoked-uids\" target=\"_blank\">Why?</a>)" }}
+      {{ text "This key contains one revoked identity, which is not published. (<a href=\"/about/faq#revoked-uids\" target=\"_blank\">Why?</a>)" rerender }}
     </p>
       {{else}}
     <p style="padding-top: 1em;">
-      {{ text "This key contains {{ count_revoked }} revoked identities, which are not published." rerender }}
-      {{ text "(<a href=\"/about/faq#revoked-uids\" target=\"_blank\">Why?</a>)" }}
+      {{ text "This key contains {{ count_revoked }} revoked identities, which are not published. (<a href=\"/about/faq#revoked-uids\" target=\"_blank\">Why?</a>)" rerender }}
     </p>
       {{/if}}
     {{/if}}

@@ -1,15 +1,13 @@
-Hi,
+{{ text "Hi," }}
 
-this is an automated message from {{domain}}. If you didn't
-request this message, please ignore it.
+{{ text "this is an automated message from {{domain}}. If you didn't\nrequest this message, please ignore it." rerender }}
 
-OpenPGP key: {{primary_fp}}
+{{ text "OpenPGP key: {{primary_fp}}" rerender }}
 
-To let others find this key from your email address "{{userid}}",
-please follow the link below:
+{{ text "To let others find this key from your email address \"{{userid}}\",\nplease follow the link below:" rerender }}
 
     {{uri}}
 
-You can find more info at {{base_uri}}/about
+{{ text "You can find more info at {{base_uri}}/about" rerender }}
 
-Greetings from the keys.openpgp.org team
+{{ text "Greetings from the keys.openpgp.org team" }}

@@ -10,7 +10,10 @@ use uuid::Uuid;
 use crate::counters;
 
 use rocket_i18n::I18n;
+use gettext_macros::include_i18n;
 use gettext_macros::i18n;
+
+use crate::i18n::I18NHelper;
 
 use crate::database::types::Email;
 use crate::Result;
@@ -18,6 +21,7 @@ use crate::Result;
 mod context {
     #[derive(Serialize, Clone)]
     pub struct Verification {
+        pub lang: String,
         pub primary_fp: String,
         pub uri: String,
         pub userid: String,
@@ -27,6 +31,7 @@ mod context {
 
     #[derive(Serialize, Clone)]
     pub struct Manage {
+        pub lang: String,
         pub primary_fp: String,
         pub uri: String,
         pub base_uri: String,
@@ -35,6 +40,7 @@ mod context {
 
     #[derive(Serialize, Clone)]
     pub struct Welcome {
+        pub lang: String,
         pub primary_fp: String,
         pub uri: String,
         pub base_uri: String,
@@ -84,6 +90,7 @@ impl Service {
         token: &str
     ) -> Result<()> {
         let ctx = context::Verification {
+            lang: i18n.lang.to_string(),
             primary_fp: tpk_name,
             uri: format!("{}/verify/{}", base_uri, token),
             userid: userid.to_string(),
@@ -111,6 +118,7 @@ impl Service {
         link_path: &str,
     ) -> Result<()> {
         let ctx = context::Manage {
+            lang: i18n.lang.to_string(),
             primary_fp: tpk_name,
             uri: format!("{}{}", base_uri, link_path),
             base_uri: base_uri.to_owned(),
@@ -137,6 +145,7 @@ impl Service {
         token: &str
     ) -> Result<()> {
         let ctx = context::Welcome {
+            lang: i18n.lang.to_string(),
             primary_fp: tpk_name,
             uri: format!("{}/upload/{}", base_uri, token),
             base_uri: base_uri.to_owned(),
@@ -154,7 +163,12 @@ impl Service {
         )
     }
 
-    fn render_template(&self, template: &str, locale: &str, ctx: impl Serialize + Clone) -> Result<(String, String)> {
+    fn render_template(
+        &self,
+        template: &str,
+        locale: &str,
+        ctx: impl Serialize + Clone
+    ) -> Result<(String, String)> {
         let html = self.templates.render(&format!("{}/{}.htm", locale, template), &ctx)
             .or_else(|_| self.templates.render(&format!("{}.htm", template), &ctx))
             .map_err(|_| failure::err_msg("Email template failed to render"))?;
@@ -209,6 +223,10 @@ impl Service {
 
 fn load_handlebars(template_dir: PathBuf) -> Result<Handlebars> {
     let mut handlebars = Handlebars::new();
+
+    let i18ns = include_i18n!();
+    let i18n_helper = I18NHelper::new(i18ns);
+    handlebars.register_helper("text", Box::new(i18n_helper));
 
     let mut glob_path = template_dir.join("**").join("*");
     glob_path.set_extension("hbs");
