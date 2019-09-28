@@ -1,6 +1,6 @@
 # Translators:
 # Vincent Breitmoser <look@my.amazin.horse>, 2019
-#
+# 
 msgid ""
 msgstr ""
 "Project-Id-Version: hagrid\n"
@@ -44,18 +44,27 @@ msgid "We found an entry for <span class=\"email\">{{ query }}</span>:"
 msgstr "Eintrag gefunden für <span class=\"email\">{{ query }}</span>:"
 
 #: src/gettext_strings.rs:8
+msgid ""
+"<strong>Hint:</strong> It's more convenient to use <span "
+"class=\"brand\">keys.openpgp.org</span> from your OpenPGP software.<br /> "
+"Take a look at our <a href=\"/about/usage\">usage guide</a> for details."
+msgstr ""
+"<strong>Tip:</strong> Es ist bequemer, <span class=\"brand\">keys.openpgp.org</span> aus  OpenPGP software zu verwenden. <br />\n"
+"Mehr dazu findest du in den <a href=\"/about/usage\">Nutzungshinweisen</a>."
+
+#: src/gettext_strings.rs:9
 msgid "debug info"
 msgstr "debug info"
 
-#: src/gettext_strings.rs:9
+#: src/gettext_strings.rs:10
 msgid "Search by Email Address / Key ID / Fingerprint"
 msgstr "Suche nach Email-Adresse / Schlüssel-ID / Fingerprint"
 
-#: src/gettext_strings.rs:10
+#: src/gettext_strings.rs:11
 msgid "Search"
 msgstr "Suchen"
 
-#: src/gettext_strings.rs:11
+#: src/gettext_strings.rs:12
 msgid ""
 "You can also <a href=\"/upload\">upload</a> or <a "
 "href=\"/manage\">manage</a> your key."
@@ -63,23 +72,23 @@ msgstr ""
 "Du kannst deinen Schlüssel <a href=\"/upload\">hochladen</a> oder <a "
 "href=\"/manage\">verwalten</a>."
 
-#: src/gettext_strings.rs:12
+#: src/gettext_strings.rs:13
 msgid "Find out more <a href=\"/about\">about this service</a>."
 msgstr "Erfahre mehr <a href=\"/about\">über diesen Keyserver</a>."
 
-#: src/gettext_strings.rs:13
+#: src/gettext_strings.rs:14
 msgid "News:"
 msgstr "News:"
 
-#: src/gettext_strings.rs:14
+#: src/gettext_strings.rs:15
 msgid "v{{ version }} built from"
 msgstr "v{{ version }}, Revision"
 
-#: src/gettext_strings.rs:15
+#: src/gettext_strings.rs:16
 msgid "Powered by <a href=\"https://sequoia-pgp.org\">Sequoia-PGP</a>"
 msgstr "Powered by <a href=\"https://sequoia-pgp.org\">Sequoia-PGP</a>"
 
-#: src/gettext_strings.rs:16
+#: src/gettext_strings.rs:17
 msgid ""
 "Background image retrieved from <a "
 "href=\"https://www.toptal.com/designers/subtlepatterns/subtle-grey/\">Subtle"
@@ -88,23 +97,23 @@ msgstr ""
 "Hintergrund von <a href=\"https://www.toptal.com/designers/subtlepatterns"
 "/subtle-grey/\">Subtle Patterns</a> unter CC BY-SA 3.0"
 
-#: src/gettext_strings.rs:17
+#: src/gettext_strings.rs:18
 msgid "Maintenance Mode"
 msgstr "Wartungsarbeiten"
 
-#: src/gettext_strings.rs:18
+#: src/gettext_strings.rs:19
 msgid "Manage your key"
 msgstr "Schlüssel verwalten"
 
-#: src/gettext_strings.rs:19
+#: src/gettext_strings.rs:20
 msgid "Enter any verified e-mail address of your key"
 msgstr "Eine Adresse des zu verwaltenden Schlüssels"
 
-#: src/gettext_strings.rs:20
+#: src/gettext_strings.rs:21
 msgid "Send link"
 msgstr "Sende Link"
 
-#: src/gettext_strings.rs:21
+#: src/gettext_strings.rs:22
 msgid ""
 "We will send you an e-mail with a link you can use to remove any of your "
 "e-mail addresses from search."
@@ -112,7 +121,7 @@ msgstr ""
 "Du wirst eine E-Mail mit einem Link erhalten, der es erlaubt, Adressen aus "
 "der Suche zu entfernen."
 
-#: src/gettext_strings.rs:22
+#: src/gettext_strings.rs:23
 msgid ""
 "Managing the key <span class=\"fingerprint\"><a href=\"{{ key_link }}\" "
 "target=\"_blank\">{{ key_fpr }}</a></span>."
@@ -120,11 +129,11 @@ msgstr ""
 "Verwaltung des Schlüssels <span class=\"fingerprint\"><a href=\"{{ key_link "
 "}}\" target=\"_blank\">{{ key_fpr }}</a></span>."
 
-#: src/gettext_strings.rs:23
+#: src/gettext_strings.rs:24
 msgid "Your key is published with the following identity information:"
 msgstr "Dieser Schlüssel ist veröffentlicht mit diesen Identitäten:"
 
-#: src/gettext_strings.rs:24
+#: src/gettext_strings.rs:25
 msgid ""
 "Clicking \"delete\" on any address will remove it from this key. It will no "
 "longer appear in a search.<br /> To add another address, <a "
@@ -134,7 +143,7 @@ msgstr ""
 "entfernt werden. <br /> Um eine Adresse hinzuzufügen, muss der Schlüssel <a "
 "href=\"/upload\">erneut hochgeladen</a> werden."
 
-#: src/gettext_strings.rs:25
+#: src/gettext_strings.rs:26
 msgid ""
 "Your key is published as only non-identity information.  (<a href=\"/about\""
 " target=\"_blank\">what does this mean?</a>)"
@@ -142,25 +151,25 @@ msgstr ""
 "Dieser Schlüssel ist jetzt ohne Identitäts-Informationen veröffentlicht (<a "
 "href=\"/about\" target=\"_blank\">was heisst das?</a>)"
 
-#: src/gettext_strings.rs:26
+#: src/gettext_strings.rs:27
 msgid "To add an address, <a href=\"/upload\">upload</a> the key again."
 msgstr ""
 "Um eine Identität hinzuzufügen, lade den Schlüssel <a "
 "href=\"/upload\">erneut hoch</a>."
 
-#: src/gettext_strings.rs:27
+#: src/gettext_strings.rs:28
 msgid ""
 "We have sent an email with further instructions to <span class=\"email\">{{ "
-"address }}</span>"
+"address }}</span>."
 msgstr ""
 "Eine E-Mail mit den nächsten Schritten wurde an <span class=\"email\">{{ "
 "address }}</span> gesendet."
 
-#: src/gettext_strings.rs:28
+#: src/gettext_strings.rs:29
 msgid "This address was already verified."
 msgstr "Diese Adresse war bereits bestätigt."
 
-#: src/gettext_strings.rs:29
+#: src/gettext_strings.rs:30
 msgid ""
 "Your key <span class=\"fingerprint\">{{ key_fpr }}</span> is now published "
 "for the identity <a href=\"{{userid_link}}\" target=\"_blank\"><span "
@@ -170,29 +179,29 @@ msgstr ""
 "veröffentlicht mit der Identität <a href=\"{{userid_link}}\" "
 "target=\"_blank\"><span class=\"email\">{{ userid }}</span></a>."
 
-#: src/gettext_strings.rs:30
+#: src/gettext_strings.rs:31
 msgid "Verification failed! Perhaps the link you used was expired?"
 msgstr ""
 "Bei der Bestätigung ist ein Fehler aufgetreten! Vielleicht war das Zeitlimit"
 " für den Link abgelaufen?"
 
-#: src/gettext_strings.rs:31
+#: src/gettext_strings.rs:32
 msgid "You can <a href=\"/upload\">try uploading again</a>."
 msgstr "Du kannst den Upload <a href=\"/upload\">erneut versuchen</a>."
 
-#: src/gettext_strings.rs:32
+#: src/gettext_strings.rs:33
 msgid "Upload your key"
 msgstr "Schlüssel hochladen"
 
-#: src/gettext_strings.rs:33
+#: src/gettext_strings.rs:34
 msgid "Your public key"
 msgstr "Dein Schlüssel"
 
-#: src/gettext_strings.rs:34
+#: src/gettext_strings.rs:35
 msgid "Upload"
 msgstr "Upload"
 
-#: src/gettext_strings.rs:35
+#: src/gettext_strings.rs:36
 msgid ""
 "Need more info? Check our <a target=\"_blank\" href=\"/about\">intro</a> and"
 " <a target=\"_blank\" href=\"/about/usage\">usage guide</a>!"
@@ -201,7 +210,7 @@ msgstr ""
 "href=\"/about\">Übersicht</a> und <a target=\"_blank\" "
 "href=\"/about/usage\">Nutzungshinweise</a>."
 
-#: src/gettext_strings.rs:36
+#: src/gettext_strings.rs:37
 msgid ""
 "You uploaded the key <span class=\"fingerprint\"><a href=\"{{ key_link }}\" "
 "target=\"_blank\">{{ key_fpr }}</a></span>."
@@ -209,11 +218,11 @@ msgstr ""
 "Schlüssel <span class=\"fingerprint\"><a href=\"{{ key_link }}\" "
 "target=\"_blank\">{{key_fpr}}</a></span> erfolgreich hochgeladen."
 
-#: src/gettext_strings.rs:37
+#: src/gettext_strings.rs:38
 msgid "This key is revoked."
 msgstr "Dieser Schlüssel ist widerrufen."
 
-#: src/gettext_strings.rs:38
+#: src/gettext_strings.rs:39
 msgid ""
 "It is published without identity information and can't be made available for"
 " search by e-mail address"
@@ -221,11 +230,11 @@ msgstr ""
 "Er wird veröffentlicht ohne Identitäten, ist aber nicht für eine Suche nach "
 "E-Mail Adresse verfügbar."
 
-#: src/gettext_strings.rs:39
+#: src/gettext_strings.rs:40
 msgid "what does this mean?"
 msgstr "was heisst das?"
 
-#: src/gettext_strings.rs:40
+#: src/gettext_strings.rs:41
 msgid ""
 "This key is now published with the following identity information (<a "
 "href=\"/about\" target=\"_blank\">what does this mean?</a>):"
@@ -233,11 +242,11 @@ msgstr ""
 "Dieser Schlüssel ist mit folgenden Identitäten veröffentlicht (<a "
 "href=\"/about\" target=\"_blank\">was heisst das?</a>):"
 
-#: src/gettext_strings.rs:41
+#: src/gettext_strings.rs:42
 msgid "Published"
 msgstr "Veröffentlicht"
 
-#: src/gettext_strings.rs:42
+#: src/gettext_strings.rs:43
 msgid ""
 "This key is now published with only non-identity information (<a "
 "href=\"/about\" target=\"_blank\">what does this mean?</a>)"
@@ -245,7 +254,7 @@ msgstr ""
 "Dieser Schlüssel ist jetzt ohne Identitäts-Informationen veröffentlicht (<a "
 "href=\"/about\" target=\"_blank\">was heisst das?</a>)"
 
-#: src/gettext_strings.rs:43
+#: src/gettext_strings.rs:44
 msgid ""
 "To make the key available for search by e-mail address, you can verify it "
 "belongs to you:"
@@ -253,11 +262,11 @@ msgstr ""
 "Um den Schlüssel für eine Suche per E-Mail Adresse verfügbar zu machen, muss"
 " die entsprechende Adresse bestätigt werden:"
 
-#: src/gettext_strings.rs:44
+#: src/gettext_strings.rs:45
 msgid "Verification Pending"
 msgstr "Bestätigung wird erwartet"
 
-#: src/gettext_strings.rs:45
+#: src/gettext_strings.rs:46
 msgid ""
 "<strong>Note:</strong> Some providers delay e-mails for up to 15 minutes to "
 "prevent spam. Please be patient."
@@ -265,11 +274,11 @@ msgstr ""
 "<strong>Hinweis:</strong> Manche Provider verzögern den Empfang von Emails "
 "um bis zu 15 Minuten, um Spam zu verhindern. Bitte einen Moment Geduld."
 
-#: src/gettext_strings.rs:46
+#: src/gettext_strings.rs:47
 msgid "Send Verification Mail"
 msgstr "Bestätigungs-E-Mail senden"
 
-#: src/gettext_strings.rs:47
+#: src/gettext_strings.rs:48
 msgid ""
 "This key contains one identity that could not be parsed as an email "
 "address.<br /> This identity can't be published on <span "
@@ -281,7 +290,7 @@ msgstr ""
 "class=\"brand\">keys.openpgp.org</span> veröffentlicht werden. (<a "
 "href=\"/about/faq#non-email-uids\" target=\"_blank\">warum?</a>)"
 
-#: src/gettext_strings.rs:48
+#: src/gettext_strings.rs:49
 msgid ""
 "This key contains {{ count_unparsed }} identities that could not be parsed "
 "as an email address.<br /> These identities can't be published on <span "
@@ -293,7 +302,7 @@ msgstr ""
 "auf <span class=\"brand\">keys.openpgp.org</span> veröffentlicht werden. (<a"
 " href=\"/about/faq#non-email-uids\" target=\"_blank\">warum?</a>)"
 
-#: src/gettext_strings.rs:49
+#: src/gettext_strings.rs:50
 msgid ""
 "This key contains one revoked identity, which is not published. (<a "
 "href=\"/about/faq#revoked-uids\" target=\"_blank\">Why?</a>)"
@@ -302,7 +311,7 @@ msgstr ""
 "veröffentlicht. (<a href=\"/about/faq#revoked-uids\" "
 "target=\"_blank\">Warum?</a>)"
 
-#: src/gettext_strings.rs:50
+#: src/gettext_strings.rs:51
 msgid ""
 "This key contains {{ count_revoked }} revoked identities, which are not "
 "published. (<a href=\"/about/faq#revoked-uids\" target=\"_blank\">Why?</a>)"
@@ -311,11 +320,11 @@ msgstr ""
 "werden nicht veröffentlicht. (<a href=\"/about/faq#revoked-uids\" "
 "target=\"_blank\">Warum?</a>)"
 
-#: src/gettext_strings.rs:51
+#: src/gettext_strings.rs:52
 msgid "Your keys have been successfully uploaded:"
 msgstr "Schlüssel erfolgreich hochgeladen:"
 
-#: src/gettext_strings.rs:52
+#: src/gettext_strings.rs:53
 msgid ""
 "<strong>Note:</strong> To make keys searchable by address, you must upload "
 "them individually."
@@ -323,11 +332,11 @@ msgstr ""
 "<strong>Hinweis:</strong> Schlüssel müssen einzeln hochgeladen werden, um "
 "sie für die Suche per E-Mail-Adresse zu bestätigen."
 
-#: src/gettext_strings.rs:53
+#: src/gettext_strings.rs:54
 msgid "Verifying your email address…"
 msgstr "E-Mail Adresse wird bestätigt..."
 
-#: src/gettext_strings.rs:54
+#: src/gettext_strings.rs:55
 msgid ""
 "If the process doesn't complete after a few seconds, <input type=\"submit\" "
 "class=\"textbutton\" value=\"click here\" />."
@@ -335,15 +344,15 @@ msgstr ""
 "Wenn der Vorgang nicht in einigen Sekunden erfolgreich ist, <input "
 "type=\"submit\" class=\"textbutton\" value=\"klicke hier\"/>."
 
-#: src/gettext_strings.rs:56
+#: src/gettext_strings.rs:57
 msgid "Manage your key on {{domain}}"
 msgstr "Schlüssel-Verwaltung auf {{domain}}"
 
-#: src/gettext_strings.rs:58
+#: src/gettext_strings.rs:59
 msgid "Hi,"
 msgstr "Hi,"
 
-#: src/gettext_strings.rs:59
+#: src/gettext_strings.rs:60
 msgid ""
 "this is an automated message from <a rel=\"nofollow\" href=\"{{ base_uri "
 "}}\" style=\"text-decoration:none; color: #333\"><tt>{{ domain }}</tt></a>."
@@ -352,22 +361,22 @@ msgstr ""
 "base_uri }}\" style=\"text-decoration:none; color: #333\"><tt>{{ domain "
 "}}</tt></a>."
 
-#: src/gettext_strings.rs:60
+#: src/gettext_strings.rs:61
 msgid "If you didn't request this message, please ignore it."
 msgstr "Falls dies unerwartet ist, bitte die Nachricht ignorieren."
 
-#: src/gettext_strings.rs:61
+#: src/gettext_strings.rs:62
 msgid "OpenPGP key: <tt>{{ primary_fp }}</tt>"
 msgstr "OpenPGP Schlüssel: <tt>{{ primary_fp }}</tt>"
 
-#: src/gettext_strings.rs:62
+#: src/gettext_strings.rs:63
 msgid ""
 "To manage and delete listed addresses on this key, please follow the link "
 "below:"
 msgstr ""
 "Du kannst die Identitäten dieses Schlüssels unter folgendem Link verwalten:"
 
-#: src/gettext_strings.rs:63
+#: src/gettext_strings.rs:64
 msgid ""
 "You can find more info at <a href=\"{{ base_uri }}/about\">{{ domain "
 "}}/about</a>."
@@ -375,7 +384,7 @@ msgstr ""
 "Weitere Informationen findest du unter <a href=\"{{base_uri}}/about\">{{ "
 "domain }}/about</a>."
 
-#: src/gettext_strings.rs:64
+#: src/gettext_strings.rs:65
 msgid ""
 "Greetings from the <a rel=\"nofollow\" href=\"{{ base_uri }}\" style=\"text-"
 "decoration:none; color: #333\"><tt>keys.openpgp.org</tt></a> team"
@@ -383,7 +392,7 @@ msgstr ""
 "Das <a rel=\"nofollow\" href=\"{{base_uri}}\" style=\"text-decoration:none; "
 "color: #333\"><tt>keys.openpgp.org</tt></a> Team"
 
-#: src/gettext_strings.rs:67
+#: src/gettext_strings.rs:68
 msgid ""
 "this is an automated message from {{domain}}. If you didn't\n"
 "request this message, please ignore it."
@@ -391,30 +400,30 @@ msgstr ""
 "dies ist eine automatisierte Nachricht von {{domain}}. Falls dies unerwartet"
 " ist, bitte die Nachricht ignorieren."
 
-#: src/gettext_strings.rs:68
+#: src/gettext_strings.rs:69
 msgid "OpenPGP key: {{primary_fp}}"
 msgstr "OpenPGP Schlüssel: {{primary_fp}}"
 
-#: src/gettext_strings.rs:69
+#: src/gettext_strings.rs:70
 msgid ""
 "To manage and delete listed addresses on this key, please follow\n"
 "the link below:"
 msgstr ""
 "Du kannst die Identitäten dieses Schlüssels unter folgendem Link verwalten:"
 
-#: src/gettext_strings.rs:70
+#: src/gettext_strings.rs:71
 msgid "You can find more info at {{base_uri}}/about"
 msgstr "Weiter Informationen findest du unter {{base_uri}}/about"
 
-#: src/gettext_strings.rs:71
+#: src/gettext_strings.rs:72
 msgid "Greetings from the keys.openpgp.org team"
 msgstr "Das keys.openpgp.org Team"
 
-#: src/gettext_strings.rs:73
+#: src/gettext_strings.rs:74
 msgid "Verify {{userid}} for your key on {{domain}}"
 msgstr "Bestätige {{userid}} für deinen Schlüssel auf {{domain}}"
 
-#: src/gettext_strings.rs:76
+#: src/gettext_strings.rs:77
 msgid ""
 "this is an automated message from <a rel=\"nofollow\" href=\"{{base_uri}}\" "
 "style=\"text-decoration:none; color: #333\"><tt>{{domain}}</tt></a>. If you "
@@ -424,11 +433,11 @@ msgstr ""
 "base_uri }}\" style=\"text-decoration:none; color: #333\"><tt>{{ domain "
 "}}</tt></a>. Falls dies unerwartet ist, bitte die Nachricht ignorieren."
 
-#: src/gettext_strings.rs:77
+#: src/gettext_strings.rs:78
 msgid "OpenPGP key: <tt>{{primary_fp}}</tt>"
 msgstr "OpenPGP Schlüssel: <tt>{{primary_fp}}</tt>"
 
-#: src/gettext_strings.rs:78
+#: src/gettext_strings.rs:79
 msgid ""
 "To let others find this key from your email address \"<a rel=\"nofollow\" "
 "href=\"#\" style=\"text-decoration:none; color: #333\">{{userid}}</a>\", "
@@ -438,7 +447,7 @@ msgstr ""
 "=\"text-decoration:none; color: #333\">{{userid}}</a>\" verfügbar zu machen,"
 " klicke diesen Link:"
 
-#: src/gettext_strings.rs:79
+#: src/gettext_strings.rs:80
 msgid ""
 "You can find more info at <a "
 "href=\"{{base_uri}}/about\">{{domain}}/about</a>."
@@ -446,7 +455,7 @@ msgstr ""
 "Weiter Informationen findest du unter <a "
 "href=\"{{base_uri}}/about\">{{domain}}/about</a>."
 
-#: src/gettext_strings.rs:80
+#: src/gettext_strings.rs:81
 msgid ""
 "Greetings from the <a rel=\"nofollow\" href=\"{{base_uri}}\" style=\"text-"
 "decoration:none; color: #333\"><tt>keys.openpgp.org</tt></a> team"
@@ -454,7 +463,7 @@ msgstr ""
 "Grüße vom <a rel=\"nofollow\" href=\"{{base_uri}}\" style=\"text-"
 "decoration:none; color: #333\"><tt>keys.openpgp.org</tt></a> team"
 
-#: src/gettext_strings.rs:85
+#: src/gettext_strings.rs:86
 msgid ""
 "To let others find this key from your email address \"{{userid}}\",\n"
 "please follow the link below:"
@@ -462,11 +471,11 @@ msgstr ""
 "Um diesen OpenPGP-Schlüssel unter der Adresse \"{{userid}}\" auffindbar zu machen,\n"
 "klicke diesen Link:"
 
-#: src/gettext_strings.rs:89
+#: src/gettext_strings.rs:90
 msgid "Your key upload on {{domain}}"
 msgstr "Hochgeladener Schlüssel auf {{domain}}"
 
-#: src/gettext_strings.rs:92
+#: src/gettext_strings.rs:93
 msgid ""
 "this is an automated message from <a rel=\"nofollow\" href=\"{{base_uri}}\" "
 "style=\"text-decoration:none; color: #333\"><tt>{{domain}}</tt></a>. If you "
@@ -476,7 +485,7 @@ msgstr ""
 "base_uri }}\" style=\"text-decoration:none; color: #333\"><tt>{{ domain "
 "}}</tt></a>. Falls dies unerwartet ist, bitte die Nachricht ignorieren."
 
-#: src/gettext_strings.rs:94
+#: src/gettext_strings.rs:95
 msgid ""
 "This key was just uploaded for the first time, and is now published without "
 "identity information. If you want to allow others to find this key by e-mail"
@@ -486,7 +495,7 @@ msgstr ""
 "Identitäten veröffentlicht. Um diesen Schlüssel für eine Suche nach E-Mail "
 "Adresse verfügbar zu machen, folge diesem Link:"
 
-#: src/gettext_strings.rs:99
+#: src/gettext_strings.rs:100
 msgid ""
 "this is an automated message from {{domain}}. If you didn't upload your key\n"
 "there, please ignore this message."
@@ -494,7 +503,7 @@ msgstr ""
 "dies ist eine automatisierte Nachricht von {{domain}}. Falls dies unerwartet ist,\n"
 "bitte die Nachricht ignorieren."
 
-#: src/gettext_strings.rs:101
+#: src/gettext_strings.rs:102
 msgid ""
 "This key was just uploaded for the first time, and is now published without\n"
 "identity information. If you want to allow others to find this key by e-mail\n"
@@ -503,3 +512,41 @@ msgstr ""
 "Dieser Schlüssel wurde gerade erstmals hochgeladen, und zunächst ohne Identitäten\n"
 "veröffentlicht. Um diesen Schlüssel für eine Suche nach E-Mail Adresse verfügbar\n"
 "zu machen, folge diesem Link:"
+
+#: src/web/hkp.rs:144
+msgid "Upload successful. This is a new key, a welcome mail has been sent!"
+msgstr ""
+"Upload erfolgreich. Da es sich um einen neuen Schlüssel handelt, wurde eine "
+"Willkommens-Nachricht versandt."
+
+#: src/web/hkp.rs:146
+msgid ""
+"Upload successful. Note that identity information will only be published "
+"after verification! see {}/about/usage#gnupg-upload"
+msgstr ""
+"Upload erfolgreich. Für die Veröffentlichung von Identitäten ist eine "
+"Bestätigung erforderlich! Siehe {}/about/usage#gnupg-upload"
+
+#: src/web/manage.rs:103
+msgid "This link is invalid or expired"
+msgstr "Dieser Link ist ungültig, oder bereits abgelaufen."
+
+#: src/web/manage.rs:129
+msgid "Malformed address: {}"
+msgstr "Ungültiges Adress-Format: {}"
+
+#: src/web/manage.rs:136
+msgid "No key for address: {}"
+msgstr "Kein Schlüssel gefunden für {}"
+
+#: src/web/manage.rs:152
+msgid "A request was already sent for this address recently."
+msgstr "Eine E-Mail für diesen Schlüssel wurde erst kürzlich versandt!"
+
+#: src/web/vks.rs:173
+msgid "Something went wrong processing key {}"
+msgstr "Ein Fehler ist aufgetreten beim Verarbeiten des Schlüssels {}"
+
+#: src/web/vks.rs:276
+msgid "Invalid verification token!"
+msgstr "Verifikations-Link ungültig."

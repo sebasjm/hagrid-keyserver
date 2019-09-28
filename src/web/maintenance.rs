@@ -1,7 +1,8 @@
 use rocket::{Request, Data};
 use rocket::fairing::{Fairing, Info, Kind};
-use rocket_contrib::templates::Template;
 use rocket::http::Method;
+use rocket_contrib::templates::Template;
+use rocket_i18n::I18n;
 
 use std::fs;
 use std::path::PathBuf;
@@ -18,6 +19,7 @@ mod templates {
         pub message: String,
         pub commit: String,
         pub version: String,
+        pub lang: String,
     }
 }
 
@@ -93,11 +95,15 @@ pub fn maintenance_error_json(message: String) -> MyResponse {
 }
 
 #[get("/maintenance/web/<message>")]
-pub fn maintenance_error_web(message: String) -> MyResponse {
+pub fn maintenance_error_web(
+    message: String,
+    i18n: I18n,
+) -> MyResponse {
     let ctx = templates::MaintenanceMode{
         message,
         version: env!("VERGEN_SEMVER").to_string(),
         commit: env!("VERGEN_SHA_SHORT").to_string(),
+        lang: i18n.lang.to_owned(),
     };
     MyResponse::Maintenance(Template::render("maintenance", ctx))
 }

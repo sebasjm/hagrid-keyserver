@@ -5,6 +5,7 @@ fn _dummy() {
     t!("Looks like something went wrong :(");
     t!("<strong>Error:</strong> {{ internal_error }}");
     t!("We found an entry for <span class=\"email\">{{ query }}</span>:");
+    t!("<strong>Hint:</strong> It's more convenient to use <span class=\"brand\">keys.openpgp.org</span> from your OpenPGP software.<br /> Take a look at our <a href=\"/about/usage\">usage guide</a> for details.");
     t!("debug info");
     t!("Search by Email Address / Key ID / Fingerprint");
     t!("Search");
@@ -24,7 +25,7 @@ fn _dummy() {
     t!("Clicking \"delete\" on any address will remove it from this key. It will no longer appear in a search.<br /> To add another address, <a href=\"/upload\">upload</a> the key again.");
     t!("Your key is published as only non-identity information.  (<a href=\"/about\" target=\"_blank\">what does this mean?</a>)");
     t!("To add an address, <a href=\"/upload\">upload</a> the key again.");
-    t!("We have sent an email with further instructions to <span class=\"email\">{{ address }}</span>");
+    t!("We have sent an email with further instructions to <span class=\"email\">{{ address }}</span>.");
     t!("This address was already verified.");
     t!("Your key <span class=\"fingerprint\">{{ key_fpr }}</span> is now published for the identity <a href=\"{{userid_link}}\" target=\"_blank\"><span class=\"email\">{{ userid }}</span></a>.");
     t!("Verification failed! Perhaps the link you used was expired?");

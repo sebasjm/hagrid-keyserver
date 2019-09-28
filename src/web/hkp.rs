@@ -7,6 +7,8 @@ use rocket::request::{self, Request, FromRequest};
 use rocket::http::uri::Uri;
 use rocket_i18n::I18n;
 
+use gettext_macros::i18n;
+
 use crate::database::{Database, Query, KeyDatabase};
 use crate::database::types::{Email, Fingerprint, KeyID};
 
@@ -116,10 +118,11 @@ pub fn pks_add_form_data(
     db: rocket::State<KeyDatabase>,
     tokens_stateless: rocket::State<tokens::Service>,
     rate_limiter: rocket::State<RateLimiter>,
+    i18n: I18n,
     cont_type: &ContentType,
     data: Data,
 ) -> MyResponse {
-    match vks_web::process_post_form_data(db, tokens_stateless, rate_limiter, cont_type, data) {
+    match vks_web::process_post_form_data(db, tokens_stateless, rate_limiter, i18n, cont_type, data) {
         Ok(_) => MyResponse::plain("Ok".into()),
         Err(err) => MyResponse::ise(err),
     }
@@ -135,17 +138,17 @@ pub fn pks_add_form(
     i18n: I18n,
     data: Data,
 ) -> MyResponse {
-    match vks_web::process_post_form(db, tokens_stateless, rate_limiter, data) {
+    match vks_web::process_post_form(&db, &tokens_stateless, &rate_limiter, &i18n, data) {
         Ok(UploadResponse::Ok { is_new_key, key_fpr, primary_uid, token, .. }) => {
             let msg = if is_new_key && send_welcome_mail(&request_origin, &mail_service, &i18n, key_fpr, primary_uid, token) {
-                "Upload successful. This is a new key, a welcome mail has been sent!".to_owned()
+                i18n!(i18n.catalog, "Upload successful. This is a new key, a welcome mail has been sent!")
             } else {
-                format!("Upload successful. Note that identity information will only be published after verification! see {}/about/usage#gnupg-upload", request_origin.get_base_uri())
+                i18n!(i18n.catalog, "Upload successful. Note that identity information will only be published after verification! see {}/about/usage#gnupg-upload"; request_origin.get_base_uri())
             };
             MyResponse::plain(msg)
         }
         Ok(_) => {
-            let msg = format!("Upload successful. Note that identity information will only be published after verification! see {}/about/usage#gnupg-upload", request_origin.get_base_uri());
+            let msg = i18n!(i18n.catalog, "Upload successful. Note that identity information will only be published after verification! see {}/about/usage#gnupg-upload"; request_origin.get_base_uri());
             MyResponse::plain(msg)
         }
         Err(err) => MyResponse::ise(err),
@@ -169,9 +172,11 @@ fn send_welcome_mail(
 }
 
 #[get("/pks/lookup")]
-pub fn pks_lookup(state: rocket::State<HagridState>,
-                  db: rocket::State<KeyDatabase>,
-                  key: Hkp) -> MyResponse {
+pub fn pks_lookup(
+    state: rocket::State<HagridState>,
+    db: rocket::State<KeyDatabase>,
+    key: Hkp
+) -> MyResponse {
     let (query, index) = match key {
         Hkp::Fingerprint { fpr, index } =>
             (Query::ByFingerprint(fpr), index),

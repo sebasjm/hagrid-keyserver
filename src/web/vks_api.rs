@@ -79,12 +79,13 @@ pub fn upload_json(
     db: rocket::State<KeyDatabase>,
     tokens_stateless: rocket::State<tokens::Service>,
     rate_limiter: rocket::State<RateLimiter>,
+    i18n: I18n,
     data: Result<Json<json::UploadRequest>, JsonError>,
 ) -> JsonResult {
     let data = json_or_error(data)?;
     use std::io::Cursor;
     let data_reader = Cursor::new(data.keytext.as_bytes());
-    let result = vks::process_key(&db, &tokens_stateless, &rate_limiter, data_reader);
+    let result = vks::process_key(&db, &i18n, &tokens_stateless, &rate_limiter, data_reader);
     upload_ok_json(result)
 }
 
