@@ -187,7 +187,7 @@ impl MyResponse {
 
 #[get("/upload")]
 pub fn upload() -> MyResponse {
-    MyResponse::ok("upload/upload", ())
+    MyResponse::ok_bare("upload/upload")
 }
 
 #[post("/upload/submit", format = "multipart/form-data", data = "<data>")]
