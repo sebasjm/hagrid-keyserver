@@ -22,6 +22,7 @@ fn _dummy() {
     t!("We will send you an e-mail with a link you can use to remove any of your e-mail addresses from search.");
     t!("Managing the key <span class=\"fingerprint\"><a href=\"{{ key_link }}\" target=\"_blank\">{{ key_fpr }}</a></span>.");
     t!("Your key is published with the following identity information:");
+    t!("Delete");
     t!("Clicking \"delete\" on any address will remove it from this key. It will no longer appear in a search.<br /> To add another address, <a href=\"/upload\">upload</a> the key again.");
     t!("Your key is published as only non-identity information.  (<a href=\"/about\" target=\"_blank\">what does this mean?</a>)");
     t!("To add an address, <a href=\"/upload\">upload</a> the key again.");
