@@ -9,3 +9,45 @@ trans.None = po/hagrid/hagrid.pot
 trans.de = po/hagrid/de.po
 type = PO
 
+[hagrid.about-about]
+minimum_perc = 100
+source_file = templates-untranslated/about/about.html.hbs
+file_filter = templates-translated/<lang>/about/about.html.hbs
+source_lang = en
+type = HTML
+
+[hagrid.about-faq]
+minimum_perc = 100
+source_file = templates-untranslated/about/faq.html.hbs
+file_filter = templates-translated/<lang>/about/faq.html.hbs
+source_lang = en
+type = HTML
+
+[hagrid.about-news]
+minimum_perc = 100
+source_file = templates-untranslated/about/news.html.hbs
+file_filter = templates-translated/<lang>/about/news.html.hbs
+source_lang = en
+type = HTML
+
+[hagrid.about-privacy]
+minimum_perc = 100
+source_file = templates-untranslated/about/privacy.html.hbs
+file_filter = templates-translated/<lang>/about/privacy.html.hbs
+source_lang = en
+type = HTML
+
+[hagrid.about-stats]
+minimum_perc = 100
+source_file = templates-untranslated/about/stats.html.hbs
+file_filter = templates-translated/<lang>/about/stats.html.hbs
+source_lang = en
+type = HTML
+
+[hagrid.about-usage]
+minimum_perc = 100
+source_file = templates-untranslated/about/usage.html.hbs
+file_filter = templates-translated/<lang>/about/usage.html.hbs
+source_lang = en
+type = HTML
+

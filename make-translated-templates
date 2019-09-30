@@ -1,0 +1,13 @@
+#!/bin/zsh
+
+for i in dist/templates-translated/**/*.hbs; do
+	local template_path=${${i#dist/templates-translated/}:h}
+
+	if [[ ! -d dist/templates/localized/$template_path ]]; then
+		echo mkdir -p dist/templates/localized/$template_path/
+		mkdir -p dist/templates/localized/$template_path/
+	fi
+
+	echo "cat ${i:h}/template-prefix $i ${i:h}/template-suffix >! dist/templates/localized/$template_path/${i:t}"
+	cat ${i:h}/template-prefix $i ${i:h}/template-suffix >! dist/templates/localized/$template_path/${i:t}
+done

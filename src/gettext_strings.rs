@@ -12,6 +12,7 @@ fn _dummy() {
     t!("You can also <a href=\"/upload\">upload</a> or <a href=\"/manage\">manage</a> your key.");
     t!("Find out more <a href=\"/about\">about this service</a>.");
     t!("News:");
+    t!("<a href=\"/about/news#2019-09-12-three-months-later\">Three months after launch ✨</a> (2019-09-12)");
     t!("v{{ version }} built from");
     t!("Powered by <a href=\"https://sequoia-pgp.org\">Sequoia-PGP</a>");
     t!("Background image retrieved from <a href=\"https://www.toptal.com/designers/subtlepatterns/subtle-grey/\">Subtle Patterns</a> under CC BY-SA 3.0");

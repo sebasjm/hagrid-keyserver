@@ -629,6 +629,22 @@ pub mod tests {
     }
 
     #[test]
+    fn about_translation() {
+        let (_tmpdir, config) = configuration().unwrap();
+        let rocket = rocket_factory(rocket::custom(config)).unwrap();
+        let client = Client::new(rocket).expect("valid rocket instance");
+
+        // Check that we see the landing page.
+        let mut response = client.get("/about")
+            .header(Header::new("Accept-Language", "de"))
+            .dispatch();
+        assert_eq!(response.status(), Status::Ok);
+        assert_eq!(response.content_type(), Some(ContentType::HTML));
+        // TODO check translation
+        assert!(response.body_string().unwrap().contains("Hagrid"));
+    }
+
+    #[test]
     fn basics() {
         let (_tmpdir, config) = configuration().unwrap();
         let rocket = rocket_factory(rocket::custom(config)).unwrap();
@@ -782,7 +798,7 @@ pub mod tests {
 
         check_verify_link(&client, &token, "foo@invalid.example.com", "de, en");
         let mail_content = pop_mail(&filemail_into).unwrap().unwrap();
-        assert!(mail_content.contains("dies ist eine automatische Nachricht"))
+        assert!(mail_content.contains("dies ist eine automatisierte Nachricht"))
     }
 
     #[test]
