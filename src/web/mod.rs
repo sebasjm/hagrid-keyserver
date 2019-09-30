@@ -21,6 +21,7 @@ use std::path::PathBuf;
 use crate::mail;
 use crate::tokens;
 use crate::counters;
+use crate::template_helpers::TemplateOverrides;
 use crate::i18n::I18NHelper;
 use crate::rate_limiter::RateLimiter;
 
@@ -48,9 +49,16 @@ impl Responder<'static> for HagridTemplate {
     fn respond_to(self, req: &rocket::Request) -> std::result::Result<Response<'static>, Status> {
         let HagridTemplate(tmpl, ctx) = self;
         let i18n: I18n = req.guard().expect("Error parsing language");
+        let template_overrides: rocket::State<TemplateOverrides> = req.guard().expect("TemplateOverrides must be in managed state");
+        let template_override = template_overrides.get_template_override(i18n.lang, tmpl);
         let origin: RequestOrigin = req.guard().expect("Error determining request origin");
         let layout_context = templates::HagridLayout::new(ctx, i18n, origin);
-        Template::render(tmpl, layout_context).respond_to(req)
+
+        if let Some(template_override) = template_override {
+            Template::render(template_override, layout_context)
+        } else {
+            Template::render(tmpl, layout_context)
+        }.respond_to(req)
     }
 }
 
@@ -410,6 +418,8 @@ fn rocket_factory(mut rocket: rocket::Rocket) -> Result<rocket::Rocket> {
     let mail_service = configure_mail_service(rocket.config())?;
     let rate_limiter = configure_rate_limiter(rocket.config())?;
     let maintenance_mode = configure_maintenance_mode(rocket.config())?;
+    let localized_template_list = configure_localized_template_list(rocket.config())?;
+    println!("{:?}", localized_template_list);
 
     let prometheus = configure_prometheus(rocket.config());
 
@@ -427,6 +437,7 @@ fn rocket_factory(mut rocket: rocket::Rocket) -> Result<rocket::Rocket> {
        .manage(mail_service)
        .manage(db_service)
        .manage(rate_limiter)
+       .manage(localized_template_list)
        .mount("/", routes);
 
     if let Some(prometheus) = prometheus {
@@ -512,6 +523,11 @@ fn configure_rate_limiter(config: &Config) -> Result<RateLimiter> {
     let timeout_secs = config.get_int("mail_rate_limit").unwrap_or(60);
     let timeout_secs = timeout_secs.try_into()?;
     Ok(RateLimiter::new(timeout_secs))
+}
+
+fn configure_localized_template_list(config: &Config) -> Result<TemplateOverrides> {
+    let template_dir: PathBuf = config.get_str("template_dir")?.into();
+    TemplateOverrides::load(&template_dir, "localized")
 }
 
 fn configure_maintenance_mode(config: &Config) -> Result<MaintenanceMode> {

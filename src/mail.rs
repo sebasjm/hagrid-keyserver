@@ -1,4 +1,4 @@
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use failure;
 use handlebars::Handlebars;
@@ -10,10 +10,9 @@ use uuid::Uuid;
 use crate::counters;
 
 use rocket_i18n::I18n;
-use gettext_macros::include_i18n;
 use gettext_macros::i18n;
 
-use crate::i18n::I18NHelper;
+use crate::template_helpers;
 
 use crate::database::types::Email;
 use crate::Result;
@@ -73,7 +72,7 @@ impl Service {
 
     fn new(from: String, base_uri: String, template_dir: PathBuf, transport: Transport)
            -> Result<Self> {
-        let templates = load_handlebars(template_dir)?;
+        let templates = template_helpers::load_handlebars(template_dir)?;
         let domain =
             url::Url::parse(&base_uri)
             ?.host_str().ok_or_else(|| failure::err_msg("No host in base-URI"))
@@ -167,7 +166,7 @@ impl Service {
         &self,
         template: &str,
         locale: &str,
-        ctx: impl Serialize + Clone
+        ctx: impl Serialize
     ) -> Result<(String, String)> {
         let html = self.templates.render(&format!("{}/{}.htm", locale, template), &ctx)
             .or_else(|_| self.templates.render(&format!("{}.htm", template), &ctx))
@@ -185,7 +184,7 @@ impl Service {
         subject: &str,
         template: &str,
         locale: &str,
-        ctx: impl Serialize + Clone
+        ctx: impl Serialize
     ) -> Result<()> {
         let (html, txt) = self.render_template(template, locale, ctx)?;
 
@@ -218,38 +217,6 @@ impl Service {
         }
 
         Ok(())
-    }
-}
-
-fn load_handlebars(template_dir: PathBuf) -> Result<Handlebars> {
-    let mut handlebars = Handlebars::new();
-
-    let i18ns = include_i18n!();
-    let i18n_helper = I18NHelper::new(i18ns);
-    handlebars.register_helper("text", Box::new(i18n_helper));
-
-    let mut glob_path = template_dir.join("**").join("*");
-    glob_path.set_extension("hbs");
-    let glob_path = glob_path.to_str().expect("valid glob path string");
-
-    for path in glob::glob(glob_path).unwrap().flatten() {
-        let template_name = remove_extension(path.strip_prefix(&template_dir)?);
-        handlebars.register_template_file(&template_name.to_string_lossy(), &path)?;
-    }
-
-    Ok(handlebars)
-}
-
-fn remove_extension<P: AsRef<Path>>(path: P) -> PathBuf {
-    let path = path.as_ref();
-    let stem = match path.file_stem() {
-        Some(stem) => stem,
-        None => return path.to_path_buf()
-    };
-
-    match path.parent() {
-        Some(parent) => parent.join(stem),
-        None => PathBuf::from(stem)
     }
 }
 
