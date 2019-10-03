@@ -39,6 +39,7 @@ gettext-macros = "0.5"
 gettext = "0.4"
 runtime-fmt = "0.4"
 glob = "0.3"
+rfc2047 = "0.1"
 
 [dependencies.lettre]
 version = "0.9"

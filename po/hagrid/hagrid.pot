@@ -12,15 +12,15 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=INTEGER; plural=EXPRESSION;\n"
 
-#: src/mail.rs:104
+#: src/mail.rs:106
 msgid "Verify {} for your key on {}"
 msgstr ""
 
-#: src/mail.rs:131
+#: src/mail.rs:133
 msgid "Manage your key on {}"
 msgstr ""
 
-#: src/mail.rs:158
+#: src/mail.rs:160
 msgid "Your key upload on {}"
 msgstr ""
 

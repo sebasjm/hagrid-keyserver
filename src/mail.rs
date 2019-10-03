@@ -12,6 +12,8 @@ use crate::counters;
 use rocket_i18n::I18n;
 use gettext_macros::i18n;
 
+use rfc2047::rfc2047_encode;
+
 use crate::template_helpers;
 
 use crate::database::types::Email;
@@ -197,7 +199,7 @@ impl Service {
 
         let email = EmailBuilder::new()
             .from(self.from.clone())
-            .subject(subject)
+            .subject(rfc2047_encode(subject))
             .alternative(html, txt)
             .message_id(format!("<{}@{}>", Uuid::new_v4(), self.domain));
 

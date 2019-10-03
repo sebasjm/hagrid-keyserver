@@ -796,9 +796,10 @@ pub mod tests {
         tpk.serialize(&mut tpk_serialized).unwrap();
         let token = vks_publish_submit_get_token(&client, &tpk_serialized);
 
-        check_verify_link(&client, &token, "foo@invalid.example.com", "de, en");
+        check_verify_link(&client, &token, "foo@invalid.example.com", "de");
         let mail_content = pop_mail(&filemail_into).unwrap().unwrap();
-        assert!(mail_content.contains("dies ist eine automatisierte Nachricht"))
+        assert!(mail_content.contains("dies ist eine automatisierte Nachricht"));
+        assert!(mail_content.contains("Subject: =?utf-8?q?Best=C3=A4tige?= foo@invalid.example.com\r\n\t=?utf-8?q?f=C3=BCr?= deinen =?utf-8?q?Schl=C3=BCssel?= auf local.connection"));
     }
 
     #[test]
@@ -1177,7 +1178,6 @@ pub mod tests {
 
     fn pop_mail_capture_pattern(filemail_path: &Path, pattern: &str) -> String {
         let mail_content = pop_mail(filemail_path).unwrap().unwrap();
-        println!("{}", mail_content);
 
         let capture_re = regex::bytes::Regex::new(pattern).unwrap();
         let capture_content = capture_re.captures(mail_content.as_ref()).unwrap()
@@ -1194,7 +1194,8 @@ pub mod tests {
                 let fh = fs::File::open(entry.path())?;
                 fs::remove_file(entry.path())?;
                 let mail: SerializableEmail = ::serde_json::from_reader(fh)?;
-                return Ok(Some(String::from_utf8_lossy(&mail.message).to_string()));
+                let body = String::from_utf8_lossy(&mail.message).to_string();
+                return Ok(Some(body));
             }
         }
         Ok(None)
