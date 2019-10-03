@@ -1,42 +1,18 @@
 #![feature(proc_macro_hygiene, plugin, decl_macro)]
 #![recursion_limit = "1024"]
 
-extern crate failure;
 use failure::Fallible as Result;
 
-extern crate serde;
 #[macro_use]
 extern crate serde_derive;
-extern crate serde_json;
-
-extern crate time;
-extern crate url;
 
 #[macro_use]
 extern crate rocket;
-extern crate multipart;
 #[macro_use]
 extern crate rocket_contrib;
 
-extern crate sequoia_openpgp;
-extern crate handlebars;
-extern crate lazy_static;
-extern crate lettre;
-extern crate lettre_email;
-extern crate rocket_prometheus;
-extern crate tempfile;
-extern crate uuid;
-extern crate glob;
-
-extern crate gettext;
-extern crate gettext_macros;
-extern crate rocket_i18n;
-extern crate runtime_fmt;
-
 #[cfg(test)]
 extern crate regex;
-
-extern crate ring;
 
 extern crate hagrid_database as database;
 
