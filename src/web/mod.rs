@@ -68,6 +68,8 @@ pub enum MyResponse {
     Success(HagridTemplate),
     #[response(status = 200, content_type = "plain")]
     Plain(String),
+    #[response(status = 200, content_type = "xml")]
+    Xml(HagridTemplate),
     #[response(status = 200, content_type = "application/pgp-keys")]
     Key(String, ContentDisposition),
     #[response(status = 200, content_type = "application/pgp-keys")]
@@ -99,6 +101,11 @@ impl MyResponse {
     pub fn ok_bare(tmpl: &'static str) -> Self {
         let context_json = serde_json::to_value(templates::Bare { dummy: () }).unwrap();
         MyResponse::Success(HagridTemplate(tmpl, context_json))
+    }
+
+    pub fn xml(tmpl: &'static str) -> Self {
+        let context_json = serde_json::to_value(templates::Bare { dummy: () }).unwrap();
+        MyResponse::Xml(HagridTemplate(tmpl, context_json))
     }
 
     pub fn plain(s: String) -> Self {
@@ -311,6 +318,11 @@ fn news() -> MyResponse {
     MyResponse::ok_bare("about/news")
 }
 
+#[get("/atom.xml")]
+fn news_atom() -> MyResponse {
+    MyResponse::xml("atom")
+}
+
 #[get("/about/faq")]
 fn faq() -> MyResponse {
     MyResponse::ok_bare("about/faq")
@@ -367,6 +379,7 @@ fn rocket_factory(mut rocket: rocket::Rocket) -> Result<rocket::Rocket> {
         root,
         about,
         news,
+        news_atom,
         privacy,
         apidoc,
         faq,
