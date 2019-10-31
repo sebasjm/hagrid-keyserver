@@ -236,7 +236,7 @@ msgid "Verifying your email address…"
 msgstr ""
 
 #: src/gettext_strings.rs:56
-msgid "If the process doesn't complete after a few seconds, <input type=\"submit\" class=\"textbutton\" value=\"click here\" />."
+msgid "If the process doesn't complete after a few seconds, plese <input type=\"submit\" class=\"textbutton\" value=\"click here\" />."
 msgstr ""
 
 #: src/gettext_strings.rs:58
