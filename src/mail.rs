@@ -103,7 +103,13 @@ impl Service {
 
         self.send(
             &vec![userid],
-            &i18n!(i18n.catalog, "Verify {} for your key on {}"; userid, self.domain),
+            &i18n!(
+                i18n.catalog,
+                context = "Subject for verification email",
+                "Verify {userid} for your key on {domain}";
+                userid = userid,
+                domain = self.domain
+            ),
             "verify",
             i18n.lang,
             ctx,
@@ -130,7 +136,12 @@ impl Service {
 
         self.send(
             &[recipient],
-            &i18n!(i18n.catalog, "Manage your key on {}"; self.domain),
+            &i18n!(
+                i18n.catalog,
+                context = "Subject for manage email",
+                "Manage your key on {domain}";
+                domain = self.domain
+            ),
             "manage",
             i18n.lang,
             ctx,
@@ -157,7 +168,12 @@ impl Service {
 
         self.send(
             &vec![userid],
-            &i18n!(i18n.catalog, "Your key upload on {}"; self.domain),
+            &i18n!(
+                i18n.catalog,
+                context = "Subject for welcome email",
+                "Your key upload on {domain}";
+                domain = self.domain
+            ),
             "welcome",
             i18n.lang,
             ctx,

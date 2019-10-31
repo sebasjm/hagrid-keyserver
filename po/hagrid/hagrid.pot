@@ -12,16 +12,19 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=INTEGER; plural=EXPRESSION;\n"
 
-#: src/mail.rs:106
-msgid "Verify {} for your key on {}"
+#: src/mail.rs:107
+msgctxt "Subject for verification email"
+msgid "Verify {userid} for your key on {domain}"
 msgstr ""
 
-#: src/mail.rs:133
-msgid "Manage your key on {}"
+#: src/mail.rs:140
+msgctxt "Subject for manage email"
+msgid "Manage your key on {domain}"
 msgstr ""
 
-#: src/mail.rs:160
-msgid "Your key upload on {}"
+#: src/mail.rs:172
+msgctxt "Subject for welcome email"
+msgid "Your key upload on {domain}"
 msgstr ""
 
 #: src/gettext_strings.rs:4
@@ -93,7 +96,7 @@ msgid "Manage your key"
 msgstr ""
 
 #: src/gettext_strings.rs:21
-msgid "Enter any verified e-mail address of your key"
+msgid "Enter any verified email address for your key"
 msgstr ""
 
 #: src/gettext_strings.rs:22
@@ -101,7 +104,7 @@ msgid "Send link"
 msgstr ""
 
 #: src/gettext_strings.rs:23
-msgid "We will send you an e-mail with a link you can use to remove any of your e-mail addresses from search."
+msgid "We will send you an email with a link you can use to remove any of your email addresses from search."
 msgstr ""
 
 #: src/gettext_strings.rs:24
@@ -121,7 +124,7 @@ msgid "Clicking \"delete\" on any address will remove it from this key. It will 
 msgstr ""
 
 #: src/gettext_strings.rs:28
-msgid "Your key is published as only non-identity information.  (<a href=\"/about\" target=\"_blank\">what does this mean?</a>)"
+msgid "Your key is published as only non-identity information.  (<a href=\"/about\" target=\"_blank\">What does this mean?</a>)"
 msgstr ""
 
 #: src/gettext_strings.rs:29
@@ -133,7 +136,7 @@ msgid "We have sent an email with further instructions to <span class=\"email\">
 msgstr ""
 
 #: src/gettext_strings.rs:31
-msgid "This address was already verified."
+msgid "This address has already been verified."
 msgstr ""
 
 #: src/gettext_strings.rs:32
@@ -161,7 +164,7 @@ msgid "Upload"
 msgstr ""
 
 #: src/gettext_strings.rs:38
-msgid "Need more info? Check our <a target=\"_blank\" href=\"/about\">intro</a> and <a target=\"_blank\" href=\"/about/usage\">usage guide</a>!"
+msgid "Need more info? Check our <a target=\"_blank\" href=\"/about\">intro</a> and <a target=\"_blank\" href=\"/about/usage\">usage guide</a>."
 msgstr ""
 
 #: src/gettext_strings.rs:39
@@ -173,179 +176,167 @@ msgid "This key is revoked."
 msgstr ""
 
 #: src/gettext_strings.rs:41
-msgid "It is published without identity information and can't be made available for search by e-mail address"
+msgid "It is published without identity information and can't be made available for search by email address (<a href=\"/about\" target=\"_blank\">what does this mean?</a>)."
 msgstr ""
 
 #: src/gettext_strings.rs:42
-msgid "what does this mean?"
-msgstr ""
-
-#: src/gettext_strings.rs:43
 msgid "This key is now published with the following identity information (<a href=\"/about\" target=\"_blank\">what does this mean?</a>):"
 msgstr ""
 
-#: src/gettext_strings.rs:44
+#: src/gettext_strings.rs:43
 msgid "Published"
 msgstr ""
 
-#: src/gettext_strings.rs:45
+#: src/gettext_strings.rs:44
 msgid "This key is now published with only non-identity information (<a href=\"/about\" target=\"_blank\">what does this mean?</a>)"
 msgstr ""
 
-#: src/gettext_strings.rs:46
-msgid "To make the key available for search by e-mail address, you can verify it belongs to you:"
+#: src/gettext_strings.rs:45
+msgid "To make the key available for search by email address, you can verify it belongs to you:"
 msgstr ""
 
-#: src/gettext_strings.rs:47
+#: src/gettext_strings.rs:46
 msgid "Verification Pending"
 msgstr ""
 
+#: src/gettext_strings.rs:47
+msgid "<strong>Note:</strong> Some providers delay emails for up to 15 minutes to prevent spam. Please be patient."
+msgstr ""
+
 #: src/gettext_strings.rs:48
-msgid "<strong>Note:</strong> Some providers delay e-mails for up to 15 minutes to prevent spam. Please be patient."
+msgid "Send Verification Email"
 msgstr ""
 
 #: src/gettext_strings.rs:49
-msgid "Send Verification Mail"
+msgid "This key contains one identity that could not be parsed as an email address.<br /> This identity can't be published on <span class=\"brand\">keys.openpgp.org</span>.  (<a href=\"/about/faq#non-email-uids\" target=\"_blank\">Why?</a>)"
 msgstr ""
 
 #: src/gettext_strings.rs:50
-msgid "This key contains one identity that could not be parsed as an email address.<br /> This identity can't be published on <span class=\"brand\">keys.openpgp.org</span>.  (<a href=\"/about/faq#non-email-uids\" target=\"_blank\">why?</a>)"
+msgid "This key contains {{ count_unparsed }} identities that could not be parsed as an email address.<br /> These identities can't be published on <span class=\"brand\">keys.openpgp.org</span>.  (<a href=\"/about/faq#non-email-uids\" target=\"_blank\">Why?</a>)"
 msgstr ""
 
 #: src/gettext_strings.rs:51
-msgid "This key contains {{ count_unparsed }} identities that could not be parsed as an email address.<br /> These identities can't be published on <span class=\"brand\">keys.openpgp.org</span>.  (<a href=\"/about/faq#non-email-uids\" target=\"_blank\">why?</a>)"
-msgstr ""
-
-#: src/gettext_strings.rs:52
 msgid "This key contains one revoked identity, which is not published. (<a href=\"/about/faq#revoked-uids\" target=\"_blank\">Why?</a>)"
 msgstr ""
 
-#: src/gettext_strings.rs:53
+#: src/gettext_strings.rs:52
 msgid "This key contains {{ count_revoked }} revoked identities, which are not published. (<a href=\"/about/faq#revoked-uids\" target=\"_blank\">Why?</a>)"
 msgstr ""
 
-#: src/gettext_strings.rs:54
+#: src/gettext_strings.rs:53
 msgid "Your keys have been successfully uploaded:"
 msgstr ""
 
-#: src/gettext_strings.rs:55
-msgid "<strong>Note:</strong> To make keys searchable by address, you must upload them individually."
+#: src/gettext_strings.rs:54
+msgid "<strong>Note:</strong> To make keys searchable by email address, you must upload them individually."
 msgstr ""
 
-#: src/gettext_strings.rs:56
+#: src/gettext_strings.rs:55
 msgid "Verifying your email address…"
 msgstr ""
 
-#: src/gettext_strings.rs:57
+#: src/gettext_strings.rs:56
 msgid "If the process doesn't complete after a few seconds, <input type=\"submit\" class=\"textbutton\" value=\"click here\" />."
 msgstr ""
 
-#: src/gettext_strings.rs:59
+#: src/gettext_strings.rs:58
 msgid "Manage your key on {{domain}}"
 msgstr ""
 
-#: src/gettext_strings.rs:61
+#: src/gettext_strings.rs:60
 msgid "Hi,"
 msgstr ""
 
-#: src/gettext_strings.rs:62
+#: src/gettext_strings.rs:61
 msgid "this is an automated message from <a rel=\"nofollow\" href=\"{{ base_uri }}\" style=\"text-decoration:none; color: #333\"><tt>{{ domain }}</tt></a>."
 msgstr ""
 
-#: src/gettext_strings.rs:63
+#: src/gettext_strings.rs:62
 msgid "If you didn't request this message, please ignore it."
 msgstr ""
 
-#: src/gettext_strings.rs:64
+#: src/gettext_strings.rs:63
 msgid "OpenPGP key: <tt>{{ primary_fp }}</tt>"
 msgstr ""
 
-#: src/gettext_strings.rs:65
+#: src/gettext_strings.rs:64
 msgid "To manage and delete listed addresses on this key, please follow the link below:"
 msgstr ""
 
-#: src/gettext_strings.rs:66
+#: src/gettext_strings.rs:65
 msgid "You can find more info at <a href=\"{{ base_uri }}/about\">{{ domain }}/about</a>."
 msgstr ""
 
-#: src/gettext_strings.rs:67
+#: src/gettext_strings.rs:66
 msgid "Greetings from the <a rel=\"nofollow\" href=\"{{ base_uri }}\" style=\"text-decoration:none; color: #333\"><tt>keys.openpgp.org</tt></a> team"
 msgstr ""
 
-#: src/gettext_strings.rs:70
+#: src/gettext_strings.rs:69
 msgid "this is an automated message from {{domain}}. If you didn't\nrequest this message, please ignore it."
 msgstr ""
 
-#: src/gettext_strings.rs:71
+#: src/gettext_strings.rs:70
 msgid "OpenPGP key: {{primary_fp}}"
 msgstr ""
 
-#: src/gettext_strings.rs:72
+#: src/gettext_strings.rs:71
 msgid "To manage and delete listed addresses on this key, please follow\nthe link below:"
 msgstr ""
 
-#: src/gettext_strings.rs:73
+#: src/gettext_strings.rs:72
 msgid "You can find more info at {{base_uri}}/about"
 msgstr ""
 
-#: src/gettext_strings.rs:74
+#: src/gettext_strings.rs:73
 msgid "Greetings from the keys.openpgp.org team"
 msgstr ""
 
-#: src/gettext_strings.rs:76
+#: src/gettext_strings.rs:75
 msgid "Verify {{userid}} for your key on {{domain}}"
 msgstr ""
 
-#: src/gettext_strings.rs:79
+#: src/gettext_strings.rs:78
 msgid "this is an automated message from <a rel=\"nofollow\" href=\"{{base_uri}}\" style=\"text-decoration:none; color: #333\"><tt>{{domain}}</tt></a>. If you didn't request this message, please ignore it."
 msgstr ""
 
-#: src/gettext_strings.rs:80
+#: src/gettext_strings.rs:79
 msgid "OpenPGP key: <tt>{{primary_fp}}</tt>"
 msgstr ""
 
-#: src/gettext_strings.rs:81
+#: src/gettext_strings.rs:80
 msgid "To let others find this key from your email address \"<a rel=\"nofollow\" href=\"#\" style=\"text-decoration:none; color: #333\">{{userid}}</a>\", please click the link below:"
 msgstr ""
 
-#: src/gettext_strings.rs:82
+#: src/gettext_strings.rs:81
 msgid "You can find more info at <a href=\"{{base_uri}}/about\">{{domain}}/about</a>."
 msgstr ""
 
-#: src/gettext_strings.rs:83
+#: src/gettext_strings.rs:82
 msgid "Greetings from the <a rel=\"nofollow\" href=\"{{base_uri}}\" style=\"text-decoration:none; color: #333\"><tt>keys.openpgp.org</tt></a> team"
 msgstr ""
 
-#: src/gettext_strings.rs:88
+#: src/gettext_strings.rs:87
 msgid "To let others find this key from your email address \"{{userid}}\",\nplease follow the link below:"
 msgstr ""
 
-#: src/gettext_strings.rs:92
+#: src/gettext_strings.rs:91
 msgid "Your key upload on {{domain}}"
 msgstr ""
 
-#: src/gettext_strings.rs:95
+#: src/gettext_strings.rs:94
 msgid "this is an automated message from <a rel=\"nofollow\" href=\"{{base_uri}}\" style=\"text-decoration:none; color: #333\"><tt>{{domain}}</tt></a>. If you didn't upload your key there, please ignore this message."
 msgstr ""
 
-#: src/gettext_strings.rs:97
-msgid "This key was just uploaded for the first time, and is now published without identity information. If you want to allow others to find this key by e-mail address, please follow this link:"
+#: src/gettext_strings.rs:96
+msgid "This key was just uploaded for the first time, and is now published without identity information. If you want to allow others to find this key by email address, please follow this link:"
 msgstr ""
 
-#: src/gettext_strings.rs:102
+#: src/gettext_strings.rs:101
 msgid "this is an automated message from {{domain}}. If you didn't upload your key\nthere, please ignore this message."
 msgstr ""
 
-#: src/gettext_strings.rs:104
-msgid "This key was just uploaded for the first time, and is now published without\nidentity information. If you want to allow others to find this key by e-mail\naddress, please follow this link:"
-msgstr ""
-
-#: src/web/hkp.rs:144
-msgid "Upload successful. This is a new key, a welcome mail has been sent!"
-msgstr ""
-
-#: src/web/hkp.rs:146
-msgid "Upload successful. Note that identity information will only be published after verification! see {}/about/usage#gnupg-upload"
+#: src/gettext_strings.rs:103
+msgid "This key was just uploaded for the first time, and is now published without\nidentity information. If you want to allow others to find this key by email\naddress, please follow this link:"
 msgstr ""
 
 #: src/web/manage.rs:103
@@ -353,15 +344,15 @@ msgid "This link is invalid or expired"
 msgstr ""
 
 #: src/web/manage.rs:129
-msgid "Malformed address: {}"
+msgid "Malformed address: {address}"
 msgstr ""
 
 #: src/web/manage.rs:136
-msgid "No key for address: {}"
+msgid "No key for address: {address}"
 msgstr ""
 
 #: src/web/manage.rs:152
-msgid "A request was already sent for this address recently."
+msgid "A request has already been sent for this address recently."
 msgstr ""
 
 #: src/web/vks.rs:173

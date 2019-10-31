@@ -697,7 +697,7 @@ pub mod tests {
         let mut response = client.get("/manage").dispatch();
         assert_eq!(response.status(), Status::Ok);
         assert_eq!(response.content_type(), Some(ContentType::HTML));
-        assert!(response.body_string().unwrap().contains("any verified e-mail address"));
+        assert!(response.body_string().unwrap().contains("any verified email address"));
 
         assert_consistency(client.rocket());
     }
@@ -1180,7 +1180,7 @@ pub mod tests {
 
         let mut response_second = client.post(&confirm_uri).dispatch();
         assert_eq!(response_second.status(), Status::BadRequest);
-        assert!(response_second.body_string().unwrap().contains("already verified"));
+        assert!(response_second.body_string().unwrap().contains("already been verified"));
     }
 
     fn check_mails_and_confirm_deletion(client: &Client, filemail_path: &Path, address: &str) {

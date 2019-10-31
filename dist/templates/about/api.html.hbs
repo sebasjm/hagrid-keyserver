@@ -37,9 +37,9 @@
     <li>
       <tt>GET /vks/v1/by-email/&lt;URI-ENCODED EMAIL-ADDRESS&gt;</tt>
       <p>
-        Retrieves the key with the given <tt>E-Mail Address</tt>.
+        Retrieves the key with the given <tt>Email Address</tt>.
         Only exact matches are accepted.
-        Lookup by e-mail address requires opt-in by the owner of the e-mail address.
+        Lookup by email address requires opt-in by the owner of the email address.
         The returned key is ASCII Armored, and has a content-type of <code>application/pgp-keys</code>.
       </p>
     </li>
@@ -68,7 +68,7 @@
         <code>published</code>,
         <code>revoked</code>, or
         <code>pending</code>,
-        indicating the status of this e-mail address.
+        indicating the status of this email address.
       </p>
 
       <div class="example">
@@ -99,23 +99,23 @@
       <tt>POST /vks/v1/request-verify</tt>
       <p>
         A key that has been uploaded
-        can be made discoverable by one or more of its e-mail addresses
+        can be made discoverable by one or more of its email addresses
         by proving ownership of the address
-        via a verification e-mail.
+        via a verification email.
         This endpoint requests verification
-        for one or more e-mail addresses.
+        for one or more email addresses.
       </p>
       <p>
         The body of the request must be <code>application/json</code>.
         The JSON data must include the opaque <code>token</code> value
         (obtained via <tt>/vks/v1/upload</tt>)
         and an <code>addresses</code> field,
-        which is a list of e-mail addresses (not full User IDs)
+        which is a list of email addresses (not full User IDs)
         to request verification mails for.
         It can optionally include a <code>locale</code> field,
         which is list of locales,
         ordered by preference,
-        which to use for the verification e-mail.
+        which to use for the verification email.
         The reply will be the same as for the <tt>/vks/v1/upload</tt> endpoint,
         with addresses marked as <code>pending</code> where a verification email
         has been sent.
@@ -194,7 +194,7 @@
       per second. Excessive requests are delayed to match this rate. Short
       bursts are allowed.
     </li>
-    <li>Requests by e-mail address are limited to one request per minute.
+    <li>Requests by email address are limited to one request per minute.
       Excessive requests will fail with <tt>error 429</tt>. Short bursts are
       allowed.
     </li>
@@ -255,7 +255,7 @@
         <code>keytext</code> must be the keys to submit,
         which must be ASCII Armored.
         More than one key may be submitted in one request.
-        For verification of e-mail addresses,
+        For verification of email addresses,
         the <tt>/vks/v1/upload</tt> endpoint
         must be used instead.
       </p>
@@ -274,7 +274,7 @@
 
   <ul>
     <li>No support for <code>op=vindex</code>,</li>
-    <li>only exact matches by e-mail address, fingerprint or long key id are
+    <li>only exact matches by email address, fingerprint or long key id are
       returned,</li>
     <li>all parameters and options other than <code>op</code> and
       <code>search</code> are ignored,</li>

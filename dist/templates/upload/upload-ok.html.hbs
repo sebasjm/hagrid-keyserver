@@ -8,8 +8,7 @@
   {{#if is_revoked}}
     <p>
       <strong>{{ text "This key is revoked." }}</strong>
-      {{ text "It is published without identity information and can't be made available for search by e-mail address" }}
-      (<a href="/about" target="_blank">{{ text "what does this mean?" }}</a>).
+      {{ text "It is published without identity information and can't be made available for search by email address. (<a href=\"/about\" target=\"_blank\">What does this mean?</a>)" }}
     </p>
   {{else}}
     {{#if email_published}}
@@ -24,13 +23,13 @@
       {{/each}}
     {{else}}
       <p style="padding-top: 1em;">
-        {{ text "This key is now published with only non-identity information (<a href=\"/about\" target=\"_blank\">what does this mean?</a>)" }}
+        {{ text "This key is now published with only non-identity information. (<a href=\"/about\" target=\"_blank\">What does this mean?</a>)" }}
       </p>
     {{/if}}
 
     {{#if email_unpublished}}
       <p style="padding-top: 1em;">
-        {{ text "To make the key available for search by e-mail address, you can verify it belongs to you:" }}
+        {{ text "To make the key available for search by email address, you can verify it belongs to you:" }}
       </p>
       {{#each email_unpublished}}
       <div class="publishedUid">
@@ -41,7 +40,7 @@
           <form action="/upload/request-verify" method="post">
             <input type="hidden" name="token" value="{{../token}}" />
             <input type="hidden" name="address" value="{{address}}" />
-            <input type="submit" class="link" value="{{ text "Send Verification Mail" }}">
+            <input type="submit" class="link" value="{{ text "Send Verification Email" }}">
           </form>
           {{/if}}
         </div>
@@ -49,18 +48,18 @@
       </div>
       {{/each}}
       <p>
-        {{ text "<strong>Note:</strong> Some providers delay e-mails for up to 15 minutes to prevent spam. Please be patient." }}
+        {{ text "<strong>Note:</strong> Some providers delay emails for up to 15 minutes to prevent spam. Please be patient." }}
       </p>
     {{/if}}
 
     {{#if count_unparsed}}
       {{#if count_unparsed_one}}
     <p style="padding-top: 1em;">
-      {{ text "This key contains one identity that could not be parsed as an email address.<br /> This identity can't be published on <span class=\"brand\">keys.openpgp.org</span>.  (<a href=\"/about/faq#non-email-uids\" target=\"_blank\">why?</a>)" }}
+      {{ text "This key contains one identity that could not be parsed as an email address.<br /> This identity can't be published on <span class=\"brand\">keys.openpgp.org</span>.  (<a href=\"/about/faq#non-email-uids\" target=\"_blank\">Why?</a>)" }}
     </p>
       {{else}}
     <p style="padding-top: 1em;">
-      {{ text "This key contains {{ count_unparsed }} identities that could not be parsed as an email address.<br /> These identities can't be published on <span class=\"brand\">keys.openpgp.org</span>.  (<a href=\"/about/faq#non-email-uids\" target=\"_blank\">why?</a>)" rerender }}
+      {{ text "This key contains {{ count_unparsed }} identities that could not be parsed as an email address.<br /> These identities can't be published on <span class=\"brand\">keys.openpgp.org</span>.  (<a href=\"/about/faq#non-email-uids\" target=\"_blank\">Why?</a>)" rerender }}
     </p>
       {{/if}}
     {{/if}}

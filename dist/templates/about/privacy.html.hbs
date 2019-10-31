@@ -7,8 +7,8 @@
         distributes OpenPGP key data. The specific way in which data is processed
         differs by type as follows:
         <ul>
-          <li><b>E-Mail Addresses</b>
-              <p>E-Mail addresses contained in <abbr title="Packet Tag 13">User
+          <li><b>Email Addresses</b>
+              <p>Email addresses contained in <abbr title="Packet Tag 13">User
                       IDs</abbr> are personally identifiable information (PII).
                   Special care is taken to make sure they are used only with
                   consent:
@@ -17,9 +17,9 @@
                           Publishing requires <a target="_blank"
                               href="https://en.wikipedia.org/wiki/Opt-in_email#Confirmed_opt-in_(COI)_/_Double_opt-in_(DOI)">double
                               opt-in</a> validation, to prove ownership of the
-                          e-mail address in question.
+                          email address in question.
                       </li>
-                      <li>Addresses are searchable by exact E-Mail address,
+                      <li>Addresses are searchable by exact email address,
                           but not by associated name.</li>
                       <li>Enumeration of addresses is not possible.</li>
                       <li>Deletion of addresses is possible via simple proof
@@ -47,9 +47,9 @@
               </p>
           </li>
           <li><b>Other User ID data</b>
-              <p>An OpenPGP key may contain personal data other than E-Mail
+              <p>An OpenPGP key may contain personal data other than email
                   addresses, such as <abbr title="Packet Tag 13">User IDs</abbr>
-                  that do not contain E-Mail addresses, or <abbr
+                  that do not contain email addresses, or <abbr
                   title="Packet Tag 17">image attributes</abbr>. This data is stripped
               during upload and never stored, processed, or distributed in
               any way.

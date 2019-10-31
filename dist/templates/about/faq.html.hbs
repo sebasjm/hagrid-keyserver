@@ -35,7 +35,7 @@
         <li>
             Federation with open participation requires all data to be public.
             This significantly impacts the privacy of our users, because it
-            allows anyone to scrape a list of all e-mail addresses.
+            allows anyone to scrape a list of all email addresses.
         </li>
         <li>
             Servers run as a hobby by casual administrators do not meet our
@@ -44,25 +44,25 @@
     </ol>
 
     <h3 id="non-email-uids"><a href="#non-email-uids">Why is there no support
-            for identities that aren't e-mail addresses?</a></h3>
+            for identities that aren't email addresses?</a></h3>
 
     <p>
         We require explicit consent to distribute identity information.
-        Identities that aren't e-mail addresses, such as pictures or website
+        Identities that aren't email addresses, such as pictures or website
         URLs, offer no simple way for us to acquire this consent.
     </p>
 
     <p>
         Note: Some OpenPGP software creates keys with incorrectly formatted
-        e-mail addresses.  These addresses might not be recognized correctly on
+        email addresses.  These addresses might not be recognized correctly on
         <span class="brand">keys.openpgp.org</span>.
     </p>
 
     <h3 id="verify-multiple"><a href="#verify-multiple">Can I verify more than
-            one key for some e-mail address?</a></h3>
+            one key for some email address?</a></h3>
 
     <p>
-        An e-mail address can only be associated with a single key.
+        An email address can only be associated with a single key.
         When an address is verified for a new key,
         it will no longer appear in any key
         for which it was previously verified.
@@ -71,16 +71,16 @@
     </p>
 
     <p>
-        This means a search by e-mail address
+        This means a search by email address
         will only return a single key,
         not multiple candidates.
         This eliminates an impossible choice for the user
         ("Which key is the right one?"),
-        and makes key discovery by e-mail much more convenient.
+        and makes key discovery by email much more convenient.
     </p>
 
     <h3 id="email-protection"><a href="#email-protection">What do you do to
-            protect outgoing verification e-mails?</a></h3>
+            protect outgoing verification emails?</a></h3>
 
     <p>
         We use a modern standard called
@@ -88,14 +88,14 @@
         combined with
         <a href="https://starttls-everywhere.org/" target="_blank">STARTTLS Everywhere</a>
         by the EFF,
-        to make sure verification e-mails are sent out securely.
+        to make sure verification emails are sent out securely.
         This protects against eavesdropping and interception during delivery.
     </p>
 
     <p>
-        The MTA-STS mechanism depends on correctly configured e-mail servers.
+        The MTA-STS mechanism depends on correctly configured email servers.
         You can <a href="https://www.hardenize.com/">run this test</a>
-        to see if your e-mail provider supports it.
+        to see if your email provider supports it.
         If the "MTA-STS" entry on the left isn't a green checkmark,
         please ask your provider to update their configuration.
     </p>
@@ -190,7 +190,7 @@
     </p>
 
     <h3 id="encrypt-verification-emails"><a href="#encrypt-verification-emails">
-            Why not encrypt verification e-mails?</a></h3>
+            Why not encrypt verification emails?</a></h3>
 
     Various reasons:
     <ol>
