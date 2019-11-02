@@ -240,7 +240,7 @@ msgid "Hi,"
 msgstr ""
 
 #: src/gettext_strings.rs:59
-msgid "this is an automated message from <a rel=\"nofollow\" href=\"{{ base_uri }}\" style=\"text-decoration:none; color: #333\"><tt>{{ domain }}</tt></a>."
+msgid "this is an automated message from <a href=\"{{base_uri}}\" style=\"text-decoration:none; color: #333\">{{domain}}</a>."
 msgstr ""
 
 #: src/gettext_strings.rs:60
@@ -248,7 +248,7 @@ msgid "If you didn't request this message, please ignore it."
 msgstr ""
 
 #: src/gettext_strings.rs:61
-msgid "OpenPGP key: <tt>{{ primary_fp }}</tt>"
+msgid "OpenPGP key: <tt>{{primary_fp}}</tt>"
 msgstr ""
 
 #: src/gettext_strings.rs:62
@@ -256,7 +256,7 @@ msgid "To manage and delete listed addresses on this key, please follow the link
 msgstr ""
 
 #: src/gettext_strings.rs:63
-msgid "You can find more info at <a href=\"{{ base_uri }}/about\">{{ domain }}/about</a>."
+msgid "You can find more info at <a href=\"{{base_uri}}/about\">{{domain}}/about</a>."
 msgstr ""
 
 #: src/gettext_strings.rs:64
@@ -264,63 +264,43 @@ msgid "distributing OpenPGP keys since 2019"
 msgstr ""
 
 #: src/gettext_strings.rs:67
-msgid "this is an automated message from {{domain}}. If you didn't\nrequest this message, please ignore it."
-msgstr ""
-
-#: src/gettext_strings.rs:68
-msgid "OpenPGP key: {{primary_fp}}"
+msgid "this is an automated message from {{domain}}."
 msgstr ""
 
 #: src/gettext_strings.rs:69
-msgid "To manage and delete listed addresses on this key, please follow\nthe link below:"
+msgid "OpenPGP key: {{primary_fp}}"
 msgstr ""
 
-#: src/gettext_strings.rs:70
+#: src/gettext_strings.rs:71
 msgid "You can find more info at {{base_uri}}/about"
 msgstr ""
 
-#: src/gettext_strings.rs:73
+#: src/gettext_strings.rs:74
 msgid "Verify {{userid}} for your key on {{domain}}"
 msgstr ""
 
-#: src/gettext_strings.rs:76
-msgid "this is an automated message from <a rel=\"nofollow\" href=\"{{base_uri}}\" style=\"text-decoration:none; color: #333\"><tt>{{domain}}</tt></a>. If you didn't request this message, please ignore it."
-msgstr ""
-
-#: src/gettext_strings.rs:77
-msgid "OpenPGP key: <tt>{{primary_fp}}</tt>"
-msgstr ""
-
-#: src/gettext_strings.rs:78
+#: src/gettext_strings.rs:80
 msgid "To let others find this key from your email address \"<a rel=\"nofollow\" href=\"#\" style=\"text-decoration:none; color: #333\">{{userid}}</a>\", please click the link below:"
 msgstr ""
 
-#: src/gettext_strings.rs:79
-msgid "You can find more info at <a href=\"{{base_uri}}/about\">{{domain}}/about</a>."
-msgstr ""
-
-#: src/gettext_strings.rs:85
+#: src/gettext_strings.rs:88
 msgid "To let others find this key from your email address \"{{userid}}\",\nplease follow the link below:"
 msgstr ""
 
-#: src/gettext_strings.rs:89
+#: src/gettext_strings.rs:92
 msgid "Your key upload on {{domain}}"
 msgstr ""
 
-#: src/gettext_strings.rs:92
-msgid "this is an automated message from <a rel=\"nofollow\" href=\"{{base_uri}}\" style=\"text-decoration:none; color: #333\"><tt>{{domain}}</tt></a>. If you didn't upload your key there, please ignore this message."
+#: src/gettext_strings.rs:96
+msgid "If you didn't upload your key there, please ignore this message."
 msgstr ""
 
-#: src/gettext_strings.rs:94
-msgid "This key was just uploaded for the first time, and is now published without identity information. If you want to allow others to find this key by email address, please follow this link:"
+#: src/gettext_strings.rs:98
+msgid "This key was just uploaded for the first time, and is now published without identity information. If you want to allow others to find this key by e-mail address, please follow this link:"
 msgstr ""
 
-#: src/gettext_strings.rs:99
-msgid "this is an automated message from {{domain}}. If you didn't upload your key\nthere, please ignore this message."
-msgstr ""
-
-#: src/gettext_strings.rs:101
-msgid "This key was just uploaded for the first time, and is now published without\nidentity information. If you want to allow others to find this key by email\naddress, please follow this link:"
+#: src/gettext_strings.rs:106
+msgid "This key was just uploaded for the first time, and is now published without\nidentity information. If you want to allow others to find this key by e-mail\naddress, please follow this link:"
 msgstr ""
 
 #: src/web/manage.rs:103

@@ -8,7 +8,8 @@
     <p>
       {{ text "Hi," }}
     <p>
-      {{ text "this is an automated message from <a rel=\"nofollow\" href=\"{{base_uri}}\" style=\"text-decoration:none; color: #333\"><tt>{{domain}}</tt></a>. If you didn't request this message, please ignore it." rerender }}
+      {{ text "this is an automated message from <a href=\"{{base_uri}}\" style=\"text-decoration:none; color: #333\">{{domain}}</a>." rerender }}
+      {{ text "If you didn't request this message, please ignore it." }}
     <p>
       {{ text "OpenPGP key: <tt>{{primary_fp}}</tt>" rerender }}
     <p>
@@ -18,7 +19,7 @@
     <p>
       {{ text "You can find more info at <a href=\"{{base_uri}}/about\">{{domain}}/about</a>." rerender }}
     <p>
-      <a href=\"{{ base_uri }}\">{{ base_uri }}</a><br />
+      <a href="{{base_uri}}">{{base_uri}}</a><br />
       {{ text "distributing OpenPGP keys since 2019" }}
   </body>
 </html>

@@ -1,10 +1,11 @@
 {{ text "Hi," }}
 
-{{ text "this is an automated message from {{domain}}. If you didn't\nrequest this message, please ignore it." rerender }}
+{{ text "this is an automated message from {{domain}}." rerender }}
+{{ text "If you didn't request this message, please ignore it." }}
 
 {{ text "OpenPGP key: {{primary_fp}}" rerender }}
 
-{{ text "To manage and delete listed addresses on this key, please follow\nthe link below:" }}
+{{ text "To manage and delete listed addresses on this key, please follow the link below:" }}
 
     {{ uri }}
 
