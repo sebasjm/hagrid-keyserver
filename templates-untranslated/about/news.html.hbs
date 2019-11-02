@@ -34,7 +34,7 @@
 
     <p>
         At the time of writing,
-        more than 70.000 e-mail addresses
+        more than 70.000 email addresses
         have been verified.
 
     <center style="margin-top: 2em; margin-bottom: 2em;">
@@ -87,11 +87,11 @@
     <p>
         One improvement that deserves special mention is
         <a href="https://www.hardenize.com/blog/mta-sts">MTA-STS</a>,
-        which improves the security of outgoing e-mails.
+        which improves the security of outgoing emails.
 
     <p>
         While HTTPS is deployed fairly universally these days,
-        that sadly isn't the case for E-Mail.
+        that sadly isn't the case for email.
         Many servers don't do encryption at all,
         or use a self-signed certificate
         instead of a proper one (e.g. from Let's Encrypt).
@@ -121,7 +121,7 @@
 
     <p>
         You can <a href="https://aykevl.nl/apps/mta-sts/" target="_blank">run a check</a>
-        to find out whether your e-mail provider
+        to find out whether your email provider
         supports MTA-STS.
         If they don't,
         please drop them a message and tell them
@@ -139,7 +139,7 @@
         To make this service more accessible,
         we are working with the OTF's
         <a href="https://www.opentech.fund/labs/localization-lab/" target="_blank">Localization Lab</a>
-        to make the website and outgoing e-mails
+        to make the website and outgoing emails
         available in several more languages.
 
     <p>
@@ -199,7 +199,7 @@
       <li>Precise. Searches return only a single key, which allows for easy key discovery.</li>
       <li>Validating. Identities are only published with consent,
         while non-identity information is freely distributed.</li>
-      <li>Deletable. Users can delete personal information with a simple e-mail confirmation.</li>
+      <li>Deletable. Users can delete personal information with a simple email confirmation.</li>
       <li>Built on Rust, powered by <a href="https://sequoia-pgp.org" target="_blank">Sequoia PGP</a> - free and open source, running AGPLv3.</li>
     </ul>
 
@@ -239,16 +239,16 @@
     that can also be revoked at any time.
 
     <p>
-    If a new key is verified for some e-mail address,
+    If a new key is verified for some email address,
     it will replace the previous one.
     This way,
-    every e-mail address is only associated with a single key at most.
+    every email address is only associated with a single key at most.
     It can also be removed from the listing
     at any time by the owner of the address.
     This is very useful for key discovery:
-    if a search by e-mail address returns a key,
+    if a search by email address returns a key,
     it means this is the single key
-    that is currently valid for the searched e-mail address.
+    that is currently valid for the searched email address.
 
     <h4>Support in Enigmail and OpenKeychain</h4>
 
@@ -260,7 +260,7 @@
     <a href="https://play.google.com/store/apps/details?id=org.sufficientlysecure.keychain&hl=en">OpenKeychain</a> on Android.
     This means users of those implementations will
     benefit from the faster response times,
-    and improved key discovery by e-mail address.
+    and improved key discovery by email address.
     We hope that this will also give us some momentum
     to build this project into a bigger community effort.
 
