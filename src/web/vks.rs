@@ -75,8 +75,8 @@ pub mod response {
     }
 
     impl PublishResponse {
-        pub fn err(err: &str) -> Self {
-            PublishResponse::Error(err.to_owned())
+        pub fn err(err: impl Into<String>) -> Self {
+            PublishResponse::Error(err.into())
         }
     }
 }
@@ -125,10 +125,7 @@ pub fn process_key(
                 t
             },
             Err(_) => {
-                return UploadResponse::err(i18n!(
-                    i18n.catalog,
-                    "No key uploaded."
-                ));
+                return UploadResponse::err(i18n!(i18n.catalog, "Parsing of key data failed."));
             }
         });
     }
@@ -178,8 +175,7 @@ fn process_key_single(
         Ok(ImportResult::New(tpk_status)) => (tpk_status, true),
         Ok(ImportResult::Updated(tpk_status)) => (tpk_status, false),
         Ok(ImportResult::Unchanged(tpk_status)) => (tpk_status, false),
-        Err(_) => return UploadResponse::err(&i18n!(i18n.catalog,
-            "Something went wrong processing key {}"; fp)),
+        Err(_) => return UploadResponse::err(i18n!(i18n.catalog, "Error processing uploaded key")),
     };
 
     let verify_state = {
@@ -286,7 +282,7 @@ pub fn verify_confirm(
     let (fingerprint, email) = match check_publish_token(&db, &token_service, token) {
         Ok(x) => x,
         Err(_) => return PublishResponse::err(
-            &i18n!(i18n.catalog, "Invalid verification token!")),
+            i18n!(i18n.catalog, "Invalid verification link.")),
     };
 
     response::PublishResponse::Ok {

@@ -4,6 +4,7 @@ fn _dummy() {
     t!("Error");
     t!("Looks like something went wrong :(");
     t!("<strong>Error:</strong> {{ internal_error }}");
+    t!("There was an error with your request:");
     t!("We found an entry for <span class=\"email\">{{ query }}</span>:");
     t!("<strong>Hint:</strong> It's more convenient to use <span class=\"brand\">keys.openpgp.org</span> from your OpenPGP software.<br /> Take a look at our <a href=\"/about/usage\">usage guide</a> for details.");
     t!("debug info");
@@ -30,10 +31,7 @@ fn _dummy() {
     t!("We have sent an email with further instructions to <span class=\"email\">{{ address }}</span>.");
     t!("This address has already been verified.");
     t!("Your key <span class=\"fingerprint\">{{ key_fpr }}</span> is now published for the identity <a href=\"{{userid_link}}\" target=\"_blank\"><span class=\"email\">{{ userid }}</span></a>.");
-    t!("Verification failed! Perhaps the link you used was expired?");
-    t!("You can <a href=\"/upload\">try uploading again</a>.");
     t!("Upload your key");
-    t!("Your public key");
     t!("Upload");
     t!("Need more info? Check our <a target=\"_blank\" href=\"/about\">intro</a> and <a target=\"_blank\" href=\"/about/usage\">usage guide</a>.");
     t!("You uploaded the key <span class=\"fingerprint\"><a href=\"{{ key_link }}\" target=\"_blank\">{{ key_fpr }}</a></span>.");
@@ -41,7 +39,7 @@ fn _dummy() {
     t!("It is published without identity information and can't be made available for search by email address (<a href=\"/about\" target=\"_blank\">what does this mean?</a>).");
     t!("This key is now published with the following identity information (<a href=\"/about\" target=\"_blank\">what does this mean?</a>):");
     t!("Published");
-    t!("This key is now published with only non-identity information (<a href=\"/about\" target=\"_blank\">what does this mean?</a>)");
+    t!("This key is now published with only non-identity information. (<a href=\"/about\" target=\"_blank\">What does this mean?</a>)");
     t!("To make the key available for search by email address, you can verify it belongs to you:");
     t!("Verification Pending");
     t!("<strong>Note:</strong> Some providers delay emails for up to 15 minutes to prevent spam. Please be patient.");

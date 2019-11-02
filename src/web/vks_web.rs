@@ -9,6 +9,7 @@ use rocket::http::ContentType;
 use rocket::request::Form;
 use rocket::Data;
 use rocket_i18n::I18n;
+use gettext_macros::i18n;
 
 use crate::database::{KeyDatabase, StatefulTokens, Query, Database};
 use crate::mail;
@@ -45,7 +46,6 @@ mod template {
 
     #[derive(Serialize)]
     pub struct Verify {
-        pub verified: bool,
         pub key_fpr: String,
         pub userid: String,
         pub userid_link: String,
@@ -442,7 +442,6 @@ pub fn verify_confirm(
             rate_limiter.action_perform(rate_limit_id);
             let userid_link = uri!(search: &email).to_string();
             let context = template::Verify {
-                verified: true,
                 userid: email,
                 key_fpr: fingerprint,
                 userid_link,
@@ -451,13 +450,12 @@ pub fn verify_confirm(
             MyResponse::ok("upload/publish-result", context)
         },
         PublishResponse::Error(error) => {
-            if rate_limiter.action_check(rate_limit_id) {
-                MyResponse::bad_request(
-                    "400-plain", failure::err_msg(error))
+            let error_msg = if rate_limiter.action_check(rate_limit_id) {
+                failure::err_msg(error)
             } else {
-                MyResponse::bad_request(
-                    "upload/already-verified", failure::err_msg(""))
-            }
+                failure::err_msg(i18n!(i18n.catalog, "This address has already been verified."))
+            };
+            MyResponse::bad_request("400", error_msg)
         }
     }
 }
