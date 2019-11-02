@@ -260,7 +260,7 @@ msgid "You can find more info at <a href=\"{{ base_uri }}/about\">{{ domain }}/a
 msgstr ""
 
 #: src/gettext_strings.rs:64
-msgid "Greetings from the <a rel=\"nofollow\" href=\"{{ base_uri }}\" style=\"text-decoration:none; color: #333\"><tt>keys.openpgp.org</tt></a> team"
+msgid "distributing OpenPGP keys since 2019"
 msgstr ""
 
 #: src/gettext_strings.rs:67
@@ -277,10 +277,6 @@ msgstr ""
 
 #: src/gettext_strings.rs:70
 msgid "You can find more info at {{base_uri}}/about"
-msgstr ""
-
-#: src/gettext_strings.rs:71
-msgid "Greetings from the keys.openpgp.org team"
 msgstr ""
 
 #: src/gettext_strings.rs:73
@@ -301,10 +297,6 @@ msgstr ""
 
 #: src/gettext_strings.rs:79
 msgid "You can find more info at <a href=\"{{base_uri}}/about\">{{domain}}/about</a>."
-msgstr ""
-
-#: src/gettext_strings.rs:80
-msgid "Greetings from the <a rel=\"nofollow\" href=\"{{base_uri}}\" style=\"text-decoration:none; color: #333\"><tt>keys.openpgp.org</tt></a> team"
 msgstr ""
 
 #: src/gettext_strings.rs:85

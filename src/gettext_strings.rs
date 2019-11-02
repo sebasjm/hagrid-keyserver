@@ -61,14 +61,14 @@ fn _dummy() {
     t!("OpenPGP key: <tt>{{ primary_fp }}</tt>");
     t!("To manage and delete listed addresses on this key, please follow the link below:");
     t!("You can find more info at <a href=\"{{ base_uri }}/about\">{{ domain }}/about</a>.");
-    t!("Greetings from the <a rel=\"nofollow\" href=\"{{ base_uri }}\" style=\"text-decoration:none; color: #333\"><tt>keys.openpgp.org</tt></a> team");
+    t!("distributing OpenPGP keys since 2019");
 
     t!("Hi,");
     t!("this is an automated message from {{domain}}. If you didn't\nrequest this message, please ignore it.");
     t!("OpenPGP key: {{primary_fp}}");
     t!("To manage and delete listed addresses on this key, please follow\nthe link below:");
     t!("You can find more info at {{base_uri}}/about");
-    t!("Greetings from the keys.openpgp.org team");
+    t!("distributing OpenPGP keys since 2019");
 
     t!("Verify {{userid}} for your key on {{domain}}");
 
@@ -77,14 +77,14 @@ fn _dummy() {
     t!("OpenPGP key: <tt>{{primary_fp}}</tt>");
     t!("To let others find this key from your email address \"<a rel=\"nofollow\" href=\"#\" style=\"text-decoration:none; color: #333\">{{userid}}</a>\", please click the link below:");
     t!("You can find more info at <a href=\"{{base_uri}}/about\">{{domain}}/about</a>.");
-    t!("Greetings from the <a rel=\"nofollow\" href=\"{{base_uri}}\" style=\"text-decoration:none; color: #333\"><tt>keys.openpgp.org</tt></a> team");
+    t!("distributing OpenPGP keys since 2019");
 
     t!("Hi,");
     t!("this is an automated message from {{domain}}. If you didn't\nrequest this message, please ignore it.");
     t!("OpenPGP key: {{primary_fp}}");
     t!("To let others find this key from your email address \"{{userid}}\",\nplease follow the link below:");
     t!("You can find more info at {{base_uri}}/about");
-    t!("Greetings from the keys.openpgp.org team");
+    t!("distributing OpenPGP keys since 2019");
 
     t!("Your key upload on {{domain}}");
 
@@ -93,12 +93,12 @@ fn _dummy() {
     t!("OpenPGP key: <tt>{{primary_fp}}</tt>");
     t!("This key was just uploaded for the first time, and is now published without identity information. If you want to allow others to find this key by email address, please follow this link:");
     t!("You can find more info at <a href=\"{{base_uri}}/about\">{{domain}}/about</a>.");
-    t!("Greetings from the <a rel=\"nofollow\" href=\"{{base_uri}}\" style=\"text-decoration:none; color: #333\"><tt>keys.openpgp.org</tt></a> team");
+    t!("distributing OpenPGP keys since 2019");
 
     t!("Hi,");
     t!("this is an automated message from {{domain}}. If you didn't upload your key\nthere, please ignore this message.");
     t!("OpenPGP key: {{primary_fp}}");
     t!("This key was just uploaded for the first time, and is now published without\nidentity information. If you want to allow others to find this key by email\naddress, please follow this link:");
     t!("You can find more info at {{base_uri}}/about");
-    t!("Greetings from the keys.openpgp.org team");
+    t!("distributing OpenPGP keys since 2019");
 }
