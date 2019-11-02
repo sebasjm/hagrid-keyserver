@@ -359,6 +359,10 @@ msgstr ""
 msgid "Something went wrong processing key {}"
 msgstr ""
 
-#: src/web/vks.rs:276
+#: src/web/vks.rs:244
+msgid "Upload session expired. Please try again."
+msgstr ""
+
+#: src/web/vks.rs:281
 msgid "Invalid verification token!"
 msgstr ""

@@ -201,7 +201,7 @@ pub fn request_verify(
     token: String,
     addresses: Vec<String>,
 ) -> response::UploadResponse {
-    let (verify_state, tpk_status) = match check_tpk_state(&db, &token_stateless, &token) {
+    let (verify_state, tpk_status) = match check_tpk_state(&db, &token_stateless, &i18n, &token) {
         Ok(ok) => ok,
         Err(e) => return UploadResponse::err(&e.to_string()),
     };
@@ -236,9 +236,14 @@ pub fn request_verify(
 fn check_tpk_state(
     db: &KeyDatabase,
     token_stateless: &tokens::Service,
+    i18n: &I18n,
     token: &str,
 ) -> Result<(VerifyTpkState,TpkStatus)> {
-    let verify_state = token_stateless.check::<VerifyTpkState>(token)?;
+    let verify_state = token_stateless.check::<VerifyTpkState>(token)
+        .map_err(|_| failure::err_msg(i18n!(
+                    i18n.catalog,
+                    "Upload session expired. Please try again."
+                )))?;
     let tpk_status = db.get_tpk_status(&verify_state.fpr, &verify_state.addresses)?;
     Ok((verify_state, tpk_status))
 }
