@@ -1,6 +1,11 @@
 {{#> layout }}
+  {{#with page}}
 <div class="ui">
   <center><h2>{{ text "Upload your key" }}</h2></center>
+
+  {{#with error }}
+    <p><strong>Error</strong>: {{ this }}</p>
+  {{/with}}
 
   <form action="/upload/submit" method="POST" enctype="multipart/form-data">
     <div class="upload">
@@ -17,4 +22,5 @@
 
   <script src="/assets/js/upload.js" async></script>
 </div>
+  {{/with}}
 {{/layout}}
