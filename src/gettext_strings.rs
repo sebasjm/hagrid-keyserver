@@ -3,7 +3,7 @@ use gettext_macros::t;
 fn _dummy() {
     t!("Error");
     t!("Looks like something went wrong :(");
-    t!("<strong>Error:</strong> {{ internal_error }}");
+    t!("Error message: {{ internal_error }}");
     t!("There was an error with your request:");
     t!("We found an entry for <span class=\"email\">{{ query }}</span>:");
     t!("<strong>Hint:</strong> It's more convenient to use <span class=\"brand\">keys.openpgp.org</span> from your OpenPGP software.<br /> Take a look at our <a href=\"/about/usage\">usage guide</a> for details.");

@@ -31,7 +31,7 @@ msgid "Looks like something went wrong :("
 msgstr ""
 
 #: src/gettext_strings.rs:6
-msgid "<strong>Error:</strong> {{ internal_error }}"
+msgid "Error message: {{ internal_error }}"
 msgstr ""
 
 #: src/gettext_strings.rs:7
