@@ -355,14 +355,26 @@ msgstr ""
 msgid "A request has already been sent for this address recently."
 msgstr ""
 
-#: src/web/vks.rs:173
+#: src/web/vks.rs:112
+msgid "Parsing of key data failed."
+msgstr ""
+
+#: src/web/vks.rs:121
+msgid "Whoops, please don't upload secret keys!"
+msgstr ""
+
+#: src/web/vks.rs:129
+msgid "No key uploaded."
+msgstr ""
+
+#: src/web/vks.rs:181
 msgid "Something went wrong processing key {}"
 msgstr ""
 
-#: src/web/vks.rs:244
+#: src/web/vks.rs:252
 msgid "Upload session expired. Please try again."
 msgstr ""
 
-#: src/web/vks.rs:281
+#: src/web/vks.rs:289
 msgid "Invalid verification token!"
 msgstr ""

@@ -64,8 +64,8 @@ pub mod response {
     }
 
     impl UploadResponse {
-        pub fn err(err: &str) -> Self {
-            UploadResponse::Error(err.to_owned())
+        pub fn err(err: impl Into<String>) -> Self {
+            UploadResponse::Error(err.into())
         }
     }
 
@@ -109,7 +109,7 @@ pub fn process_key(
         })
     {
         Ok(ppr) => TPKParser::from_packet_parser(ppr),
-        Err(_) => return UploadResponse::err("Failed parsing key"),
+        Err(_) => return UploadResponse::err(i18n!(i18n.catalog, "Parsing of key data failed.")),
     };
     let mut tpks = Vec::new();
     for tpk in parser {
@@ -117,16 +117,24 @@ pub fn process_key(
             Ok(t) => {
                 if t.is_tsk() {
                     counters::inc_key_upload("secret");
-                    return UploadResponse::err("Whoops, please don't upload secret keys!");
+                    return UploadResponse::err(i18n!(
+                        i18n.catalog,
+                        "Whoops, please don't upload secret keys!"
+                    ));
                 }
                 t
             },
-            Err(_) => return UploadResponse::err("No keys uploaded"),
+            Err(_) => {
+                return UploadResponse::err(i18n!(
+                    i18n.catalog,
+                    "No key uploaded."
+                ));
+            }
         });
     }
 
     match tpks.len() {
-        0 => UploadResponse::err("No key submitted"),
+        0 => UploadResponse::err(i18n!(i18n.catalog, "No key uploaded.")),
         1 => process_key_single(db, i18n, tokens_stateless, rate_limiter, tpks.into_iter().next().unwrap()),
         _ => process_key_multiple(db, tpks),
     }
