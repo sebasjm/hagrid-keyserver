@@ -168,12 +168,7 @@ impl Service {
 
         self.send(
             &vec![userid],
-            &i18n!(
-                i18n.catalog,
-                context = "Subject for welcome email",
-                "Your key upload on {domain}";
-                domain = self.domain
-            ),
+            &format!("Your key upload on {domain}", domain = self.domain),
             "welcome",
             i18n.lang,
             ctx,

@@ -22,11 +22,6 @@ msgctxt "Subject for manage email"
 msgid "Manage your key on {domain}"
 msgstr ""
 
-#: src/mail.rs:172
-msgctxt "Subject for welcome email"
-msgid "Your key upload on {domain}"
-msgstr ""
-
 #: src/gettext_strings.rs:4
 msgid "Error"
 msgstr ""
@@ -285,22 +280,6 @@ msgstr ""
 
 #: src/gettext_strings.rs:88
 msgid "To let others find this key from your email address \"{{userid}}\",\nplease follow the link below:"
-msgstr ""
-
-#: src/gettext_strings.rs:92
-msgid "Your key upload on {{domain}}"
-msgstr ""
-
-#: src/gettext_strings.rs:96
-msgid "If you didn't upload your key there, please ignore this message."
-msgstr ""
-
-#: src/gettext_strings.rs:98
-msgid "This key was just uploaded for the first time, and is now published without identity information. If you want to allow others to find this key by e-mail address, please follow this link:"
-msgstr ""
-
-#: src/gettext_strings.rs:106
-msgid "This key was just uploaded for the first time, and is now published without\nidentity information. If you want to allow others to find this key by e-mail\naddress, please follow this link:"
 msgstr ""
 
 #: src/web/manage.rs:103

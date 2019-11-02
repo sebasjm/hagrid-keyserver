@@ -1,17 +1,19 @@
-{{ text "Hi," }}
+Hi,
 
-{{ text "this is an automated message from {{domain}}." rerender }}
-{{ text "If you didn't upload your key, please ignore this message." }}
+this is an automated message from {{domain}}.
+If you didn't upload your key, please ignore this message.
 
-{{ text "OpenPGP key: {{primary_fp}}" rerender }}
+OpenPGP key: {{primary_fp}}
 
-{{ text "This key was just uploaded for the first time, and is now published without\nidentity information. If you want to allow others to find this key by e-mail\naddress, please follow this link:" }}
+This key was just uploaded for the first time, and is now published without
+identity information. If you want to allow others to find this key by e-mail
+address, please follow this link:
 
     {{uri}}
 
-{{ text "You can find more info at {{base_uri}}/about" rerender }}
+You can find more info at {{base_uri}}/about
 
 -- 
 
 {{ base_uri }}
-{{ text "distributing OpenPGP keys since 2019" }}
+distributing OpenPGP keys since 2019

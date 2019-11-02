@@ -88,22 +88,4 @@ fn _dummy() {
     t!("To let others find this key from your email address \"{{userid}}\",\nplease follow the link below:");
     t!("You can find more info at {{base_uri}}/about");
     t!("distributing OpenPGP keys since 2019");
-
-    t!("Your key upload on {{domain}}");
-
-    t!("Hi,");
-    t!("this is an automated message from <a href=\"{{base_uri}}\" style=\"text-decoration:none; color: #333\">{{domain}}</a>.");
-    t!("If you didn't upload your key there, please ignore this message.");
-    t!("OpenPGP key: <tt>{{primary_fp}}</tt>");
-    t!("This key was just uploaded for the first time, and is now published without identity information. If you want to allow others to find this key by e-mail address, please follow this link:");
-    t!("You can find more info at <a href=\"{{base_uri}}/about\">{{domain}}/about</a>.");
-    t!("distributing OpenPGP keys since 2019");
-
-    t!("Hi,");
-    t!("this is an automated message from {{domain}}.");
-    t!("If you didn't upload your key there, please ignore this message.");
-    t!("OpenPGP key: {{primary_fp}}");
-    t!("This key was just uploaded for the first time, and is now published without\nidentity information. If you want to allow others to find this key by e-mail\naddress, please follow this link:");
-    t!("You can find more info at {{base_uri}}/about");
-    t!("distributing OpenPGP keys since 2019");
 }
