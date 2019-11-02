@@ -53,7 +53,7 @@ fn _dummy() {
     t!("Your keys have been successfully uploaded:");
     t!("<strong>Note:</strong> To make keys searchable by email address, you must upload them individually.");
     t!("Verifying your email address…");
-    t!("If the process doesn't complete after a few seconds, plese <input type=\"submit\" class=\"textbutton\" value=\"click here\" />.");
+    t!("If the process doesn't complete after a few seconds, please <input type=\"submit\" class=\"textbutton\" value=\"click here\" />.");
 
     t!("Manage your key on {{domain}}");
 
