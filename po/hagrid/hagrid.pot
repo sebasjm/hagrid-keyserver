@@ -235,7 +235,7 @@ msgid "Hi,"
 msgstr ""
 
 #: src/gettext_strings.rs:59
-msgid "this is an automated message from <a href=\"{{base_uri}}\" style=\"text-decoration:none; color: #333\">{{domain}}</a>."
+msgid "This is an automated message from <a href=\"{{base_uri}}\" style=\"text-decoration:none; color: #333\">{{domain}}</a>."
 msgstr ""
 
 #: src/gettext_strings.rs:60
@@ -259,7 +259,7 @@ msgid "distributing OpenPGP keys since 2019"
 msgstr ""
 
 #: src/gettext_strings.rs:67
-msgid "this is an automated message from {{domain}}."
+msgid "This is an automated message from {{domain}}."
 msgstr ""
 
 #: src/gettext_strings.rs:69
@@ -311,7 +311,7 @@ msgid "No key uploaded."
 msgstr ""
 
 #: src/web/vks.rs:178
-msgid "Error processing uploaded key"
+msgid "Error processing uploaded key."
 msgstr ""
 
 #: src/web/vks.rs:248

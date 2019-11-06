@@ -175,7 +175,7 @@ fn process_key_single(
         Ok(ImportResult::New(tpk_status)) => (tpk_status, true),
         Ok(ImportResult::Updated(tpk_status)) => (tpk_status, false),
         Ok(ImportResult::Unchanged(tpk_status)) => (tpk_status, false),
-        Err(_) => return UploadResponse::err(i18n!(i18n.catalog, "Error processing uploaded key")),
+        Err(_) => return UploadResponse::err(i18n!(i18n.catalog, "Error processing uploaded key.")),
     };
 
     let verify_state = {

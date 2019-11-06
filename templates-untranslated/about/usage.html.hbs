@@ -22,7 +22,7 @@
         (for <a href="https://www.thunderbird.net/en-US/thunderbird/68.0beta/releasenotes/" target="_blank">Thunderbird 68</a> or newer):
         <ul>
             <li>Keys will be kept up to date automatically.</li>
-            <li>During key creation, you can optionally upload and verify your key.</li>
+            <li>During key creation, you can upload and verify your key.</li>
             <li>Keys can be discovered by email address.</li>
         </ul>
     </p>
@@ -52,7 +52,7 @@
     </p>
 
     <p>
-        Note that there is no built-in support for upload and email verification so far.
+        Note that there is no built-in support for upload and email address verification so far.
     </p>
 
     <h2>
@@ -84,7 +84,7 @@
     <p>
         Keys can be uploaded with GnuPG's <tt>--send-keys</tt> command, but
         identity information can't be verified that way to make the key
-        searchable by email address (<a href="/about">what's that?</a>).
+        searchable by email address (<a href="/about">what does this mean?</a>).
     </p>
 
     <ul>
@@ -96,8 +96,9 @@
             </blockquote>
         </li>
         <li>
-            Alternatively, you can export them to a file and enter that into the
-            <a href="/upload" target="_blank">upload</a> page:
+
+            Alternatively, you can export them to a file
+            and select that file in the <a href="/upload" target="_blank">upload</a> page:
             <blockquote>
                 gpg --export your_address@example.net &gt; my_key.pub
             </blockquote>
@@ -127,9 +128,9 @@
 
     <h4 id="gnupg-tor"><a href="#gnupg-tor">Usage via Tor</a></h4>
     <p>
-        For users who want to be extra-careful,
+        For users who want to be extra careful,
         <span class="brand">keys.openpgp.org</span> can be reached anonymously as an
-        <a href="https://en.wikipedia.org/wiki/Tor_(anonymity_network)#Onion_services" target="_blank">onion service</a>.
+        <a href="https://support.torproject.org/onionservices/#onionservices-2" target="_blank">onion service</a>.
         If you have
         <a href="https://www.torproject.org/" target="_blank">Tor</a>
         installed, use the following configuration:
@@ -149,7 +150,7 @@
 
     <p>
         Missing a guide for your favorite implementation?  This site is
-        a work-in-progress, and we are looking to improve. Drop us a line at
+        a work-in-progress, and we are looking to improve it. Drop us a line at
         <span class="email">support at keys dot openpgp dot org</span> if you
         want to help out!
     </p>

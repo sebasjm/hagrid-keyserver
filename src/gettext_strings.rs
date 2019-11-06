@@ -56,7 +56,7 @@ fn _dummy() {
     t!("Manage your key on {{domain}}");
 
     t!("Hi,");
-    t!("this is an automated message from <a href=\"{{base_uri}}\" style=\"text-decoration:none; color: #333\">{{domain}}</a>.");
+    t!("This is an automated message from <a href=\"{{base_uri}}\" style=\"text-decoration:none; color: #333\">{{domain}}</a>.");
     t!("If you didn't request this message, please ignore it.");
     t!("OpenPGP key: <tt>{{primary_fp}}</tt>");
     t!("To manage and delete listed addresses on this key, please follow the link below:");
@@ -64,7 +64,7 @@ fn _dummy() {
     t!("distributing OpenPGP keys since 2019");
 
     t!("Hi,");
-    t!("this is an automated message from {{domain}}.");
+    t!("This is an automated message from {{domain}}.");
     t!("If you didn't request this message, please ignore it.");
     t!("OpenPGP key: {{primary_fp}}");
     t!("To manage and delete listed addresses on this key, please follow the link below:");
@@ -74,7 +74,7 @@ fn _dummy() {
     t!("Verify {{userid}} for your key on {{domain}}");
 
     t!("Hi,");
-    t!("this is an automated message from <a href=\"{{base_uri}}\" style=\"text-decoration:none; color: #333\">{{domain}}</a>.");
+    t!("This is an automated message from <a href=\"{{base_uri}}\" style=\"text-decoration:none; color: #333\">{{domain}}</a>.");
     t!("If you didn't request this message, please ignore it.");
     t!("OpenPGP key: <tt>{{primary_fp}}</tt>");
     t!("To let others find this key from your email address \"<a rel=\"nofollow\" href=\"#\" style=\"text-decoration:none; color: #333\">{{userid}}</a>\", please click the link below:");
@@ -82,7 +82,7 @@ fn _dummy() {
     t!("distributing OpenPGP keys since 2019");
 
     t!("Hi,");
-    t!("this is an automated message from {{domain}}.");
+    t!("This is an automated message from {{domain}}.");
     t!("If you didn't request this message, please ignore it.");
     t!("OpenPGP key: {{primary_fp}}");
     t!("To let others find this key from your email address \"{{userid}}\",\nplease follow the link below:");
