@@ -1,0 +1,30 @@
+{{#> layout }}
+<div class="about">
+    <center><h2>À propos | <a href="/about/news">Nouvelles</a> | <a href="/about/usage">Utilisation</a> | <a href="/about/faq">FAQ</a> | <a href="/about/stats">Statistiques</a> | <a href="/about/privacy">Protection des données</a>
+</h2></center>
+
+    <p>Le serveur <tt>keys.openpgp.org</tt> est un service public pour la distribution et la recherche de clés compatibles OpenPGP, communément appelé « serveur de clés ».</p>
+
+    <p><strong>Des instructions se trouvent dans notre <a href="/about/usage">guide d’utilisation</a>.</strong></p>
+
+    <h3>Fonctionnement</h3>
+
+    <p>Une clé OpenPGP comprend deux sortes de renseignements :</p>
+
+    <ul>
+<li>Les <strong>renseignements d’identité</strong> sont les parties d’une clé qui indiquent son propriétaire, aussi désignés « ID utilisateur ». Un ID utilisateur comprend habituellement un nom et une adresse courriel.</li>
+        <li>Les <strong>renseignements non nominatifs</strong> sont de nature technique, au sujet de la clé même. Ils comprennent les grands nombres utilisés pour vérifier les signatures et chiffrer les messages. Ils comprennent aussi des métadonnées telles que la date de création, des dates d’expiration et l’état de révocation.</li>
+    </ul>
+<p>Traditionnellement, ces renseignements ont toujours été distribués ensemble. Sur <span class="brand">keys.openpgp.org</span>, ils sont traités différemment. Bien que quelqu’un puisse téléverser toutes les parties d’une clé OpenPGP vers <span class="brand">keys.openpgp.org</span>, notre serveur de clés ne conservera et ne publiera que certaines parties, sous certaines conditions :</p>
+
+    <p>Tout <strong>renseignement non nominatif</strong> sera enregistré et distribué librement s’il passe un contrôle cryptographique d’intégrité. N’importe qui peut télécharger ces parties n’importe quand, car elles ne comprennent que des données techniques qui ne peuvent pas être utilisées pour identifier quelqu’un directement. Les logiciels OpenPGP de qualité peuvent utiliser <span class="brand">keys.openpgp.org</span> pour garder ces renseignements à jour pour n’importe quelle clé qu’il connaît. Cela permet aux utilisateurs d’OpenPGP d’assurer des communications sécurisées et fiables.</p>
+
+    <p>Les <strong>renseignements d’identité</strong> d’une clé OpenPGP ne sont distribués qu’avec consentement. Ils comprennent des données personnelles et ne sont pas strictement nécessaires pour qu’une clé soit utilisée pour le chiffrement ou la vérification par signature. Une fois que le propriétaire donne son consentement en attestant que son adresse courriel est la bonne, la clé peut être trouvée par son adresse courriel.</p>
+
+    <h3 id="community">Communauté et plateforme</h3>
+
+    <p>Ce service existe en tant qu’effort communautaire. Vous pouvez nous contacter #hagrid sur Freenode IRC, ainsi que #hagrid:stratum0.org sur Matrix. Vous pouvez bien sûr nous contacter aussi par courriel à l’adresse <tt>support arobase keys point openpgp point org</tt>. Les personnes derrière keys.openpgp.org proviennent de différents projets de l’écosystème OpenPGP, dont Sequoia-PGP, OpenKeychain et Enigmail.</p>
+
+    <p>D’un point de vue technique, <tt>keys.openpgp.org</tt> tourne sur le logiciel de serveur de clés <a href="https://gitlab.com/hagrid-keyserver/hagrid" target="_blank">Hagrid</a>, fondé sur <a href="https://sequoia-pgp.org">Sequoia-PGP</a>. Nous utilisons la plateforme d’hébergement <a href="https://eclips.is" target="_blank">eclips.is</a>, gérée par <a href="https://greenhost.net/" target="_blank">Greenhost</a>, un fournisseur d’hébergement Web axé sur les projets qui promeuvent la liberté sur Internet.</p>
+</div>
+{{/layout}}
