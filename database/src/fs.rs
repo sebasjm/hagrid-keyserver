@@ -8,6 +8,7 @@ use std::os::unix::fs::PermissionsExt;
 use tempfile;
 use url;
 use pathdiff::diff_paths;
+use std::time::SystemTime;
 
 //use sequoia_openpgp::armor::{Writer, Kind};
 
@@ -291,7 +292,11 @@ impl Database for Filesystem {
     }
 
     fn write_log_append(&self, filename: &str, fpr_primary: &Fingerprint) -> Result<()> {
-        let fingerprint_line = format!("{}\n", fpr_primary.to_string());
+        let timestamp = SystemTime::now()
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .unwrap()
+            .as_secs();
+        let fingerprint_line = format!("{:010} {}\n", timestamp, fpr_primary.to_string());
 
         self.open_logfile(filename)?
             .write_all(fingerprint_line.as_bytes())?;

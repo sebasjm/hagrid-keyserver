@@ -980,8 +980,9 @@ fn check_log_entry(log_path: &Path, fpr: &Fingerprint) {
     let log_data = fs::read_to_string(log_path).unwrap();
     let last_entry = log_data
         .lines()
-        .last()
-        .unwrap();
+        .last().unwrap()
+        .split(" ")
+        .last().unwrap();
     assert_eq!(last_entry, fpr.to_string());
 
 }
