@@ -19,7 +19,7 @@ use std::str::FromStr;
 
 use Database;
 use Query;
-use openpgp::tpk::{TPKBuilder, UserIDBinding};
+use openpgp::tpk::TPKBuilder;
 use openpgp::{
     constants::ReasonForRevocation, constants::SignatureType, packet::UserID,
     parse::Parse, Packet, PacketPile, RevocationStatus, TPK,
