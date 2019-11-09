@@ -6,6 +6,11 @@ for i in templates-untranslated/**/*.hbs; do
 	local suffix_file=${i:h}/template-suffix
 
 	echo -n "$template: "
+
+	echo -n "en "
+	local dist_path=dist/templates/$template
+	cat $prefix_file $i $suffix_file >! $dist_path
+
 	for translated in templates-translated/*/$template(N); do
 		local locale=${${translated#templates-translated/}%%/*}
 		local dist_path=dist/templates/localized/$locale/$template
