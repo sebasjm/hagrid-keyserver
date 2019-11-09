@@ -147,9 +147,9 @@
 
     <p>
         The <span class="brand">keys.openpgp.org</span> service is meant for key
-        distribution and discovery, not as a de-facto CA.  Client implementations
-        that want to offer verified communication should rely on their own trust
-        model.
+        distribution and discovery, not as a de facto certification authority.
+        Client implementations that want to offer verified communication should
+        rely on their own trust model.
     </p>
 
     <h3 id="revoked-uids"><a href="#revoked-uids">Why are revoked identities not
@@ -157,7 +157,7 @@
 
     <p>
         When an OpenPGP key marks one of its identities as revoked, this
-        identity should no longer be considered valid for the key.  And this
+        identity should no longer be considered valid for the key, and this
         information should ideally be distributed to all OpenPGP clients that
         already know about the newly revoked identity.
     </p>
@@ -183,7 +183,7 @@
         If you have Tor installed,
         you can reach <span class="brand">keys.openpgp.org</span> anonymously
         as an
-        <a href="https://en.wikipedia.org/wiki/Tor_(anonymity_network)#Onion_services" target="_blank">onion service</a>:
+        <a href="https://support.torproject.org/onionservices/#onionservices-2" target="_blank">onion service</a>:
         <br />
         <a href="http://zkaan2xfbuxia2wpf7ofnkbz6r5zdbbvxbunvp5g2iebopbfc4iqmbad.onion">zkaan2xfbuxia2wpf7ofnkbz6r5zdbbvxbunvp5g2iebopbfc4iqmbad.onion</a>
     </p>
