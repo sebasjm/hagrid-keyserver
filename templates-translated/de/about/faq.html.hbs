@@ -13,26 +13,26 @@
 
     <p>Einige Leute haben bereits ihre Hilfe angeboten, eine Server-Instanz von Hagrid zu pflegen. Das wissen wir zu schätzen, allerdings würden wir voraussichtlich kein "offenes" Föderations-Modell wie SKS verwenden. Dafür gibt es zwei Gründe:</p>
     <ol>
-<li>Für eine Föderation mit offener Teilnahme müssen alle Server-Daten ebenfalls öffentlich sein. Dies ist ein signifikantes Privacy-Problem, weil so auch alle E-Mail Adressen unserer Nutzer abrufbar würden.</li>
+<li>Für eine Föderation mit offener Teilnahme müssen alle Server-Daten ebenfalls öffentlich sein. Dies ist ein signifikantes Privacy-Problem, weil so auch alle Email-Adressen unserer Nutzer abrufbar würden.</li>
         <li>Server, die als Hobby betrieben werden, können unseren Anspruch an Zuverlässigkeit und Performance nicht erfüllen.</li>
     </ol>
 <h3 id="non-email-uids"><a href="#non-email-uids">Warum werden Identitäten, die keine E-Mail Adressen sind, nicht unterstützt?</a></h3>
 
-    <p>Die Veröffentlichung von Identitäts-Informationen erfordert explizite Zustimmung ihres Besitzers. Für Identitäten die keine E-Mail Adressen sind, beispielsweise Bilder oder Links zu Webseiten, gibt es keine einfache Möglichkeit, diese Zustimmung einzuholen.</p>
+    <p>Die Veröffentlichung von Identitäts-Informationen erfordert explizite Zustimmung ihres Besitzers. Für Identitäten die keine Email-Adressen sind, beispielsweise Bilder oder Links zu Webseiten, gibt es keine einfache Möglichkeit, diese Zustimmung einzuholen.</p>
 
-    <p>Hinweis: Manche OpenPGP Anwendungen generieren E-Mail Adressen mit inkorrekter Formatierung. Diese Adressen werden möglicherweise von <span class="brand">keys.openpgp.org</span> nicht richtig erkannt.</p>
+    <p>Hinweis: Manche OpenPGP-Anwendungen generieren Email-Adressen mit inkorrekter Formatierung. Diese Adressen werden möglicherweise von <span class="brand">keys.openpgp.org</span> nicht richtig erkannt.</p>
 
     <h3 id="verify-multiple"><a href="#verify-multiple">Ist es möglich, mehr als einen Schlüssel unter der gleichen E-Mail Adresse zu veröffentlichen?</a></h3>
 
-    <p>Eine E-Mail Adresse kann zu jedem Zeitpunkt mit nur genau einem Schlüssel veröffentlicht werden. Wenn eine Adresse für einen neuen Schlüssel bestätigt wird, entfernt diese Operation automatisch auch die Assoziation mit dem vorigen Schlüssel. <a href="/about">Nicht-Identitäts Informationen</a> sind davon nicht betroffen, und werden immer für alle Schlüssel verteilt.</p>
+    <p>Eine Email-Adresse kann zu jedem Zeitpunkt mit nur genau einem Schlüssel veröffentlicht werden. Wenn eine Adresse für einen neuen Schlüssel bestätigt wird, entfernt diese Operation automatisch auch die Assoziation mit dem vorigen Schlüssel. <a href="/about">Nicht-Identitäts Informationen</a> sind davon nicht betroffen, und werden immer für alle Schlüssel verteilt.</p>
 
-    <p>Auf diese Weise wird sichergestellt, dass eine Suche per E-Mail Adresse zu jedem Zeitpunkt genau ein oder kein Ergebnis hat, niemals mehrere Kandidaten. Dies vermeidet eine unmögliche Rückfrage an den Nutzer ("Welcher Schlüssel ist der richtige?"), und macht so die Schlüssel-Suche per E-Mail Adresse deutlich nutzbarer.</p>
+    <p>Auf diese Weise wird sichergestellt, dass eine Suche per Email-Adresse zu jedem Zeitpunkt genau ein oder kein Ergebnis hat, niemals mehrere Kandidaten. Dies vermeidet eine unmögliche Rückfrage an den Nutzer ("Welcher Schlüssel ist der richtige?"), und macht so die Schlüssel-Suche per Email-Adresse deutlich nutzbarer.</p>
 
-    <h3 id="email-protection"><a href="#email-protection">Wie werden ausgehende Bestätigungs-E-Mails geschützt?</a></h3>
+    <h3 id="email-protection"><a href="#email-protection">Wie werden ausgehende Bestätigungs-Emails geschützt?</a></h3>
 
-    <p>Wir verwenden den modernen <a href="https://www.hardenize.com/blog/mta-sts" target="_blank">MTA-STS</a> Standard in Kombination mit <a href="https://starttls-everywhere.org/" target="_blank">STARTTLS Everywhere</a>, um unerlaubtem Zugriff durch Angreifer während der Zustellung vorzubeugen.</p>
+    <p>Wir verwenden den modernen <a href="https://www.hardenize.com/blog/mta-sts" target="_blank">MTA-STS</a>-Standard in Kombination mit <a href="https://starttls-everywhere.org/" target="_blank">STARTTLS Everywhere</a>, um unerlaubtem Zugriff durch Angreifer während der Zustellung vorzubeugen.</p>
 
-    <p>Der MTA-STS-Mechanismus hängt von einer kompatiblen Konfiguration des empfangenden E-Mail-Servers ab. Du kannst <a href="https://www.hardenize.com/">hier überprüfen</a>, ob dein E-Mail-Provider dies unterstützt. Falls der "MTA-STS" Eintrag auf der linken Seite kein grünes Häkchen anzeigt, erkundige dich am Besten bei deinem Provider, ob sie ihre Konfiguration updaten können.</p>
+    <p>Der MTA-STS-Mechanismus hängt von einer kompatiblen Konfiguration des empfangenden Email-Servers ab. Du kannst <a href="https://www.hardenize.com/">hier überprüfen</a>, ob dein Email-Provider dies unterstützt. Falls der "MTA-STS" Eintrag auf der linken Seite kein grünes Häkchen anzeigt, erkundige dich am Besten bei deinem Provider, ob sie ihre Konfiguration updaten können.</p>
 
     <h3 id="third-party-signatures"><a href="#third-party-signatures">Werden "Signaturen" von fremden Schlüsseln unterstützt?</a></h3>
 
@@ -60,7 +60,7 @@
         Wenn du Tor installiert hast,
         kannst du <span class="brand">keys.openpgp.org</span> anonym
         als 
-        <a href="https://en.wikipedia.org/wiki/Tor_(anonymity_network)#Onion_services" target="_blank">Onion-Service</a> verwenden:
+        <a href="https://support.torproject.org/onionservices/#onionservices-2" target="_blank">Onion-Service</a> verwenden:
         <br><a href="http://zkaan2xfbuxia2wpf7ofnkbz6r5zdbbvxbunvp5g2iebopbfc4iqmbad.onion">zkaan2xfbuxia2wpf7ofnkbz6r5zdbbvxbunvp5g2iebopbfc4iqmbad.onion</a></p>
 
     <h3 id="encrypt-verification-emails"><a href="#encrypt-verification-emails">Warum werden die ausgehenden Bestätigungs-E-Mails nicht verschlüsselt?</a></h3>

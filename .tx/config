@@ -5,15 +5,15 @@ host = https://www.transifex.com
 minimum_perc = 100
 source_file = po/hagrid/hagrid.pot
 source_lang = en
-trans.None = po/hagrid/hagrid.pot
-trans.de = po/hagrid/de.po
-trans.fr = po/hagrid/fr.po
+file_filter = po/hagrid/<lang>.po
+trans.zh-Hans = po/hagrid/zh_Hans.po
 type = PO
 
 [hagrid.about-about]
 minimum_perc = 100
 source_file = templates-untranslated/about/about.html.hbs
 file_filter = templates-translated/<lang>/about/about.html.hbs
+trans.zh-Hans = templates-translated/zh_Hans/about/about.html.hbs
 source_lang = en
 type = HTML
 
@@ -21,6 +21,7 @@ type = HTML
 minimum_perc = 100
 source_file = templates-untranslated/about/faq.html.hbs
 file_filter = templates-translated/<lang>/about/faq.html.hbs
+trans.zh-Hans = templates-translated/zh_Hans/about/faq.html.hbs
 source_lang = en
 type = HTML
 
@@ -28,6 +29,7 @@ type = HTML
 minimum_perc = 100
 source_file = templates-untranslated/about/news.html.hbs
 file_filter = templates-translated/<lang>/about/news.html.hbs
+trans.zh-Hans = templates-translated/zh_Hans/about/news.html.hbs
 source_lang = en
 type = HTML
 
@@ -35,6 +37,7 @@ type = HTML
 minimum_perc = 100
 source_file = templates-untranslated/about/privacy.html.hbs
 file_filter = templates-translated/<lang>/about/privacy.html.hbs
+trans.zh-Hans = templates-translated/zh_Hans/about/privacy.html.hbs
 source_lang = en
 type = HTML
 
@@ -42,6 +45,7 @@ type = HTML
 minimum_perc = 100
 source_file = templates-untranslated/about/stats.html.hbs
 file_filter = templates-translated/<lang>/about/stats.html.hbs
+trans.zh-Hans = templates-translated/zh_Hans/about/stats.html.hbs
 source_lang = en
 type = HTML
 
@@ -49,6 +53,7 @@ type = HTML
 minimum_perc = 100
 source_file = templates-untranslated/about/usage.html.hbs
 file_filter = templates-translated/<lang>/about/usage.html.hbs
+trans.zh-Hans = templates-translated/zh_Hans/about/usage.html.hbs
 source_lang = en
 type = HTML
 

@@ -1,0 +1,83 @@
+<div class="about usage">
+    <center><h2>
+<a href="/about">À propos</a> | <a href="/about/news">Nouvelles</a> | Utilisation | <a href="/about/faq">FAQ</a> | <a href="/about/stats">Statistiques</a> | <a href="/about/privacy">Protection des données</a>
+</h2></center>
+
+    <p>Sur cette page, nous recueillons des renseignements sur la façon d’utiliser span class="brand"&gt;keys.openpgp.org avec différents logiciels OpenPGP.<br> Nous continuons à en ajouter de nouveaux. Si certains manquent, veuillez nous écrire et nous nous efforcerons de les ajouter.</p>
+
+    <h2>
+        <div><img src="/assets/img/enigmail.svg"></div>
+        Enigmail
+    </h2>
+    <p><a href="https://enigmail.net" target="_blank">Enigmail</a> pour Thunderbird utilise <span class="brand">keys.openpgp.org</span> par défaut depuis la version 2.0.12.</p>
+    <p>Une prise en charge totale est offerte depuis Enigmail 2.1 (pour <a href="https://www.thunderbird.net/en-US/thunderbird/68.0beta/releasenotes/" target="_blank">Thunderbird 68</a> (page en anglais) ou version ultérieure : </p>
+<ul>
+<li>Les clés seront tenues à jour automatiquement.</li>
+            <li>Lors de la création de la clé, vous pouvez téléverser et confirmer votre clé.</li>
+            <li>La recherche de clés peut se faire par adresse courriel.</li>
+        </ul>
+<h2>
+        <div><img src="/assets/img/gpgtools.png"></div>
+        GPG Suite
+    </h2>
+    <p><a href="https://gpgtools.org/">GPG Suite</a> pour macOS utilise <span class="brand">keys.openpgp.org</span> par défaut depuis août 2019.</p>
+
+    <h2>
+        <div><img src="/assets/img/openkeychain.svg"></div>
+        OpenKeychain
+    </h2>
+    <p><a href="https://www.openkeychain.org/">OpenKeychain</a> pour Android utilise <span class="brand">keys.openpgp.org</span> par défaut depuis juillet 2019.</p>
+<ul>
+<li>Les clés seront tenues à jour automatiquement.</li>
+            <li>La recherche de clés peut se faire par adresse courriel.</li>
+        </ul>
+<p>Notez qu’il n’y a actuellement pas de prise en charge intégrée du téléversement ni de la confirmation d’adresses courriel.</p>
+
+    <h2>
+        <div><img src="/assets/img/gnupg.svg"></div>
+        GnuPG
+    </h2>
+
+    <p>Afin de configurer <a href="https://gnupg.org">GnuPG</a> pour utiliser <span class="brand">keys.openpgp.org</span> comme serveur de clés, ajoutez cette ligne à votre fichier <tt>gpg.conf</tt> :</p>
+<blockquote>keyserver hkps://keys.openpgp.org</blockquote>
+    
+
+    <h4 id="gnupg-retrieve"><a href="#gnupg-retrieve">Récupérer des clés</a></h4>
+    <ul>
+<li>Pour trouver la clé d’un utilisateur, par adresse courriel :<blockquote>gpg --auto-key-locate keyserver --locate-keys utilisateur@exemple.net</blockquote>
+        </li>
+        <li>Pour actualiser toutes vos clés (p. ex. les nouveaux certificats de révocation et les sous-clés) :<blockquote>gpg --refresh-keys</blockquote>
+        </li>
+    </ul>
+<h4 id="gnupg-upload"><a href="#gnupg-upload">Téléverser votre clé</a></h4>
+    <p>Les clés peuvent être téléversées avec la commande <tt>--send-keys</tt> de GnuPG, mais les renseignements d'identité ne peuvent pas être confirmés de cette façon afin qu’une recherche par adresse courriel trouve la clé. (<a href="/about">Qu’est-ce que cela signifie ?</a>)</p>
+
+    <ul>
+<li>Vous pouvez essayer ce raccourci pour téléverser votre clé. Il retournera un lien direct vers la page de vérification :<blockquote>gpg --export votre_adresse_courriel@exemple.net | curl -T - {{ base_uri }}</blockquote>
+        </li>
+        <li>Vous pouvez autrement les exporter dans un fichier et le sélectionner dans la page de <a href="/upload" target="_blank">téléversement</a> :<blockquote>gpg --export votre_adresse_courriel@exemple.net &gt; ma_clé.pub</blockquote>
+        </li>
+    </ul>
+<h4 id="gnupg-troubleshooting"><a href="#gnupg-troubleshooting">Dépannage</a></h4>
+    <ul>
+<li>Certains anciens fichiers <tt>~/gnupg/dirmngr.conf</tt> comprennent une ligne telle que celle-ci :<blockquote>hkp-cacert ~/.gnupg/sks-keyservers.netCA.pem</blockquote>
+            <p>Cette configuration n’est plus nécessaire, mais empêche les certificats ordinaires de fonctionner. Il est recommandé de simplement supprimer cette ligne de la configuration.</p>
+        </li>
+        <li>Lors de l’actualisation des clés, vous pourriez rencontrer des erreurs telles que celle qui suit :<blockquote>gpg: key A2604867523C7ED8: no user ID</blockquote>
+            C’est un <a href="https://dev.gnupg.org/T4393" target="_blank">problème connu de GnuPG</a>. Nous nous efforçons de résoudre ce problème avec l’équipe de GnuPG.
+        </li>
+    </ul>
+<h4 id="gnupg-tor"><a href="#gnupg-tor">Utilisation avec Tor</a></h4>
+    <p>Pour les utilisateurs qui souhaitent être particulièrement prudents, il est possible d’accéder anonymement à <span class="brand">keys.openpgp.org</span> en tant que <a href="https://support.torproject.org/fr/onionservices/#onionservices-2" target="_blank">service onion</a>. Si vous avez installé <a href="https://www.torproject.org/fr/" target="_blank">Tor</a>, utilisez la configuration suivante :</p>
+<blockquote>keyserver hkp://zkaan2xfbuxia2wpf7ofnkbz6r5zdbbvxbunvp5g2iebopbfc4iqmbad.onion</blockquote>
+    
+
+    <h2 style="margin-left: 3%;">API</h2>
+
+    <p>Nous offrons une API pour une prise en charge intégrée dans les applications OpenPGP. Consultez la <a href="/about/api">documentation de notre API</a>.</p>
+
+    <h2 style="margin-left: 3%;">Autres</h2>
+
+    <p>Vous manque-t-il un guide pour votre mise en œuvre favorite ? Ce site est évolutif et nous cherchons à l’améliorer. Envoyez-nous un courriel à l’adresse <span class="email">support arobase keys point openpgp point org</span> si vous souhaitez nous aider.</p>
+
+</div>

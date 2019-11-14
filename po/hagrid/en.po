@@ -360,7 +360,7 @@ msgstr "Hi,"
 #: src/gettext_strings.rs:59
 #, fuzzy
 msgid ""
-"this is an automated message from <a href=\"{{base_uri}}\" style=\"text-"
+"This is an automated message from <a href=\"{{base_uri}}\" style=\"text-"
 "decoration:none; color: #333\">{{domain}}</a>."
 msgstr ""
 "this is an automated message from <a rel=\"nofollow\" href="
@@ -397,7 +397,7 @@ msgstr ""
 
 #: src/gettext_strings.rs:67
 #, fuzzy
-msgid "this is an automated message from {{domain}}."
+msgid "This is an automated message from {{domain}}."
 msgstr "this is an automated message from {{domain}}. If you didn't"
 
 #: src/gettext_strings.rs:69
@@ -459,7 +459,7 @@ msgid "No key uploaded."
 msgstr "Your key upload on {}"
 
 #: src/web/vks.rs:178
-msgid "Error processing uploaded key"
+msgid "Error processing uploaded key."
 msgstr ""
 
 #: src/web/vks.rs:248

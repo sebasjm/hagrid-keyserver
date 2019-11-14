@@ -1,6 +1,5 @@
 # Translators:
-# Nico Weichbrodt <nico@weichbrodt.me>, 2019
-# Vincent Breitmoser <look@my.amazin.horse>, 2019
+# 德夫 乔 <dszw2000@gmail.com>, 2019
 #
 msgid ""
 msgstr ""
@@ -8,44 +7,44 @@ msgstr ""
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2018-06-15 16:33-0700\n"
 "PO-Revision-Date: 2019-09-27 18:05+0000\n"
-"Last-Translator: Vincent Breitmoser <look@my.amazin.horse>, 2019\n"
-"Language-Team: German (https://www.transifex.com/otf/teams/102430/de/)\n"
-"Language: de\n"
+"Last-Translator: 德夫 乔 <dszw2000@gmail.com>, 2019\n"
+"Language-Team: Chinese Simplified (https://www.transifex.com/otf/"
+"teams/102430/zh-Hans/)\n"
+"Language: zh-Hans\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
 
 #: src/mail.rs:107
 msgctxt "Subject for verification email"
 msgid "Verify {userid} for your key on {domain}"
-msgstr "Bestätige {userid} für deinen Schlüssel auf {domain}"
+msgstr "在 {domain} 上验证你的密钥 {userid}"
 
 #: src/mail.rs:140
 msgctxt "Subject for manage email"
 msgid "Manage your key on {domain}"
-msgstr "Schlüssel-Verwaltung auf {domain}"
+msgstr "在 {domain} 上管理你的密钥"
 
 #: src/gettext_strings.rs:4
 msgid "Error"
-msgstr "Fehler"
+msgstr "错误"
 
 #: src/gettext_strings.rs:5
 msgid "Looks like something went wrong :("
-msgstr "Die Operation hat einen internen Fehler versursacht :("
+msgstr "看上去有些东西出错了 :("
 
 #: src/gettext_strings.rs:6
-#, fuzzy
 msgid "Error message: {{ internal_error }}"
-msgstr "<strong>Fehler:</strong> {{ internal_error }}"
+msgstr "错误信息：{{ internal_error }}"
 
 #: src/gettext_strings.rs:7
 msgid "There was an error with your request:"
-msgstr "Die Anfrage verursachte einen Fehler:"
+msgstr "你的请求有一个错误："
 
 #: src/gettext_strings.rs:8
 msgid "We found an entry for <span class=\"email\">{{ query }}</span>:"
-msgstr "Eintrag gefunden für <span class=\"email\">{{ query }}</span>:"
+msgstr "我们找到了询问的地址<span class=\"email\">{{ query }}</span>："
 
 #: src/gettext_strings.rs:9
 msgid ""
@@ -53,101 +52,100 @@ msgid ""
 "\">keys.openpgp.org</span> from your OpenPGP software.<br /> Take a look at "
 "our <a href=\"/about/usage\">usage guide</a> for details."
 msgstr ""
-"<strong>Tip:</strong> Es ist bequemer, <span class=\"brand\">keys.openpgp."
-"org</span> aus OpenPGP-Software heraus zu verwenden. <br />\n"
-"Mehr dazu findest du in den <a href=\"/about/usage\">Nutzungshinweisen</a>."
+"<strong>提示：</strong>在你的OpenPGP软件上使用<span class=\"brand\">keys."
+"openpgp.org</span>会更方便。<br />查阅我们的<a href=\"/about/usage\">用户指南"
+"</a>获取细节。"
 
 #: src/gettext_strings.rs:10
 msgid "debug info"
-msgstr "debug info"
+msgstr "调试信息"
 
 #: src/gettext_strings.rs:11
 msgid "Search by Email Address / Key ID / Fingerprint"
-msgstr "Suche nach Email-Adresse / Schlüssel-ID / Fingerprint"
+msgstr "通过电子邮件地址 / 密钥ID / 指纹搜索"
 
 #: src/gettext_strings.rs:12
 msgid "Search"
-msgstr "Suchen"
+msgstr "搜索"
 
 #: src/gettext_strings.rs:13
 msgid ""
 "You can also <a href=\"/upload\">upload</a> or <a href=\"/manage\">manage</"
 "a> your key."
 msgstr ""
-"Du kannst deinen Schlüssel <a href=\"/upload\">hochladen</a> oder <a href=\"/"
-"manage\">verwalten</a>."
+"你也可以<a href=\"/upload\">上传</a>或<a href=\"/manage\">管理</a>你的密钥。"
 
 #: src/gettext_strings.rs:14
 msgid "Find out more <a href=\"/about\">about this service</a>."
-msgstr "Erfahre mehr <a href=\"/about\">über diesen Keyserver</a>."
+msgstr "找到<a href=\"/about\">关于这项服务</a>的更多信息。"
 
 #: src/gettext_strings.rs:15
 msgid "News:"
-msgstr "News:"
+msgstr "新闻："
 
 #: src/gettext_strings.rs:16
 msgid ""
 "<a href=\"/about/news#2019-09-12-three-months-later\">Three months after "
 "launch ✨</a> (2019-09-12)"
 msgstr ""
-"<a href=\"/about/news#2019-09-12-three-months-later\">Drei Monate nach dem "
-"Start ✨</a> (12.09.2019)"
+"<a href=\"/about/news#2019-09-12-three-months-later\">已成功运行三个月✨</"
+"a>(2019-09-12)"
 
 #: src/gettext_strings.rs:17
 msgid "v{{ version }} built from"
-msgstr "v{{ version }}, Revision"
+msgstr "v{{ version }} built from"
 
 #: src/gettext_strings.rs:18
 msgid "Powered by <a href=\"https://sequoia-pgp.org\">Sequoia-PGP</a>"
-msgstr "Powered by <a href=\"https://sequoia-pgp.org\">Sequoia-PGP</a>"
+msgstr "由<a href=\"https://sequoia-pgp.org\">Sequoia-PGP</a>支持"
 
 #: src/gettext_strings.rs:19
 msgid ""
 "Background image retrieved from <a href=\"https://www.toptal.com/designers/"
 "subtlepatterns/subtle-grey/\">Subtle Patterns</a> under CC BY-SA 3.0"
 msgstr ""
-"Hintergrund von <a href=\"https://www.toptal.com/designers/subtlepatterns/"
-"subtle-grey/\">Subtle Patterns</a> unter CC BY-SA 3.0"
+"背景图从<a href=\"https://www.toptal.com/designers/subtlepatterns/subtle-"
+"grey/\">Subtle Patterns</a>依据CC BY-SA 3.0协议获得"
 
 #: src/gettext_strings.rs:20
 msgid "Maintenance Mode"
-msgstr "Wartungsarbeiten"
+msgstr "修复模式"
 
 #: src/gettext_strings.rs:21
 msgid "Manage your key"
-msgstr "Schlüssel verwalten"
+msgstr "管理你的密钥"
 
 #: src/gettext_strings.rs:22
 msgid "Enter any verified email address for your key"
-msgstr "E-Mail-Adresse des zu verwaltenden Schlüssels"
+msgstr "输入任意关联到你的密钥的电子邮件地址"
 
 #: src/gettext_strings.rs:23
 msgid "Send link"
-msgstr "Sende Link"
+msgstr "发送链接"
 
 #: src/gettext_strings.rs:24
 msgid ""
 "We will send you an email with a link you can use to remove any of your "
 "email addresses from search."
 msgstr ""
-"Du wirst eine E-Mail mit einem Link erhalten, der es erlaubt, Adressen aus "
-"der Suche zu entfernen."
+"我们将把链接用电子邮件的形式发给你，那条链接可以让你在搜索结果中移除你的任意"
+"邮箱地址"
 
 #: src/gettext_strings.rs:25
 msgid ""
 "Managing the key <span class=\"fingerprint\"><a href=\"{{ key_link }}\" "
 "target=\"_blank\">{{ key_fpr }}</a></span>."
 msgstr ""
-"Verwaltung des Schlüssels <span class=\"fingerprint\"><a href="
-"\"{{ key_link }}\" target=\"_blank\">{{ key_fpr }}</a></span>."
+"管理密钥<span class=\"fingerprint\"><a href=\"{{ key_link }}\" target="
+"\"_blank\">{{ key_fpr }}</a></span>"
 
 #: src/gettext_strings.rs:26
 msgid "Your key is published with the following identity information:"
-msgstr "Dieser Schlüssel ist veröffentlicht mit diesen Identitäten:"
+msgstr "你的密钥已经用以下身份发布："
 
 #: src/gettext_strings.rs:27
 msgid "Delete"
-msgstr "Entfernen"
+msgstr "删除"
 
 #: src/gettext_strings.rs:28
 msgid ""
@@ -155,35 +153,32 @@ msgid ""
 "longer appear in a search.<br /> To add another address, <a href=\"/upload"
 "\">upload</a> the key again."
 msgstr ""
-"Veröffentlichte Adressen können hier aus dem Schlüssel und der Suche "
-"entfernt werden. <br /> Um eine Adresse hinzuzufügen, muss der Schlüssel <a "
-"href=\"/upload\">erneut hochgeladen</a> werden."
+"点击“删除”将会在密钥中删除该地址的关联。之后该地址将不会在搜索结果中出现。"
+"<br />如果需要添加另外的地址，请<a href=\"/upload\">重新上传此密钥</a>"
 
 #: src/gettext_strings.rs:29
 msgid ""
 "Your key is published as only non-identity information.  (<a href=\"/about\" "
 "target=\"_blank\">What does this mean?</a>)"
 msgstr ""
-"Dieser Schlüssel ist jetzt ohne Identitäts-Informationen veröffentlicht. (<a "
-"href=\"/about\" target=\"_blank\">Was heisst das?</a>)"
+"你的密钥以无身份的形式发布。（<a href=\"/about\" target=\"_blank\">这意味着什"
+"么？</a>）"
 
 #: src/gettext_strings.rs:30
 msgid "To add an address, <a href=\"/upload\">upload</a> the key again."
-msgstr ""
-"Um eine Identität hinzuzufügen, lade den Schlüssel <a href=\"/upload"
-"\">erneut hoch</a>."
+msgstr "如果要添加地址，<a href=\"/upload\">重新上传此密钥</a>"
 
 #: src/gettext_strings.rs:31
 msgid ""
 "We have sent an email with further instructions to <span class=\"email"
 "\">{{ address }}</span>."
 msgstr ""
-"Eine E-Mail mit den nächsten Schritten wurde an <span class=\"email"
-"\">{{ address }}</span> gesendet."
+"我们已经向<span class=\"email\">{{ address }}</span>发送了包含后续说明的电子"
+"邮件。"
 
 #: src/gettext_strings.rs:32
 msgid "This address has already been verified."
-msgstr "Diese Adresse war bereits bestätigt."
+msgstr "该地址已经被验证过了。"
 
 #: src/gettext_strings.rs:33
 msgid ""
@@ -191,38 +186,37 @@ msgid ""
 "for the identity <a href=\"{{userid_link}}\" target=\"_blank\"><span class="
 "\"email\">{{ userid }}</span></a>."
 msgstr ""
-"Dein Schlüssel <span class=\"fingerprint\">{{key_fpr}}</span> ist jetzt "
-"veröffentlicht mit der Identität <a href=\"{{userid_link}}\" target=\"_blank"
-"\"><span class=\"email\">{{ userid }}</span></a>."
+"你的密钥<span class=\"fingerprint\">{{ key_fpr }}</span>已经以<a href="
+"\"{{userid_link}}\" target=\"_blank\"><span class=\"email\">{{ userid }}</"
+"span></a>的身份发布"
 
 #: src/gettext_strings.rs:34
 msgid "Upload your key"
-msgstr "Schlüssel hochladen"
+msgstr "上传你的密钥"
 
 #: src/gettext_strings.rs:35
 msgid "Upload"
-msgstr "Upload"
+msgstr "上传"
 
 #: src/gettext_strings.rs:36
 msgid ""
 "Need more info? Check our <a target=\"_blank\" href=\"/about\">intro</a> and "
 "<a target=\"_blank\" href=\"/about/usage\">usage guide</a>."
 msgstr ""
-"Mehr Info? Wirf einen Blick auf unsere <a target=\"_blank\" href=\"/about"
-"\">Übersicht</a> und <a target=\"_blank\" href=\"/about/usage"
-"\">Nutzungshinweise</a>."
+"想了解更多信息？查阅我们的<a target=\"_blank\" href=\"/about\">介绍</a>和<a "
+"target=\"_blank\" href=\"/about/usage\">用户指南</a>。"
 
 #: src/gettext_strings.rs:37
 msgid ""
 "You uploaded the key <span class=\"fingerprint\"><a href=\"{{ key_link }}\" "
 "target=\"_blank\">{{ key_fpr }}</a></span>."
 msgstr ""
-"Schlüssel <span class=\"fingerprint\"><a href=\"{{ key_link }}\" target="
-"\"_blank\">{{key_fpr}}</a></span> erfolgreich hochgeladen."
+"你上传了密钥<span class=\"fingerprint\"><a href=\"{{ key_link }}\" target="
+"\"_blank\">{{ key_fpr }}</a></span>。"
 
 #: src/gettext_strings.rs:38
 msgid "This key is revoked."
-msgstr "Dieser Schlüssel ist widerrufen."
+msgstr "该密钥已经被吊销。"
 
 #: src/gettext_strings.rs:39
 msgid ""
@@ -230,53 +224,50 @@ msgid ""
 "search by email address (<a href=\"/about\" target=\"_blank\">what does this "
 "mean?</a>)."
 msgstr ""
-"Er wird veröffentlicht ohne Identitäten, ist aber nicht für eine Suche nach "
-"E-Mail-Adresse verfügbar. (<a href=\"/about\" target=\"_blank\">Was heisst "
-"das?</a>)"
+"该密钥以无身份信息的形式发布，不能使用电子邮件地址搜索到（<a href=\"/about\" "
+"target=\"_blank\">这意味着什么？</a>）"
 
 #: src/gettext_strings.rs:40
 msgid ""
 "This key is now published with the following identity information (<a href="
 "\"/about\" target=\"_blank\">what does this mean?</a>):"
 msgstr ""
-"Dieser Schlüssel ist mit folgenden Identitäten veröffentlicht (<a href=\"/"
-"about\" target=\"_blank\">was heisst das?</a>):"
+"该密钥已经用以下身份信息发布（<a href=\"/about\" target=\"_blank\">这意味着什"
+"么？</a>）"
 
 #: src/gettext_strings.rs:41
 msgid "Published"
-msgstr "Veröffentlicht"
+msgstr "已发布"
 
 #: src/gettext_strings.rs:42
 msgid ""
 "This key is now published with only non-identity information. (<a href=\"/"
 "about\" target=\"_blank\">What does this mean?</a>)"
 msgstr ""
-"Dieser Schlüssel ist jetzt ohne Identitäts-Informationen veröffentlicht. (<a "
-"href=\"/about\" target=\"_blank\">Was heisst das?</a>)"
+"你的密钥现在以无身份的形式发布。（<a href=\"/about\" target=\"_blank\">这意味"
+"着什么？</a>）"
 
 #: src/gettext_strings.rs:43
 msgid ""
 "To make the key available for search by email address, you can verify it "
 "belongs to you:"
-msgstr ""
-"Um den Schlüssel für eine Suche nach E-Mail-Adresse verfügbar zu machen, "
-"muss die entsprechende Adresse erst verifiziert werden:"
+msgstr "要让密钥能通过电子邮件地址搜索到，你可以验证该地址属于你："
 
 #: src/gettext_strings.rs:44
 msgid "Verification Pending"
-msgstr "Bestätigung wird erwartet"
+msgstr "等待验证"
 
 #: src/gettext_strings.rs:45
 msgid ""
 "<strong>Note:</strong> Some providers delay emails for up to 15 minutes to "
 "prevent spam. Please be patient."
 msgstr ""
-"<strong>Hinweis:</strong> Manche Provider verzögern den Empfang von E-Mails "
-"um bis zu 15 Minuten, um Spam zu verhindern. Bitte einen Moment Geduld."
+"<strong>提醒：</strong>部分服务商会将邮件拖延最多15分钟来阻止垃圾邮件。请保持"
+"耐心。"
 
 #: src/gettext_strings.rs:46
 msgid "Send Verification Email"
-msgstr "Bestätigungs-E-Mail senden"
+msgstr "发送验证邮件"
 
 #: src/gettext_strings.rs:47
 msgid ""
@@ -285,10 +276,9 @@ msgid ""
 "openpgp.org</span>.  (<a href=\"/about/faq#non-email-uids\" target=\"_blank"
 "\">Why?</a>)"
 msgstr ""
-"Dieser Schlüssel enthält eine Identität welche nicht als E-Mail Adresse "
-"interpretiert werden konnte.<br /> Diese Identität kann nicht auf <span "
-"class=\"brand\">keys.openpgp.org</span> veröffentlich werden. (<a href=\"/"
-"about/faq#non-email-uids\" target=\"_blank\">Warum?</a>)"
+"该密钥包含一个不能解析为邮件地址的身份。 <br />该身份无法在<span class="
+"\"brand\">keys.openpgp.org</span>上发布。 （<a href=\"/about/faq#non-email-"
+"uids\" target=\"_blank\">为什么？</a>）"
 
 #: src/gettext_strings.rs:48
 msgid ""
@@ -297,113 +287,107 @@ msgid ""
 "class=\"brand\">keys.openpgp.org</span>.  (<a href=\"/about/faq#non-email-"
 "uids\" target=\"_blank\">Why?</a>)"
 msgstr ""
-"Dieser Schlüssel enthält {{ count_unparsed }} Identitäten, die nicht als E-"
-"Mail-Adressen erkannt werden konnten.<br /> Diese Identitäten können nicht "
-"auf <span class=\"brand\">keys.openpgp.org</span> veröffentlicht werden. (<a "
-"href=\"/about/faq#non-email-uids\" target=\"_blank\">Warum?</a>)"
+"该密钥包含一个不能解析为邮件地址的身份{{ count_unparsed }} 。 <br />这些身份"
+"无法在<span class=\"brand\">keys.openpgp.org</span>上发布。 （<a href=\"/"
+"about/faq#non-email-uids\" target=\"_blank\">为什么？</a>）"
 
 #: src/gettext_strings.rs:49
 msgid ""
 "This key contains one revoked identity, which is not published. (<a href=\"/"
 "about/faq#revoked-uids\" target=\"_blank\">Why?</a>)"
 msgstr ""
-"Dieser Schlüssel enthält eine widerrufene Identität. Diese wird nicht "
-"veröffentlicht. (<a href=\"/about/faq#revoked-uids\" target=\"_blank\">Warum?"
-"</a>)"
+"该密钥包含一个被吊销的身份，所以没有发布（<a href=\"/about/faq#revoked-uids"
+"\" target=\"_blank\">为什么？</a>）"
 
 #: src/gettext_strings.rs:50
 msgid ""
 "This key contains {{ count_revoked }} revoked identities, which are not "
 "published. (<a href=\"/about/faq#revoked-uids\" target=\"_blank\">Why?</a>)"
 msgstr ""
-"Dieser Schlüssel enthält {{ count_revoked }} widerrufene Identitäten. Diese "
-"werden nicht veröffentlicht. (<a href=\"/about/faq#revoked-uids\" target="
-"\"_blank\">Warum?</a>)"
+"该密钥包含 {{ count_revoked }}个被吊销的身份，所以没有发布（<a href=\"/about/"
+"faq#revoked-uids\" target=\"_blank\">为什么？</a>）"
 
 #: src/gettext_strings.rs:51
 msgid "Your keys have been successfully uploaded:"
-msgstr "Schlüssel erfolgreich hochgeladen:"
+msgstr "你的密钥已成功上传"
 
 #: src/gettext_strings.rs:52
 msgid ""
 "<strong>Note:</strong> To make keys searchable by email address, you must "
 "upload them individually."
 msgstr ""
-"<strong>Hinweis:</strong> Damit Schlüssel per E-Mail Adresssuche auffindbar "
-"sind, müssen sie einzeln hochgeladen werden."
+"<strong>提示：</strong>如果想让一些密钥可以通过邮箱地址搜索到，你必须把这些密"
+"钥逐个上传。"
 
 #: src/gettext_strings.rs:53
 msgid "Verifying your email address…"
-msgstr "E-Mail Adresse wird bestätigt..."
+msgstr "正在验证你的邮箱地址……"
 
 #: src/gettext_strings.rs:54
 msgid ""
 "If the process doesn't complete after a few seconds, please <input type="
 "\"submit\" class=\"textbutton\" value=\"click here\" />."
 msgstr ""
-"Wenn der Vorgang nicht in einigen Sekunden erfolgreich ist, bitte<input type="
-"\"submit\" class=\"textbutton\" value=\"hier klicken\"/>."
+"如果这项操作在若干秒后仍没有完成，<input type=\"submit\" class=\"textbutton"
+"\" value=\"click here\" />。"
 
 #: src/gettext_strings.rs:56
 msgid "Manage your key on {{domain}}"
-msgstr "Schlüssel-Verwaltung auf {{domain}}"
+msgstr "在{{domain}}上管理你的密钥"
 
 #: src/gettext_strings.rs:58
 msgid "Hi,"
-msgstr "Hi,"
+msgstr "你好，"
 
 #: src/gettext_strings.rs:59
-#, fuzzy
 msgid ""
 "This is an automated message from <a href=\"{{base_uri}}\" style=\"text-"
 "decoration:none; color: #333\">{{domain}}</a>."
 msgstr ""
-"dies ist eine automatisierte Nachricht von <a href=\"{{base_uri}}\" style="
-"\"text-decoration:none; color: #333\">{{ domain }}</a>."
+"这是来自<a href=\"{{base_uri}}\" style=\"text-decoration:none; color: "
+"#333\">{{domain}}</a>的一条自动信息"
 
 #: src/gettext_strings.rs:60
 msgid "If you didn't request this message, please ignore it."
-msgstr "Falls dies unerwartet ist, bitte die Nachricht ignorieren."
+msgstr "如果你没有申请过这条信息，请忽略。"
 
 #: src/gettext_strings.rs:61
 msgid "OpenPGP key: <tt>{{primary_fp}}</tt>"
-msgstr "OpenPGP Schlüssel: <tt>{{primary_fp}}</tt>"
+msgstr "OpenPGP密钥：<tt>{{primary_fp}}</tt>"
 
 #: src/gettext_strings.rs:62
 msgid ""
 "To manage and delete listed addresses on this key, please follow the link "
 "below:"
-msgstr ""
-"Du kannst die Identitäten dieses Schlüssels unter folgendem Link verwalten:"
+msgstr "要管理和删除此密钥上列出的地址，请点击以下链接："
 
 #: src/gettext_strings.rs:63
 msgid ""
 "You can find more info at <a href=\"{{base_uri}}/about\">{{domain}}/about</"
 "a>."
 msgstr ""
-"Weiter Informationen findest du unter <a href=\"{{base_uri}}/about"
-"\">{{domain}}/about</a>."
+"你可以在以下链接找到更多信息 <a href=\"{{base_uri}}/about\">{{domain}}/"
+"about</a>。"
 
 #: src/gettext_strings.rs:64
 msgid "distributing OpenPGP keys since 2019"
-msgstr "Verzeichnis für OpenPGP-Schlüssel seit 2019"
+msgstr "自2019年起传播 OpenPGP 密钥"
 
 #: src/gettext_strings.rs:67
-#, fuzzy
 msgid "This is an automated message from {{domain}}."
-msgstr "dies ist eine automatische Nachricht von {{domain}}."
+msgstr "这是一条来自 {{domain}} 的自动信息。"
 
 #: src/gettext_strings.rs:69
 msgid "OpenPGP key: {{primary_fp}}"
-msgstr "OpenPGP Schlüssel: {{primary_fp}}"
+msgstr "OpenPGP密钥：{{primary_fp}}"
 
 #: src/gettext_strings.rs:71
 msgid "You can find more info at {{base_uri}}/about"
-msgstr "Weiter Informationen findest du unter {{base_uri}}/about"
+msgstr "你可以在以下链接找到更多信息 {{base_uri}}/about"
 
 #: src/gettext_strings.rs:74
 msgid "Verify {{userid}} for your key on {{domain}}"
-msgstr "Bestätige {{userid}} für deinen Schlüssel auf {{domain}}"
+msgstr "在 {{domain}} 上验证你的密钥 {{userid}}"
 
 #: src/gettext_strings.rs:80
 msgid ""
@@ -411,90 +395,53 @@ msgid ""
 "href=\"#\" style=\"text-decoration:none; color: #333\">{{userid}}</a>\", "
 "please click the link below:"
 msgstr ""
-"Damit der Schlüssel über die E-Mail Adresse \"<a rel=\"nofollow\" href=\"#\" "
-"style=\"text-decoration:none; color: #333\">{{userid}}</a>\" gefunden werden "
-"kann, klicke den folgenden Link:"
+"要让其他人能通过你的邮件地址找到此密钥\"<a rel=\"nofollow\" href=\"#\" style="
+"\"text-decoration:none; color: #333\">{{userid}}</a>\"，请点击下方的链接："
 
 #: src/gettext_strings.rs:88
 msgid ""
 "To let others find this key from your email address \"{{userid}}\",\n"
 "please follow the link below:"
 msgstr ""
-"Damit der Schlüssel über die E-Mail Adresse \"{{userid}}\" gefunden werden "
-"kann,\n"
-"klicke den folgenden Link:"
+"要让其他人能通过你的邮件地址找到此密钥\"{{userid}}\"，\n"
+"请点击下方的链接："
 
 #: src/web/manage.rs:103
 msgid "This link is invalid or expired"
-msgstr "Dieser Link ist ungültig, oder bereits abgelaufen."
+msgstr "此链接无效或者已经过期"
 
 #: src/web/manage.rs:129
 msgid "Malformed address: {address}"
-msgstr "Ungültiges Adress-Format: {address}"
+msgstr "地址格式错误：{address}"
 
 #: src/web/manage.rs:136
 msgid "No key for address: {address}"
-msgstr "Kein Schlüssel gefunden für {address}"
+msgstr "此地址下没有密钥：{address}"
 
 #: src/web/manage.rs:152
 msgid "A request has already been sent for this address recently."
-msgstr "Eine E-Mail für diesen Schlüssel wurde erst kürzlich versandt."
+msgstr "对此地址的申请已经发送"
 
 #: src/web/vks.rs:112
 msgid "Parsing of key data failed."
-msgstr "Fehler bei Verarbeitung des Schlüssel-Materials."
+msgstr "密钥数据解析失败。"
 
 #: src/web/vks.rs:121
 msgid "Whoops, please don't upload secret keys!"
-msgstr "Ups, bitte keine geheimen Schlüssel hochladen!"
+msgstr "我的天！请不要上传私钥！"
 
 #: src/web/vks.rs:134
 msgid "No key uploaded."
-msgstr "Es wurde kein Schlüssel hochgeladen."
+msgstr "没有密钥被上传"
 
 #: src/web/vks.rs:178
-#, fuzzy
 msgid "Error processing uploaded key."
-msgstr "Fehler bei Verarbeitung des hochgeladenen Schlüssels"
+msgstr "处理已上传的密钥时出现问题"
 
 #: src/web/vks.rs:248
 msgid "Upload session expired. Please try again."
-msgstr "Zeitlimit beim Hochladen abgelaufen. Bitte versuch es erneut."
+msgstr "上传会话过期，请重试。"
 
 #: src/web/vks.rs:285
 msgid "Invalid verification link."
-msgstr "Ungültiger Bestätigungs-Link."
-
-#~ msgctxt "Subject for welcome email"
-#~ msgid "Your key upload on {domain}"
-#~ msgstr "Hochgeladener Schlüssel auf {domain}"
-
-#~ msgid "Your key upload on {{domain}}"
-#~ msgstr "Hochgeladener Schlüssel auf {{domain}}"
-
-#~ msgid "If you didn't upload your key there, please ignore this message."
-#~ msgstr ""
-#~ "Falls du dort keinen Schlüssel hochgeladen hast, bitte die Nachricht "
-#~ "ignorieren."
-
-#~ msgid ""
-#~ "This key was just uploaded for the first time, and is now published "
-#~ "without identity information. If you want to allow others to find this "
-#~ "key by e-mail address, please follow this link:"
-#~ msgstr ""
-#~ "Dieser Schlüssel wurde gerade erstmals hochgeladen, und zunächst ohne "
-#~ "Identitäten veröffentlicht. Um diesen Schlüssel für eine Suche nach E-"
-#~ "Mail Adresse verfügbar zu machen, folge bitte diesem Link:"
-
-#~ msgid ""
-#~ "This key was just uploaded for the first time, and is now published "
-#~ "without\n"
-#~ "identity information. If you want to allow others to find this key by e-"
-#~ "mail\n"
-#~ "address, please follow this link:"
-#~ msgstr ""
-#~ "Dieser Schlüssel wurde gerade erstmals hochgeladen, und zunächst ohne "
-#~ "Identitäten\n"
-#~ "veröffentlicht. Um diesen Schlüssel für eine Suche nach E-Mail Adresse "
-#~ "verfügbar\n"
-#~ "zu machen, folge bitte diesem Link:"
+msgstr "无效的验证链接"
