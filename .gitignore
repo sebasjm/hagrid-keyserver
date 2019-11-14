@@ -6,3 +6,4 @@
 **/.*.swo
 target
 *.po~
+/dist/templates/localized
