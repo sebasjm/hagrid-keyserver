@@ -63,7 +63,7 @@
         Our traffic is currently
         at about ten requests per second
         (more during the day, less on the weekend),
-        and we delivered roughly 100.000 mails
+        and we delivered roughly 100.000 emails
         in the last month.
         No sweat.
 
@@ -82,7 +82,7 @@
         You can find a more complete list
         <a href="https://gitlab.com/hagrid-keyserver/hagrid/merge_requests?scope=all&utf8=%E2%9C%93&state=merged" target="_blank">here</a>.
 
-    <h4>Secure mail delivery with MTA-STS</h4>
+    <h4>Secure email delivery with MTA-STS</h4>
 
     <p>
         One improvement that deserves special mention is
@@ -97,12 +97,12 @@
         instead of a proper one (e.g. from Let's Encrypt).
         But delivery failures upset customers more
         than reduced security,
-        and many mails are still delivered without encryption.
+        and many emails are still delivered without encryption.
 
     <p>
         With MTA-STS, domain operators can indicate
         (via HTTPS)
-        that their mail server <em>does</em> support encryption.
+        that their email server <em>does</em> support encryption.
         When a secure connection can't be established
         to such a server,
         message delivery will be postponed
@@ -113,7 +113,7 @@
         This is extremely useful for service like
         <span class="brand">keys.openpgp.org</span>.
         If encryption isn't reliable,
-        attackers can intercept verification mails relatively easily.
+        attackers can intercept verification emails relatively easily.
         But for providers who have MTA-STS deployed,
         we can be sure that
         every message is delivered securely,
