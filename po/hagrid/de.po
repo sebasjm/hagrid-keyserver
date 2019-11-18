@@ -1,5 +1,4 @@
 # Translators:
-# Nico Weichbrodt <nico@weichbrodt.me>, 2019
 # Vincent Breitmoser <look@my.amazin.horse>, 2019
 #
 msgid ""
@@ -35,9 +34,8 @@ msgid "Looks like something went wrong :("
 msgstr "Die Operation hat einen internen Fehler versursacht :("
 
 #: src/gettext_strings.rs:6
-#, fuzzy
 msgid "Error message: {{ internal_error }}"
-msgstr "<strong>Fehler:</strong> {{ internal_error }}"
+msgstr "<strong>Fehlermeldung:</strong> {{ internal_error }}"
 
 #: src/gettext_strings.rs:7
 msgid "There was an error with your request:"
@@ -90,8 +88,8 @@ msgid ""
 "<a href=\"/about/news#2019-09-12-three-months-later\">Three months after "
 "launch ✨</a> (2019-09-12)"
 msgstr ""
-"<a href=\"/about/news#2019-09-12-three-months-later\">Drei Monate nach dem "
-"Start ✨</a> (12.09.2019)"
+"<a href=\"/about/news#2019-09-12-three-months-later\">Three months after "
+"launch ✨</a> (12.09.2019) (auf Englisch)"
 
 #: src/gettext_strings.rs:17
 msgid "v{{ version }} built from"
@@ -119,7 +117,7 @@ msgstr "Schlüssel verwalten"
 
 #: src/gettext_strings.rs:22
 msgid "Enter any verified email address for your key"
-msgstr "E-Mail-Adresse des zu verwaltenden Schlüssels"
+msgstr "Email-Adresse des zu verwaltenden Schlüssels"
 
 #: src/gettext_strings.rs:23
 msgid "Send link"
@@ -130,7 +128,7 @@ msgid ""
 "We will send you an email with a link you can use to remove any of your "
 "email addresses from search."
 msgstr ""
-"Du wirst eine E-Mail mit einem Link erhalten, der es erlaubt, Adressen aus "
+"Du wirst eine Email mit einem Link erhalten, der es erlaubt, Adressen aus "
 "der Suche zu entfernen."
 
 #: src/gettext_strings.rs:25
@@ -178,7 +176,7 @@ msgid ""
 "We have sent an email with further instructions to <span class=\"email"
 "\">{{ address }}</span>."
 msgstr ""
-"Eine E-Mail mit den nächsten Schritten wurde an <span class=\"email"
+"Eine Email mit den nächsten Schritten wurde an <span class=\"email"
 "\">{{ address }}</span> gesendet."
 
 #: src/gettext_strings.rs:32
@@ -231,7 +229,7 @@ msgid ""
 "mean?</a>)."
 msgstr ""
 "Er wird veröffentlicht ohne Identitäten, ist aber nicht für eine Suche nach "
-"E-Mail-Adresse verfügbar. (<a href=\"/about\" target=\"_blank\">Was heisst "
+"Email-Adresse verfügbar. (<a href=\"/about\" target=\"_blank\">Was heisst "
 "das?</a>)"
 
 #: src/gettext_strings.rs:40
@@ -259,8 +257,8 @@ msgid ""
 "To make the key available for search by email address, you can verify it "
 "belongs to you:"
 msgstr ""
-"Um den Schlüssel für eine Suche nach E-Mail-Adresse verfügbar zu machen, "
-"muss die entsprechende Adresse erst verifiziert werden:"
+"Um den Schlüssel für eine Suche nach Email-Adresse verfügbar zu machen, muss "
+"die entsprechende Adresse erst verifiziert werden:"
 
 #: src/gettext_strings.rs:44
 msgid "Verification Pending"
@@ -271,12 +269,12 @@ msgid ""
 "<strong>Note:</strong> Some providers delay emails for up to 15 minutes to "
 "prevent spam. Please be patient."
 msgstr ""
-"<strong>Hinweis:</strong> Manche Provider verzögern den Empfang von E-Mails "
+"<strong>Hinweis:</strong> Manche Provider verzögern den Empfang von Emails "
 "um bis zu 15 Minuten, um Spam zu verhindern. Bitte einen Moment Geduld."
 
 #: src/gettext_strings.rs:46
 msgid "Send Verification Email"
-msgstr "Bestätigungs-E-Mail senden"
+msgstr "Bestätigungs-Email senden"
 
 #: src/gettext_strings.rs:47
 msgid ""
@@ -285,7 +283,7 @@ msgid ""
 "openpgp.org</span>.  (<a href=\"/about/faq#non-email-uids\" target=\"_blank"
 "\">Why?</a>)"
 msgstr ""
-"Dieser Schlüssel enthält eine Identität welche nicht als E-Mail Adresse "
+"Dieser Schlüssel enthält eine Identität welche nicht als Email Adresse "
 "interpretiert werden konnte.<br /> Diese Identität kann nicht auf <span "
 "class=\"brand\">keys.openpgp.org</span> veröffentlich werden. (<a href=\"/"
 "about/faq#non-email-uids\" target=\"_blank\">Warum?</a>)"
@@ -297,8 +295,8 @@ msgid ""
 "class=\"brand\">keys.openpgp.org</span>.  (<a href=\"/about/faq#non-email-"
 "uids\" target=\"_blank\">Why?</a>)"
 msgstr ""
-"Dieser Schlüssel enthält {{ count_unparsed }} Identitäten, die nicht als E-"
-"Mail-Adressen erkannt werden konnten.<br /> Diese Identitäten können nicht "
+"Dieser Schlüssel enthält {{ count_unparsed }} Identitäten, die nicht als "
+"Email-Adressen erkannt werden konnten.<br /> Diese Identitäten können nicht "
 "auf <span class=\"brand\">keys.openpgp.org</span> veröffentlicht werden. (<a "
 "href=\"/about/faq#non-email-uids\" target=\"_blank\">Warum?</a>)"
 
@@ -329,12 +327,12 @@ msgid ""
 "<strong>Note:</strong> To make keys searchable by email address, you must "
 "upload them individually."
 msgstr ""
-"<strong>Hinweis:</strong> Damit Schlüssel per E-Mail Adresssuche auffindbar "
-"sind, müssen sie einzeln hochgeladen werden."
+"<strong>Hinweis:</strong> Um Schlüssel für die Email-Adresssuche zu "
+"bestätigen, müssen sie jeweils einzeln hochgeladen werden."
 
 #: src/gettext_strings.rs:53
 msgid "Verifying your email address…"
-msgstr "E-Mail Adresse wird bestätigt..."
+msgstr "Email-Adresse wird bestätigt..."
 
 #: src/gettext_strings.rs:54
 msgid ""
@@ -353,12 +351,11 @@ msgid "Hi,"
 msgstr "Hi,"
 
 #: src/gettext_strings.rs:59
-#, fuzzy
 msgid ""
 "This is an automated message from <a href=\"{{base_uri}}\" style=\"text-"
 "decoration:none; color: #333\">{{domain}}</a>."
 msgstr ""
-"dies ist eine automatisierte Nachricht von <a href=\"{{base_uri}}\" style="
+"Dies ist eine automatisierte Nachricht von <a href=\"{{base_uri}}\" style="
 "\"text-decoration:none; color: #333\">{{ domain }}</a>."
 
 #: src/gettext_strings.rs:60
@@ -389,9 +386,8 @@ msgid "distributing OpenPGP keys since 2019"
 msgstr "Verzeichnis für OpenPGP-Schlüssel seit 2019"
 
 #: src/gettext_strings.rs:67
-#, fuzzy
 msgid "This is an automated message from {{domain}}."
-msgstr "dies ist eine automatische Nachricht von {{domain}}."
+msgstr "Dies ist eine automatische Nachricht von {{domain}}."
 
 #: src/gettext_strings.rs:69
 msgid "OpenPGP key: {{primary_fp}}"
@@ -411,7 +407,7 @@ msgid ""
 "href=\"#\" style=\"text-decoration:none; color: #333\">{{userid}}</a>\", "
 "please click the link below:"
 msgstr ""
-"Damit der Schlüssel über die E-Mail Adresse \"<a rel=\"nofollow\" href=\"#\" "
+"Damit der Schlüssel über die Email-Adresse \"<a rel=\"nofollow\" href=\"#\" "
 "style=\"text-decoration:none; color: #333\">{{userid}}</a>\" gefunden werden "
 "kann, klicke den folgenden Link:"
 
@@ -420,7 +416,7 @@ msgid ""
 "To let others find this key from your email address \"{{userid}}\",\n"
 "please follow the link below:"
 msgstr ""
-"Damit der Schlüssel über die E-Mail Adresse \"{{userid}}\" gefunden werden "
+"Damit der Schlüssel über die Email-Adresse \"{{userid}}\" gefunden werden "
 "kann,\n"
 "klicke den folgenden Link:"
 
@@ -453,9 +449,8 @@ msgid "No key uploaded."
 msgstr "Es wurde kein Schlüssel hochgeladen."
 
 #: src/web/vks.rs:178
-#, fuzzy
 msgid "Error processing uploaded key."
-msgstr "Fehler bei Verarbeitung des hochgeladenen Schlüssels"
+msgstr "Fehler bei Verarbeitung des hochgeladenen Schlüssels."
 
 #: src/web/vks.rs:248
 msgid "Upload session expired. Please try again."
@@ -464,37 +459,3 @@ msgstr "Zeitlimit beim Hochladen abgelaufen. Bitte versuch es erneut."
 #: src/web/vks.rs:285
 msgid "Invalid verification link."
 msgstr "Ungültiger Bestätigungs-Link."
-
-#~ msgctxt "Subject for welcome email"
-#~ msgid "Your key upload on {domain}"
-#~ msgstr "Hochgeladener Schlüssel auf {domain}"
-
-#~ msgid "Your key upload on {{domain}}"
-#~ msgstr "Hochgeladener Schlüssel auf {{domain}}"
-
-#~ msgid "If you didn't upload your key there, please ignore this message."
-#~ msgstr ""
-#~ "Falls du dort keinen Schlüssel hochgeladen hast, bitte die Nachricht "
-#~ "ignorieren."
-
-#~ msgid ""
-#~ "This key was just uploaded for the first time, and is now published "
-#~ "without identity information. If you want to allow others to find this "
-#~ "key by e-mail address, please follow this link:"
-#~ msgstr ""
-#~ "Dieser Schlüssel wurde gerade erstmals hochgeladen, und zunächst ohne "
-#~ "Identitäten veröffentlicht. Um diesen Schlüssel für eine Suche nach E-"
-#~ "Mail Adresse verfügbar zu machen, folge bitte diesem Link:"
-
-#~ msgid ""
-#~ "This key was just uploaded for the first time, and is now published "
-#~ "without\n"
-#~ "identity information. If you want to allow others to find this key by e-"
-#~ "mail\n"
-#~ "address, please follow this link:"
-#~ msgstr ""
-#~ "Dieser Schlüssel wurde gerade erstmals hochgeladen, und zunächst ohne "
-#~ "Identitäten\n"
-#~ "veröffentlicht. Um diesen Schlüssel für eine Suche nach E-Mail Adresse "
-#~ "verfügbar\n"
-#~ "zu machen, folge bitte diesem Link:"
