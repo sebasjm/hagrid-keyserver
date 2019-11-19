@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::convert::TryFrom;
-use std::fs::{create_dir_all, read_link, remove_file, rename, set_permissions, Permissions};
+use std::fs::{OpenOptions, File, create_dir_all, read_link, remove_file, rename, set_permissions, Permissions};
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::os::unix::fs::PermissionsExt;
@@ -8,6 +8,7 @@ use std::os::unix::fs::PermissionsExt;
 use tempfile;
 use url;
 use pathdiff::diff_paths;
+use std::time::SystemTime;
 
 //use sequoia_openpgp::armor::{Writer, Kind};
 
@@ -28,6 +29,7 @@ pub struct Filesystem {
     keys_dir_full: PathBuf,
     keys_dir_quarantined: PathBuf,
     keys_dir_published: PathBuf,
+    keys_dir_log: PathBuf,
 
     links_dir_by_fingerprint: PathBuf,
     links_dir_by_keyid: PathBuf,
@@ -78,10 +80,12 @@ impl Filesystem {
         let keys_external_dir: PathBuf = keys_external_dir.into();
         let keys_dir_full = keys_internal_dir.join("full");
         let keys_dir_quarantined = keys_internal_dir.join("quarantined");
+        let keys_dir_log = keys_internal_dir.join("log");
         let keys_dir_published = keys_external_dir.join("pub");
         create_dir_all(&keys_dir_full)?;
         create_dir_all(&keys_dir_quarantined)?;
         create_dir_all(&keys_dir_published)?;
+        create_dir_all(&keys_dir_log)?;
 
         let links_dir = keys_external_dir.join("links");
         let links_dir_by_keyid = links_dir.join("by-keyid");
@@ -103,6 +107,7 @@ impl Filesystem {
             keys_dir_full,
             keys_dir_published,
             keys_dir_quarantined,
+            keys_dir_log,
 
             links_dir_by_keyid,
             links_dir_by_fingerprint,
@@ -199,6 +204,14 @@ impl Filesystem {
         }
     }
 
+    fn open_logfile(&self, file_name: &str) -> Result<File> {
+        let file_path = self.keys_dir_log.join(file_name);
+        Ok(OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(file_path)?)
+    }
+
     fn perform_checks(
         &self,
         checks_dir: &Path,
@@ -276,6 +289,19 @@ impl Database for Filesystem {
             .tempfile_in(&self.tmp_dir)?;
         tempfile.write_all(content).unwrap();
         Ok(tempfile)
+    }
+
+    fn write_log_append(&self, filename: &str, fpr_primary: &Fingerprint) -> Result<()> {
+        let timestamp = SystemTime::now()
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .unwrap()
+            .as_secs();
+        let fingerprint_line = format!("{:010} {}\n", timestamp, fpr_primary.to_string());
+
+        self.open_logfile(filename)?
+            .write_all(fingerprint_line.as_bytes())?;
+
+        Ok(())
     }
 
     fn move_tmp_to_full(&self, file: NamedTempFile, fpr: &Fingerprint) -> Result<()> {
@@ -628,10 +654,17 @@ mod tests {
         let _ = Filesystem::new_from_base(tmpdir.path()).unwrap();
     }
 
-    #[test]
-    fn new() {
+    fn open_db() -> (TempDir, Filesystem, PathBuf) {
         let tmpdir = TempDir::new().unwrap();
         let db = Filesystem::new_from_base(tmpdir.path()).unwrap();
+        let log_path = db.keys_dir_log.join(db.get_current_log_filename());
+
+        (tmpdir, db, log_path)
+    }
+
+    #[test]
+    fn new() {
+        let (_tmp_dir, db, _log_path) = open_db();
         let k1 = TPKBuilder::new().add_userid("a@invalid.example.org")
             .generate().unwrap().0;
         let k2 = TPKBuilder::new().add_userid("b@invalid.example.org")
@@ -649,125 +682,99 @@ mod tests {
 
     #[test]
     fn uid_verification() {
-        let tmpdir = TempDir::new().unwrap();
-        let mut db = Filesystem::new_from_base(tmpdir.path()).unwrap();
-
-        test::test_uid_verification(&mut db);
+        let (_tmp_dir, mut db, log_path) = open_db();
+        test::test_uid_verification(&mut db, &log_path);
         db.check_consistency().expect("inconsistent database");
     }
 
     #[test]
     fn uid_deletion() {
-        let tmpdir = TempDir::new().unwrap();
-        let mut db = Filesystem::new_from_base(tmpdir.path()).unwrap();
-
-        test::test_uid_deletion(&mut db);
+        let (_tmp_dir, mut db, log_path) = open_db();
+        test::test_uid_deletion(&mut db, &log_path);
         db.check_consistency().expect("inconsistent database");
     }
 
     #[test]
     fn subkey_lookup() {
-        let tmpdir = TempDir::new().unwrap();
-        let mut db = Filesystem::new_from_base(tmpdir.path()).unwrap();
-
-        test::test_subkey_lookup(&mut db);
+        let (_tmp_dir, mut db, log_path) = open_db();
+        test::test_subkey_lookup(&mut db, &log_path);
         db.check_consistency().expect("inconsistent database");
     }
 
     #[test]
     fn kid_lookup() {
-        let tmpdir = TempDir::new().unwrap();
-        let mut db = Filesystem::new_from_base(tmpdir.path()).unwrap();
-
-        test::test_kid_lookup(&mut db);
+        let (_tmp_dir, mut db, log_path) = open_db();
+        test::test_kid_lookup(&mut db, &log_path);
         db.check_consistency().expect("inconsistent database");
     }
 
     #[test]
     fn upload_revoked_tpk() {
-        let tmpdir = TempDir::new().unwrap();
-        let mut db = Filesystem::new_from_base(tmpdir.path()).unwrap();
-        test::test_upload_revoked_tpk(&mut db);
+        let (_tmp_dir, mut db, log_path) = open_db();
+        test::test_upload_revoked_tpk(&mut db, &log_path);
         db.check_consistency().expect("inconsistent database");
     }
 
     #[test]
     fn uid_revocation() {
-        let tmpdir = TempDir::new().unwrap();
-        let mut db = Filesystem::new_from_base(tmpdir.path()).unwrap();
-
-        test::test_uid_revocation(&mut db);
+        let (_tmp_dir, mut db, log_path) = open_db();
+        test::test_uid_revocation(&mut db, &log_path);
         db.check_consistency().expect("inconsistent database");
     }
 
     #[test]
     fn regenerate() {
-        let tmpdir = TempDir::new().unwrap();
-        let mut db = Filesystem::new_from_base(tmpdir.path()).unwrap();
-
-        test::test_regenerate(&mut db);
+        let (_tmp_dir, mut db, log_path) = open_db();
+        test::test_regenerate(&mut db, &log_path);
         db.check_consistency().expect("inconsistent database");
     }
 
     #[test]
     fn key_reupload() {
-        let tmpdir = TempDir::new().unwrap();
-        let mut db = Filesystem::new_from_base(tmpdir.path()).unwrap();
-
-        test::test_reupload(&mut db);
+        let (_tmp_dir, mut db, log_path) = open_db();
+        test::test_reupload(&mut db, &log_path);
         db.check_consistency().expect("inconsistent database");
     }
 
     #[test]
     fn uid_replacement() {
-        let tmpdir = TempDir::new().unwrap();
-        let mut db = Filesystem::new_from_base(tmpdir.path()).unwrap();
-
-        test::test_uid_replacement(&mut db);
+        let (_tmp_dir, mut db, log_path) = open_db();
+        test::test_uid_replacement(&mut db, &log_path);
         db.check_consistency().expect("inconsistent database");
     }
 
     #[test]
     fn uid_unlinking() {
-        let tmpdir = TempDir::new().unwrap();
-        let mut db = Filesystem::new_from_base(tmpdir.path()).unwrap();
-        test::test_unlink_uid(&mut db);
+        let (_tmp_dir, mut db, log_path) = open_db();
+        test::test_unlink_uid(&mut db, &log_path);
         db.check_consistency().expect("inconsistent database");
     }
 
     #[test]
     fn same_email_1() {
-        let tmpdir = TempDir::new().unwrap();
-        let mut db = Filesystem::new_from_base(tmpdir.path()).unwrap();
-
-        test::test_same_email_1(&mut db);
+        let (_tmp_dir, mut db, log_path) = open_db();
+        test::test_same_email_1(&mut db, &log_path);
         db.check_consistency().expect("inconsistent database");
     }
 
     #[test]
     fn same_email_2() {
-        let tmpdir = TempDir::new().unwrap();
-        let mut db = Filesystem::new_from_base(tmpdir.path()).unwrap();
-
-        test::test_same_email_2(&mut db);
+        let (_tmp_dir, mut db, log_path) = open_db();
+        test::test_same_email_2(&mut db, &log_path);
         db.check_consistency().expect("inconsistent database");
     }
 
     #[test]
     fn no_selfsig() {
-        let tmpdir = TempDir::new().unwrap();
-        let mut db = Filesystem::new_from_base(tmpdir.path()).unwrap();
-
-        test::test_no_selfsig(&mut db);
+        let (_tmp_dir, mut db, log_path) = open_db();
+        test::test_no_selfsig(&mut db, &log_path);
         db.check_consistency().expect("inconsistent database");
     }
 
     #[test]
     fn bad_uids() {
-        let tmpdir = TempDir::new().unwrap();
-        let mut db = Filesystem::new_from_base(tmpdir.path()).unwrap();
-
-        test::test_bad_uids(&mut db);
+        let (_tmp_dir, mut db, log_path) = open_db();
+        test::test_bad_uids(&mut db, &log_path);
         db.check_consistency().expect("inconsistent database");
     }
 

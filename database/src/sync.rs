@@ -98,6 +98,6 @@ mod tests {
 
     #[test]
     fn flock_nonexistent() {
-        FlockMutexGuard::lock("nonexistent").is_err();
+        assert!(FlockMutexGuard::lock("nonexistent").is_err());
     }
 }
