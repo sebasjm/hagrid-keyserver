@@ -273,16 +273,14 @@
   </p>
 
   <ul>
-    <li>No support for <code>op=vindex</code>,</li>
-    <li>only exact matches by email address, fingerprint or long key id are
-      returned,</li>
-    <li>all parameters and options other than <code>op</code> and
-      <code>search</code> are ignored,</li>
-    <li>output is always machine readable (i.e. <code>options=mr</code> is
-      always assumed),</li>
-    <li>all requests return either one or no keys,</li>
-    <li>uploads are restricted to 1 MiB,</li>
-    <li>all packets that aren't public keys, user IDs or signatures are filtered out.</li>
+    <li>No support for <code>op=vindex</code>.</li>
+    <li>Only exact matches by email address, fingerprint or long key id are returned.</li>
+    <li>All requests return either one or no keys.</li>
+    <li>The expiration date field in <code>op=index</code> is left blank (discussion <a target="_blank" href="https://gitlab.com/hagrid-keyserver/hagrid/issues/134">here</a>).</li>
+    <li>All parameters and options other than <code>op</code> and <code>search</code> are ignored.</li>
+    <li>Output is always machine readable (i.e. <code>options=mr</code> is always assumed).</li>
+    <li>Uploads are restricted to 1 MiB.</li>
+    <li>All packets that aren't public keys, user IDs or signatures are filtered out.</li>
   </ul>
 
 </div>
