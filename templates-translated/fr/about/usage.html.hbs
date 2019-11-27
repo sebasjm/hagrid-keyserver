@@ -3,17 +3,17 @@
 <a href="/about">À propos</a> | <a href="/about/news">Nouvelles</a> | Utilisation | <a href="/about/faq">FAQ</a> | <a href="/about/stats">Statistiques</a> | <a href="/about/privacy">Protection des données</a>
 </h2></center>
 
-    <p>Sur cette page, nous recueillons des renseignements sur la façon d’utiliser span class="brand"&gt;keys.openpgp.org avec différents logiciels OpenPGP.<br> Nous continuons à en ajouter de nouveaux. Si certains manquent, veuillez nous écrire et nous nous efforcerons de les ajouter.</p>
+    <p>Sur cette page, nous recueillons des renseignements sur la façon d’utiliser <span class="brand">keys.openpgp.org</span> avec différents logiciels OpenPGP.<br> Nous continuons à en ajouter de nouveaux. Si certains manquent, veuillez nous écrire et nous nous efforcerons de les ajouter.</p>
 
     <h2>
         <div><img src="/assets/img/enigmail.svg"></div>
         Enigmail
     </h2>
     <p><a href="https://enigmail.net" target="_blank">Enigmail</a> pour Thunderbird utilise <span class="brand">keys.openpgp.org</span> par défaut depuis la version 2.0.12.</p>
-    <p>Une prise en charge totale est offerte depuis Enigmail 2.1 (pour <a href="https://www.thunderbird.net/en-US/thunderbird/68.0beta/releasenotes/" target="_blank">Thunderbird 68</a> (page en anglais) ou version ultérieure : </p>
+    <p>Une prise en charge totale est offerte depuis Enigmail 2.1 (pour <a href="https://www.thunderbird.net/en-US/thunderbird/68.0beta/releasenotes/" target="_blank">Thunderbird 68</a> [page en anglais] ou version ultérieure) : </p>
 <ul>
 <li>Les clés seront tenues à jour automatiquement.</li>
-            <li>Lors de la création de la clé, vous pouvez téléverser et confirmer votre clé.</li>
+            <li>Lors de la création d’une clé, vous pouvez téléverser et confirmer votre clé.</li>
             <li>La recherche de clés peut se faire par adresse courriel.</li>
         </ul>
 <h2>
@@ -50,10 +50,10 @@
         </li>
     </ul>
 <h4 id="gnupg-upload"><a href="#gnupg-upload">Téléverser votre clé</a></h4>
-    <p>Les clés peuvent être téléversées avec la commande <tt>--send-keys</tt> de GnuPG, mais les renseignements d'identité ne peuvent pas être confirmés de cette façon afin qu’une recherche par adresse courriel trouve la clé. (<a href="/about">Qu’est-ce que cela signifie ?</a>)</p>
+    <p>Les clés peuvent être téléversées avec la commande <tt>--send-keys</tt> de GnuPG, mais les renseignements d’identité ne peuvent pas être confirmés de cette façon afin qu’une recherche par adresse courriel trouve la clé. (<a href="/about">Qu’est-ce que cela signifie ?</a>)</p>
 
     <ul>
-<li>Vous pouvez essayer ce raccourci pour téléverser votre clé. Il retournera un lien direct vers la page de vérification :<blockquote>gpg --export votre_adresse_courriel@exemple.net | curl -T - {{ base_uri }}</blockquote>
+<li>Vous pouvez essayer ce raccourci pour téléverser votre clé. Il retournera un lien direct vers la page de confirmation :<blockquote>gpg --export votre_adresse_courriel@exemple.net | curl -T - {{ base_uri }}</blockquote>
         </li>
         <li>Vous pouvez autrement les exporter dans un fichier et le sélectionner dans la page de <a href="/upload" target="_blank">téléversement</a> :<blockquote>gpg --export votre_adresse_courriel@exemple.net &gt; ma_clé.pub</blockquote>
         </li>
@@ -63,8 +63,8 @@
 <li>Certains anciens fichiers <tt>~/gnupg/dirmngr.conf</tt> comprennent une ligne telle que celle-ci :<blockquote>hkp-cacert ~/.gnupg/sks-keyservers.netCA.pem</blockquote>
             <p>Cette configuration n’est plus nécessaire, mais empêche les certificats ordinaires de fonctionner. Il est recommandé de simplement supprimer cette ligne de la configuration.</p>
         </li>
-        <li>Lors de l’actualisation des clés, vous pourriez rencontrer des erreurs telles que celle qui suit :<blockquote>gpg: key A2604867523C7ED8: no user ID</blockquote>
-            C’est un <a href="https://dev.gnupg.org/T4393" target="_blank">problème connu de GnuPG</a>. Nous nous efforçons de résoudre ce problème avec l’équipe de GnuPG.
+        <li>Lors de l’actualisation des clés, vous pourriez rencontrer des erreurs telles que celle qui suit :<blockquote>gpg: key A2604867523C7ED8 : pas d’identité</blockquote>
+            C’est un <a href="https://dev.gnupg.org/T4393" target="_blank">problème connu de GnuPG</a> (page en anglais). Nous nous efforçons de résoudre ce problème avec l’équipe de GnuPG.
         </li>
     </ul>
 <h4 id="gnupg-tor"><a href="#gnupg-tor">Utilisation avec Tor</a></h4>
@@ -78,6 +78,6 @@
 
     <h2 style="margin-left: 3%;">Autres</h2>
 
-    <p>Vous manque-t-il un guide pour votre mise en œuvre favorite ? Ce site est évolutif et nous cherchons à l’améliorer. Envoyez-nous un courriel à l’adresse <span class="email">support arobase keys point openpgp point org</span> si vous souhaitez nous aider.</p>
+    <p>Vous manque-t-il un guide pour votre logiciel OpenPGP préféré ? Ce site est évolutif et nous cherchons à l’améliorer. Envoyez-nous un courriel à l’adresse <span class="email">support arobase keys point openpgp point org</span> si vous souhaitez nous aider.</p>
 
 </div>

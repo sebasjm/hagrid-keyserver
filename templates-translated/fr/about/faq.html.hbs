@@ -3,28 +3,28 @@
 <a href="/about">À propos</a> | <a href="/about/news">Nouvelles</a> | <a href="/about/usage">Utilisation</a> | FAQ | <a href="/about/stats">Statistiques</a> | <a href="/about/privacy">Protection des données</a>
 </h2></center>
 
-    <h3 id="sks-pool"><a href="#sks-pool">Ce serveur fait-il partie de la réserve « SKS » ?</a></h3>
+    <h3 id="sks-pool"><a href="#sks-pool">Ce serveur fait-il partie de la réserve « SKS » ? </a></h3>
 
     <p>Non. Le modèle fédéré de la réserve SKS présente divers problèmes en matière de fiabilité, de résistance aux abus, de confidentialité et d’utilisabilité. Nous réaliserons peut-être quelque chose de semblable, mais <span class="brand">keys.openpgp.org</span> ne fera jamais partie de la réserve SKS même.</p>
 
     <h3 id="federation"><a href="#federation">keys.openpgp.org est-il fédéré ? Puis-je participer en faisant tourner une instance du site ?</a></h3>
 
-    <p>Pas pour le moment. Nous prévoyons décentraliser <span class="brand">keys.openpgp.org</span> ultérieurement. Avec plusieurs serveurs exploités par des opérateurs indépendants, nous pouvons espérer améliorer en plus la fiabilité de ce service.</p>
+    <p>Pas pour le moment. Nous prévoyons de décentraliser <span class="brand">keys.openpgp.org</span> ultérieurement. Avec plusieurs serveurs exploités par des opérateurs indépendants, nous pouvons espérer améliorer encore plus la fiabilité de ce service.</p>
 
-    <p>Plusieurs personnes ont offert de nous aider en « faisant tourner une instance du serveur Hagrid ». Nous sommes très reconnaissants de ces offres, mais nous n’aurons probablement jamais de modèle fédéré « ouvert » comme SKS, où tout le monde peut exécuter une instance et faire partie d’une réserve. Il y a deux raisons :</p>
+    <p>Plusieurs personnes ont offert de nous aider en « faisant tourner une instance du serveur Hagrid ». Nous sommes très reconnaissants de ces offres, mais nous n’aurons probablement jamais de modèle fédéré « ouvert » tel que SKS, où tout le monde peut exécuter une instance et faire partie d’une réserve. Il y a deux raisons :</p>
     <ol>
 <li>La fédération à participation ouverte exige que toutes les données soient publiques. Cela a une incidence considérable sur la vie privée de nos utilisateurs, car cela permet à n’importe qui de récupérer une liste de toutes les adresses courriel.</li>
         <li>Les serveurs exploités comme passe-temps par des administrateurs occasionnels ne répondent pas à nos normes de fiabilité et de performances.</li>
     </ol>
-<h3 id="non-email-uids"><a href="#non-email-uids">Pourquoi les identités qui ne sont pas des adresses courriel ne sont pas prises en charge ?</a></h3>
+<h3 id="non-email-uids"><a href="#non-email-uids">Pourquoi les identités qui ne sont pas des adresses courriel ne sont-elles pas prises en charge ?</a></h3>
 
     <p>Pour distribuer des renseignements d’identité, nous exigeons un consentement explicite. Les identités qui ne sont pas des adresses courriel, telles que les images ou les URL de site Web ne nous permettent pas d’obtenir facilement ce consentement.</p>
 
-    <p>Note : Certains logiciels OpenPGP créent des clés avec des adresses courriel mal formatées. Ces adresse pourraient ne pas être reconnues correctement sur <span class="brand">keys.openpgp.org</span>.</p>
+    <p>Note : Certains logiciels OpenPGP créent des clés avec des adresses courriel mal formatées. Ces adresses pourraient ne pas être reconnues correctement sur <span class="brand">keys.openpgp.org</span>.</p>
 
     <h3 id="verify-multiple"><a href="#verify-multiple">Puis-je confirmer plus d’une clé avec la même adresse courriel ?</a></h3>
 
-    <p>Une adresse courriel ne peut être associée qu’avec une seule clé. Si une adresse est confirmée pour une nouvelle clé, elle n’apparaîtra plus avec aucune clé pour laquelle elle était confirmée précédemment. Les <a href="/about">renseignements non nominatifs</a> seront encore distribués pour toutes les clés.</p>
+    <p>Une adresse courriel ne peut être associée qu’avec une seule clé. Si une adresse est confirmée pour une nouvelle clé, elle n’apparaîtra plus avec aucune clé pour laquelle elle était confirmée précédemment. Les <a href="/about">renseignements qui ne permettent pas de vous identifier</a> seront encore distribués pour toutes les clés.</p>
 
     <p>Cela signifie qu’une recherche par adresse courriel ne retournera qu’une seule clé et non plusieurs candidates. Cela élimine un choix impossible pour l’utilisateur (« Quelle clé est la bonne ? ») et rend plus pratique la recherche de clés par adresse courriel.</p>
 
@@ -42,7 +42,7 @@
 
     <p>La raison principale est <strong>les contenus indésirables</strong>. Les signatures par des tiers permettent de joindre des données arbitraires à la clé de n’importe qui, et rien n’empêche un utilisateur malveillant de joindre tant de méga-octets de données obèses à une clé qu’elle devient pratiquement inutilisable. Pis encore, il pourrait joindre du contenu offensif ou illégal.</p>
 
-    <p>Des idées de solution existent pour résoudre ce problème. Par exemple, les signatures pourraient être distribuées avec le signataire plutôt qu’avec la personne à qui la signature est destinée. Nous pourrions aussi exiger, avant distribution, une contre-signature de la personne à qui la signature est destinée, afin de prendre en charge un déroulement <a href="https://wiki.debian.org/caff" target="_blank">genre « caff »</a> (page en anglais). Si cela suscite suffisamment d’intérêt, nous sommes prêts à collaborer avec d’autres projets OpenPGP pour concevoir une solution.</p>
+    <p>Des idées de solution existent pour résoudre ce problème. Par exemple, les signatures pourraient être distribuées avec le signataire plutôt qu’avec la personne à qui la signature est destinée. Nous pourrions aussi exiger, avant distribution, une signature croisée de la personne à qui la signature est destinée, afin de prendre en charge un déroulement <a href="https://wiki.debian.org/caff" target="_blank">genre « caff »</a> (page en anglais). Si cela suscite suffisamment d’intérêt, nous sommes prêts à collaborer avec d’autres projets OpenPGP pour concevoir une solution.</p>
 
     <h3 id="no-sign-verified"><a href="#no-sign-verified">Pourquoi ne pas signer les clés après confirmation ?</a></h3>
 
@@ -56,7 +56,7 @@
 
     <h3 id="tor"><a href="#tor">Prenez-vous Tor en charge ?</a></h3>
 
-    <p>Bien sûr ! si vous avez installé Tor, vous pouvez accéder anonymement à <span class="brand">keys.openpgp.org</span> en tant que <a href="https://support.torproject.org/fr/onionservices/#onionservices-2" target="_blank">service onion</a> : <br><a href="http://zkaan2xfbuxia2wpf7ofnkbz6r5zdbbvxbunvp5g2iebopbfc4iqmbad.onion">zkaan2xfbuxia2wpf7ofnkbz6r5zdbbvxbunvp5g2iebopbfc4iqmbad.onion</a></p>
+    <p>Bien sûr ! Si vous avez installé Tor, vous pouvez accéder anonymement à <span class="brand">keys.openpgp.org</span> en tant que <a href="https://support.torproject.org/fr/onionservices/#onionservices-2" target="_blank">service onion</a> : <br><a href="http://zkaan2xfbuxia2wpf7ofnkbz6r5zdbbvxbunvp5g2iebopbfc4iqmbad.onion">zkaan2xfbuxia2wpf7ofnkbz6r5zdbbvxbunvp5g2iebopbfc4iqmbad.onion</a></p>
 
     <h3 id="encrypt-verification-emails"><a href="#encrypt-verification-emails">Pourquoi ne pas chiffrer les courriels de confirmation ?</a></h3>
 

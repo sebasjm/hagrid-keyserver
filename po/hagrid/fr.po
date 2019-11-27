@@ -160,15 +160,15 @@ msgid ""
 msgstr ""
 "Cliquer sur « Supprimer » pour l’une des adresses l’enlèvera de cette clé. "
 "Elle n’apparaîtra plus lors d’une recherche.<br /> Pour ajouter une autre "
-"adresse, <a href=\"/upload\">téléversez</a>la clé de nouveau."
+"adresse, <a href=\"/upload\">téléversez</a> la clé de nouveau."
 
 #: src/gettext_strings.rs:29
 msgid ""
 "Your key is published as only non-identity information.  (<a href=\"/about\" "
 "target=\"_blank\">What does this mean?</a>)"
 msgstr ""
-"Votre clé est maintenant publiée avec seulement des renseignements non "
-"nominatifs. (<a href=\"/about\" target=\"_blank\">Qu’est-ce que cela "
+"Votre clé n’est publiée qu’en tant que renseignement qui ne permet pas de "
+"vous identifier. (<a href=\"/about\" target=\"_blank\">Qu’est-ce que cela "
 "signifie ?</a>)"
 
 #: src/gettext_strings.rs:30
@@ -255,9 +255,9 @@ msgid ""
 "This key is now published with only non-identity information. (<a href=\"/"
 "about\" target=\"_blank\">What does this mean?</a>)"
 msgstr ""
-"Cette clé est maintenant publiée avec seulement des renseignements non "
-"nominatifs. (<a href=\"/about\" target=\"_blank\">Qu’est-ce que cela "
-"signifie ?</a>)"
+"Cette clé est maintenant publiée avec seulement des renseignements qui ne "
+"permettent pas de vous identifier. (<a href=\"/about\" target=\"_blank"
+"\">Qu’est-ce que cela signifie ?</a>)"
 
 #: src/gettext_strings.rs:43
 msgid ""
@@ -269,7 +269,7 @@ msgstr ""
 
 #: src/gettext_strings.rs:44
 msgid "Verification Pending"
-msgstr "La vérification est en attente"
+msgstr "La confirmation est en attente"
 
 #: src/gettext_strings.rs:45
 msgid ""
@@ -282,7 +282,7 @@ msgstr ""
 
 #: src/gettext_strings.rs:46
 msgid "Send Verification Email"
-msgstr "Envoyer un courriel de vérification"
+msgstr "Envoyer un courriel de confirmation"
 
 #: src/gettext_strings.rs:47
 msgid ""
@@ -339,7 +339,7 @@ msgstr ""
 
 #: src/gettext_strings.rs:53
 msgid "Verifying your email address…"
-msgstr "Vérification de votre adresse courriel…"
+msgstr "Confirmation de votre adresse courriel…"
 
 #: src/gettext_strings.rs:54
 msgid ""
