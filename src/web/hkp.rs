@@ -70,7 +70,9 @@ impl<'a, 'r> FromRequest<'a, 'r> for Hkp {
             let maybe_fpr = Fingerprint::from_str(&search);
             let maybe_keyid = KeyID::from_str(&search);
 
-            if search.starts_with("0x") && search.len() < 16 && !search.contains('@') {
+            let looks_like_short_key_id = !search.contains('@') &&
+                (search.starts_with("0x") && search.len() < 16 || search.len() == 8);
+            if looks_like_short_key_id {
                 Outcome::Success(Hkp::ShortKeyID {
                     query: search,
                     index: index,

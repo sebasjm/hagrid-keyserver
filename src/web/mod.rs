@@ -984,6 +984,20 @@ pub mod tests {
         check_null_responses_by_email(&client, "foo@invalid.example.com");
     }
 
+    #[test]
+    fn search_invalid() {
+        let (_tmpdir, client) = client().unwrap();
+        check_response(&client, "/search?q=0x1234abcd",
+                       Status::BadRequest, "not supported, sorry!");
+        check_response(&client, "/search?q=1234abcd",
+                       Status::BadRequest, "not supported, sorry!");
+        check_response(&client, "/pks/lookup?op=get&search=0x1234abcd",
+                       Status::BadRequest, "not supported, sorry!");
+        check_response(&client, "/pks/lookup?op=get&search=1234abcd",
+                       Status::BadRequest, "not supported, sorry!");
+
+    }
+
     /// Asserts that the given URI 404s.
     pub fn check_null_response(client: &Client, uri: &str) {
         let response = client.get(uri).dispatch();
@@ -1076,6 +1090,15 @@ pub mod tests {
             &client,
             &format!("/pks/lookup?op=get&search=0x{}", keyid),
             &tpk, nr_uids);
+    }
+
+    /// Asserts that the given URI contains the search string.
+    pub fn check_response(client: &Client, uri: &str, status: Status, needle: &str) {
+        let mut response = client.get(uri).dispatch();
+        assert_eq!(response.status(), status);
+        let body = response.body_string().unwrap();
+        println!("{}", body);
+        assert!(body.contains(needle));
     }
 
     /// Asserts that the given URI returns human readable response

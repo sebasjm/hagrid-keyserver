@@ -65,7 +65,9 @@ impl FromStr for Query {
     fn from_str(term: &str) -> Result<Self> {
         use self::Query::*;
 
-        if term.starts_with("0x") && term.len() < 16 && !term.contains('@') {
+        let looks_like_short_key_id = !term.contains('@') &&
+            (term.starts_with("0x") && term.len() < 16 || term.len() == 8);
+        if looks_like_short_key_id {
             return Err(failure::err_msg(
                     "Search by Short Key ID is not supported, sorry!"));
         }
