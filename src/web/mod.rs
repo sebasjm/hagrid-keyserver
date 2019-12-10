@@ -1059,6 +1059,25 @@ pub mod tests {
         assert_eq!(tpk_.userids().count(), nr_uids);
     }
 
+        // it's a rather "reverse implementation" style test.. can we do better?
+    /// Asserts that the given URI returns a correct hkp "index"
+    /// response for the given TPK.
+    pub fn check_index_response(client: &Client, uri: &str, tpk: &TPK) {
+        let mut response = client.get(uri).dispatch();
+        assert_eq!(response.status(), Status::Ok);
+        assert_eq!(response.content_type(),
+                   Some(ContentType::new("text", "plain")));
+        let body = response.body_string().unwrap();
+
+        assert!(body.contains("info:1:1"));
+        let primary_fpr = tpk.fingerprint().to_hex();
+        let algo: u8 = tpk.primary().pk_algo().into();
+        assert!(body.contains(&format!("pub:{}:{}:", primary_fpr, algo)));
+
+        let creation_time = tpk.primary().creation_time().to_timespec().sec;
+        assert!(body.contains(&format!(":{}:", creation_time)));
+    }
+
     /// Asserts that we can get the given TPK back using the various
     /// by-fingerprint or by-keyid lookup mechanisms.
     pub fn check_mr_responses_by_fingerprint(client: &Client, tpk: &TPK,
@@ -1090,6 +1109,11 @@ pub mod tests {
             &client,
             &format!("/pks/lookup?op=get&search=0x{}", keyid),
             &tpk, nr_uids);
+
+        check_index_response(
+            &client,
+            &format!("/pks/lookup?op=index&search={}", fp),
+            &tpk);
     }
 
     /// Asserts that the given URI contains the search string.

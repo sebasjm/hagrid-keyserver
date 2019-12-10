@@ -223,11 +223,7 @@ fn key_to_hkp_index(db: rocket::State<KeyDatabase>, query: Query)
     let mut out = String::default();
     let p = tpk.primary();
 
-    let ctime = tpk
-        .primary_key_signature()
-        .and_then(|x| x.signature_creation_time())
-        .map(|x| format!("{}", x.to_timespec().sec))
-        .unwrap_or_default();
+    let ctime = format!("{}", p.creation_time().to_timespec().sec);
     let extime = tpk
         .primary_key_signature()
         .and_then(|x| x.signature_expiration_time())
