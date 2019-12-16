@@ -176,6 +176,25 @@
         we can.
     </p>
 
+    <h3 id="search-substring"><a href="#search-substring">Why isn't it possible to search by part of an email address, like just the domain?</a></h3>
+
+    <p>
+        Some keyservers support search for keys by part of an email address.
+        This allows discovery not only of keys, but also of addresses, with a query like "keys for addresses at gmail dot com".
+        This effectively puts the addresses of all keys on those keyservers into a public listing.
+    </p>
+
+    <p>
+        Searches by email address on <span class="brand">keys.openpgp.org</span> return only exact matches.
+        That way, users can discover keys for addresses they already know, but not new addresses.
+        This ensures malicious users and spammers can't obtain a list of all addresses on the server.
+    </p>
+
+    <p>
+        We made this restriction a part of our <a href="/about/privacy">privacy policy</a>,
+        which means we can't change it without asking for user consent.
+    </p>
+
     <h3 id="tor"><a href="#tor">Do you support Tor?</a></h3>
 
     <p>
