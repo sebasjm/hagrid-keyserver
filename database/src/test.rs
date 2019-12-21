@@ -522,6 +522,14 @@ pub fn test_upload_revoked_tpk(db: &mut impl Database, log_path: &Path) {
     let email2 = Email::from_str(str_uid2).unwrap();
     let fpr = Fingerprint::try_from(tpk.fingerprint()).unwrap();
 
+    // upload and publish one of the email addresses. those should be
+    // automatically depublished when we upload the revoked key!
+    db.merge(tpk.clone()).unwrap();
+    db.set_email_published(&fpr, &email1).unwrap();
+
+    assert!(db.by_email(&email1).is_some());
+    assert!(db.by_email(&email2).is_none());
+
     tpk = tpk.merge_packets(vec![revocation.into()]).unwrap();
     match tpk.revocation_status() {
         RevocationStatus::Revoked(_) => (),
@@ -539,6 +547,9 @@ pub fn test_upload_revoked_tpk(db: &mut impl Database, log_path: &Path) {
         ),
         unparsed_uids: 0,
     }, tpk_status);
+
+    assert!(db.by_email(&email1).is_none());
+    assert!(db.by_email(&email2).is_none());
 }
 
 pub fn test_uid_revocation(db: &mut impl Database, log_path: &Path) {

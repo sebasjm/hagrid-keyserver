@@ -243,7 +243,7 @@ pub trait Database: Sync + Send {
                 if let Ok(email) = Email::try_from(uid) {
                     if is_status_revoked(binding.revoked(None)) {
                         Some((email, EmailAddressStatus::Revoked))
-                    } else if published_uids.contains(uid) {
+                    } else if !is_revoked && published_uids.contains(uid) {
                         Some((email, EmailAddressStatus::Published))
                     } else {
                         Some((email, EmailAddressStatus::NotPublished))
@@ -261,15 +261,20 @@ pub trait Database: Sync + Send {
             return Ok(ImportResult::Unchanged(TpkStatus { is_revoked, email_status, unparsed_uids }));
         }
 
-        let revoked_uids: Vec<UserID> = full_tpk_new
-            .userids()
-            .filter(|binding| is_status_revoked(binding.revoked(None)))
-            .map(|binding| binding.userid().clone())
-            .collect();
+        // If the key is revoked, consider all uids revoked
+        let newly_revoked_uids: Vec<&UserID> = if is_revoked {
+            published_uids.iter().collect()
+        } else {
+            let revoked_uids: Vec<UserID> = full_tpk_new
+                .userids()
+                .filter(|binding| is_status_revoked(binding.revoked(None)))
+                .map(|binding| binding.userid().clone())
+                .collect();
 
-        let newly_revoked_uids: Vec<&UserID> = published_uids.iter()
-            .filter(|uid| revoked_uids.contains(uid))
-            .collect();
+            published_uids.iter()
+                .filter(|uid| revoked_uids.contains(uid))
+                .collect()
+        };
 
         let published_tpk_new = tpk_filter_userids(
             &full_tpk_new, |uid| {
