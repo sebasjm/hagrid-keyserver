@@ -41,6 +41,9 @@ gettext = "0.4"
 glob = "0.3"
 rfc2047 = "0.1"
 
+[patch.crates-io]
+runtime-fmt = { git = "https://github.com/Valodim/runtime-fmt", rev = "44c15d832cb327ef33f95548a9a964d98c006fe4" }
+
 [dependencies.lettre]
 version = "0.10.0-pre"
 default-features = false

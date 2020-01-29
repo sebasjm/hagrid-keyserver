@@ -603,7 +603,7 @@ version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "gettext 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "runtime-fmt 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "runtime-fmt 0.4.1 (git+https://github.com/Valodim/runtime-fmt?rev=44c15d832cb327ef33f95548a9a964d98c006fe4)",
 ]
 
 [[package]]
@@ -640,7 +640,7 @@ dependencies = [
  "rocket_contrib 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "rocket_i18n 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "rocket_prometheus 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "runtime-fmt 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "runtime-fmt 0.4.1 (git+https://github.com/Valodim/runtime-fmt?rev=44c15d832cb327ef33f95548a9a964d98c006fe4)",
  "sequoia-openpgp 0.13.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.102 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_derive 1.0.102 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1757,7 +1757,7 @@ dependencies = [
 [[package]]
 name = "runtime-fmt"
 version = "0.4.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
+source = "git+https://github.com/Valodim/runtime-fmt?rev=44c15d832cb327ef33f95548a9a964d98c006fe4#44c15d832cb327ef33f95548a9a964d98c006fe4"
 dependencies = [
  "unicode-xid 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -2551,7 +2551,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum rocket_http 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)" = "b1391457ee4e80b40d4b57fa5765c0f2836b20d73bcbee4e3f35d93cf3b80817"
 "checksum rocket_i18n 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)" = "dbf9f4c872b824ac0506557be9c66e0315d66d0e378d2ae02ee2e7b0fed2a338"
 "checksum rocket_prometheus 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "8648f031a8cafb1c8dce50899d2080f475fa58e6643bccd92cf87d0e9993df37"
-"checksum runtime-fmt 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)" = "703425f78450961e590726ac24d823e6dc2340dc18282cf0cb6a417b26ca2ce8"
+"checksum runtime-fmt 0.4.1 (git+https://github.com/Valodim/runtime-fmt?rev=44c15d832cb327ef33f95548a9a964d98c006fe4)" = "<none>"
 "checksum rust-argon2 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)" = "4ca4eaef519b494d1f2848fc602d18816fed808a981aedf4f1f00ceb7c9d32cf"
 "checksum rustc-demangle 0.1.16 (registry+https://github.com/rust-lang/crates.io-index)" = "4c691c0e608126e00913e33f0ccf3727d5fc84573623b8d65b2df340b5201783"
 "checksum rustc-hash 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)" = "7540fc8b0c49f096ee9c961cda096467dce8084bec6bdca2fc83895fd9b28cb8"
