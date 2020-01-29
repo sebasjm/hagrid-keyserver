@@ -563,8 +563,8 @@ pub mod tests {
     use rocket::http::ContentType;
     use lettre::Envelope;
 
-    use sequoia_openpgp::TPK;
-    use sequoia_openpgp::tpk::TPKBuilder;
+    use sequoia_openpgp::Cert;
+    use sequoia_openpgp::cert::CertBuilder;
     use sequoia_openpgp::parse::Parse;
     use sequoia_openpgp::serialize::Serialize;
 
@@ -745,7 +745,7 @@ pub mod tests {
         let filemail_into = tmpdir.path().join("filemail");
 
         // Generate a key and upload it.
-        let (tpk, _) = TPKBuilder::autocrypt(
+        let (tpk, _) = CertBuilder::autocrypt(
             None, Some("foo@invalid.example.com"))
             .generate().unwrap();
 
@@ -801,7 +801,7 @@ pub mod tests {
         let filemail_into = tmpdir.path().join("filemail");
 
         // Generate a key and upload it.
-        let (tpk, _) = TPKBuilder::autocrypt(
+        let (tpk, _) = CertBuilder::autocrypt(
             None, Some("foo@invalid.example.com"))
             .generate().unwrap();
 
@@ -823,10 +823,10 @@ pub mod tests {
         let client = Client::new(rocket).expect("valid rocket instance");
 
         // Generate two keys and upload them.
-        let tpk_0 = TPKBuilder::autocrypt(
+        let tpk_0 = CertBuilder::autocrypt(
             None, Some("foo@invalid.example.com"))
             .generate().unwrap().0;
-        let tpk_1 = TPKBuilder::autocrypt(
+        let tpk_1 = CertBuilder::autocrypt(
             None, Some("bar@invalid.example.com"))
             .generate().unwrap().0;
 
@@ -859,10 +859,10 @@ pub mod tests {
         let client = Client::new(rocket).expect("valid rocket instance");
 
         // Generate two keys and upload them.
-        let tpk_1 = TPKBuilder::autocrypt(
+        let tpk_1 = CertBuilder::autocrypt(
             None, Some("foo@invalid.example.com"))
             .generate().unwrap().0;
-        let tpk_2 = TPKBuilder::autocrypt(
+        let tpk_2 = CertBuilder::autocrypt(
             None, Some("bar@invalid.example.com"))
             .generate().unwrap().0;
 
@@ -935,7 +935,7 @@ pub mod tests {
         let filemail_into = tmpdir.path().join("filemail");
 
         // Generate a key and upload it.
-        let (tpk, _) = TPKBuilder::autocrypt(
+        let (tpk, _) = CertBuilder::autocrypt(
             None, Some("foo@invalid.example.com"))
             .generate().unwrap();
 
@@ -971,7 +971,7 @@ pub mod tests {
     fn upload_curl_shortcut() {
         let (_tmpdir, client) = client().unwrap();
 
-        let (tpk, _) = TPKBuilder::autocrypt(
+        let (tpk, _) = CertBuilder::autocrypt(
             None, Some("foo@invalid.example.com"))
             .generate().unwrap();
 
@@ -1016,7 +1016,7 @@ pub mod tests {
     }
 
     /// Asserts that lookups by the given email are successful.
-    pub fn check_responses_by_email(client: &Client, addr: &str, tpk: &TPK,
+    pub fn check_responses_by_email(client: &Client, addr: &str, tpk: &Cert,
                                     nr_uids: usize) {
         check_mr_response(
             &client,
@@ -1040,9 +1040,9 @@ pub mod tests {
             &tpk, nr_uids);
     }
 
-    /// Asserts that the given URI returns a TPK matching the given
+    /// Asserts that the given URI returns a Cert matching the given
     /// one, with the given number of userids.
-    pub fn check_mr_response(client: &Client, uri: &str, tpk: &TPK,
+    pub fn check_mr_response(client: &Client, uri: &str, tpk: &Cert,
                              nr_uids: usize) {
         let mut response = client.get(uri).dispatch();
         assert_eq!(response.status(), Status::Ok);
@@ -1050,19 +1050,19 @@ pub mod tests {
                    Some(ContentType::new("application", "pgp-keys")));
         let body = response.body_string().unwrap();
         assert!(body.contains("END PGP PUBLIC KEY BLOCK"));
-        let tpk_ = TPK::from_bytes(body.as_bytes()).unwrap();
+        let tpk_ = Cert::from_bytes(body.as_bytes()).unwrap();
         assert_eq!(tpk.fingerprint(), tpk_.fingerprint());
-        assert_eq!(tpk.subkeys().map(|skb| skb.subkey().fingerprint())
+        assert_eq!(tpk.keys().map(|skb| skb.key().fingerprint())
                    .collect::<Vec<_>>(),
-                   tpk_.subkeys().map(|skb| skb.subkey().fingerprint())
+                   tpk_.keys().map(|skb| skb.key().fingerprint())
                    .collect::<Vec<_>>());
         assert_eq!(tpk_.userids().count(), nr_uids);
     }
 
         // it's a rather "reverse implementation" style test.. can we do better?
     /// Asserts that the given URI returns a correct hkp "index"
-    /// response for the given TPK.
-    pub fn check_index_response(client: &Client, uri: &str, tpk: &TPK) {
+    /// response for the given Cert.
+    pub fn check_index_response(client: &Client, uri: &str, tpk: &Cert) {
         let mut response = client.get(uri).dispatch();
         assert_eq!(response.status(), Status::Ok);
         assert_eq!(response.content_type(),
@@ -1074,16 +1074,16 @@ pub mod tests {
         let algo: u8 = tpk.primary().pk_algo().into();
         assert!(body.contains(&format!("pub:{}:{}:", primary_fpr, algo)));
 
-        let creation_time = tpk.primary().creation_time().to_timespec().sec;
+        let creation_time = tpk.primary().creation_time().elapsed().unwrap().as_secs();
         assert!(body.contains(&format!(":{}:", creation_time)));
     }
 
-    /// Asserts that we can get the given TPK back using the various
+    /// Asserts that we can get the given Cert back using the various
     /// by-fingerprint or by-keyid lookup mechanisms.
-    pub fn check_mr_responses_by_fingerprint(client: &Client, tpk: &TPK,
+    pub fn check_mr_responses_by_fingerprint(client: &Client, tpk: &Cert,
                                              nr_uids: usize) {
         let fp = tpk.fingerprint().to_hex();
-        let keyid = tpk.fingerprint().to_keyid().to_hex();
+        let keyid = sequoia_openpgp::KeyID::from(tpk.fingerprint()).to_hex();
 
         check_mr_response(
             &client, &format!("/vks/v1/by-keyid/{}", keyid), &tpk, nr_uids);
@@ -1126,8 +1126,8 @@ pub mod tests {
     }
 
     /// Asserts that the given URI returns human readable response
-    /// page that contains a URI pointing to the TPK.
-    pub fn check_hr_response(client: &Client, uri: &str, tpk: &TPK,
+    /// page that contains a URI pointing to the Cert.
+    pub fn check_hr_response(client: &Client, uri: &str, tpk: &Cert,
                              nr_uids: usize) {
         let mut response = client.get(uri).dispatch();
         assert_eq!(response.status(), Status::Ok);
@@ -1149,8 +1149,8 @@ pub mod tests {
     }
 
     /// Asserts that the given URI returns human readable response
-    /// page that contains an onion URI pointing to the TPK.
-    pub fn check_hr_response_onion(client: &Client, uri: &str, tpk: &TPK,
+    /// page that contains an onion URI pointing to the Cert.
+    pub fn check_hr_response_onion(client: &Client, uri: &str, tpk: &Cert,
                              _nr_uids: usize) {
         let mut response = client
             .get(uri)
@@ -1168,12 +1168,12 @@ pub mod tests {
     }
 
 
-    /// Asserts that we can get the given TPK back using the various
+    /// Asserts that we can get the given Cert back using the various
     /// by-fingerprint or by-keyid lookup mechanisms.
-    pub fn check_hr_responses_by_fingerprint(client: &Client, tpk: &TPK,
+    pub fn check_hr_responses_by_fingerprint(client: &Client, tpk: &Cert,
                                              nr_uids: usize) {
         let fp = tpk.fingerprint().to_hex();
-        let keyid = tpk.fingerprint().to_keyid().to_hex();
+        let keyid = sequoia_openpgp::KeyID::from(tpk.fingerprint()).to_hex();
 
         check_hr_response(
             &client,

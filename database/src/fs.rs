@@ -19,7 +19,7 @@ use Result;
 
 use tempfile::NamedTempFile;
 
-use openpgp::TPK;
+use openpgp::Cert;
 
 pub struct Filesystem {
     tmp_dir: PathBuf,
@@ -215,8 +215,8 @@ impl Filesystem {
     fn perform_checks(
         &self,
         checks_dir: &Path,
-        tpks: &mut HashMap<Fingerprint, TPK>,
-        check: impl Fn(&Path, &TPK, &Fingerprint) -> Result<()>,
+        tpks: &mut HashMap<Fingerprint, Cert>,
+        check: impl Fn(&Path, &Cert, &Fingerprint) -> Result<()>,
     ) -> Result<()> {
         use walkdir::WalkDir;
         use std::fs;
@@ -242,7 +242,7 @@ impl Filesystem {
                     primary_fp.clone(),
                     self.lookup(&Query::ByFingerprint(primary_fp.clone()))
                         ?.ok_or_else(
-                            || format_err!("No TPK with fingerprint {:?}",
+                            || format_err!("No Cert with fingerprint {:?}",
                                             primary_fp))?);
             }
 
@@ -506,7 +506,7 @@ impl Database for Filesystem {
     fn check_consistency(&self) -> Result<()> {
         use failure::format_err;
 
-        // A cache of all TPKs, for quick lookups.
+        // A cache of all Certs, for quick lookups.
         let mut tpks = HashMap::new();
 
         self.perform_checks(&self.keys_dir_published, &mut tpks,
@@ -517,7 +517,7 @@ impl Database for Filesystem {
 
                 if fp != *primary_fp {
                     return Err(format_err!(
-                        "{:?} points to the wrong TPK, expected {} \
+                        "{:?} points to the wrong Cert, expected {} \
                             but found {}",
                         path, fp, primary_fp));
                 }
@@ -529,10 +529,10 @@ impl Database for Filesystem {
         self.perform_checks(&self.keys_dir_published, &mut tpks,
             |_, tpk, primary_fp| {
                 let fingerprints = tpk
-                    .keys_all()
-                    .certification_capable()
-                    .signing_capable()
-                    .map(|(_, _, key)| key.fingerprint())
+                    .keys()
+                    .for_certification()
+                    .for_signing()
+                    .map(|amalgamation| amalgamation.key().fingerprint())
                     .map(|fpr| Fingerprint::try_from(fpr))
                     .flatten();
 
@@ -572,12 +572,12 @@ impl Database for Filesystem {
                 let id = Filesystem::path_to_keyid(&path)
                     .ok_or_else(|| format_err!("Malformed path: {:?}", path))?;
 
-                let found = tpk.keys_all()
-                    .map(|(_, _, key)| KeyID::try_from(key.fingerprint()).unwrap())
+                let found = tpk.keys()
+                    .map(|amalgamation| KeyID::try_from(amalgamation.key().fingerprint()).unwrap())
                     .any(|key_fp| key_fp == id);
                 if ! found {
                     return Err(format_err!(
-                        "{:?} points to the wrong TPK, the TPK does not \
+                        "{:?} points to the wrong Cert, the Cert does not \
                             contain the (sub)key {}", path, id));
                 }
                 Ok(())
@@ -590,12 +590,12 @@ impl Database for Filesystem {
                 let id = Filesystem::path_to_keyid(&path)
                     .ok_or_else(|| format_err!("Malformed path: {:?}", path))?;
 
-                let found = tpk.keys_all()
-                    .map(|(_, _, key)| KeyID::try_from(key.fingerprint()).unwrap())
+                let found = tpk.keys()
+                    .map(|amalgamation| KeyID::try_from(amalgamation.key().fingerprint()).unwrap())
                     .any(|key_fp| key_fp == id);
                 if ! found {
                     return Err(format_err!(
-                        "{:?} points to the wrong TPK, the TPK does not \
+                        "{:?} points to the wrong Cert, the Cert does not \
                             contain the (sub)key {}", path, id));
                 }
                 Ok(())
@@ -617,7 +617,7 @@ impl Database for Filesystem {
                 }
                 if ! found {
                     return Err(format_err!(
-                        "{:?} points to the wrong TPK, the TPK does not \
+                        "{:?} points to the wrong Cert, the Cert does not \
                             contain the email {}", path, email));
                 }
                 Ok(())
@@ -645,7 +645,7 @@ fn path_merge(path: &Path) -> String {
 mod tests {
     use super::*;
     use test;
-    use openpgp::tpk::TPKBuilder;
+    use openpgp::cert::CertBuilder;
     use tempfile::TempDir;
 
     #[test]
@@ -665,11 +665,11 @@ mod tests {
     #[test]
     fn new() {
         let (_tmp_dir, db, _log_path) = open_db();
-        let k1 = TPKBuilder::new().add_userid("a@invalid.example.org")
+        let k1 = CertBuilder::new().add_userid("a@invalid.example.org")
             .generate().unwrap().0;
-        let k2 = TPKBuilder::new().add_userid("b@invalid.example.org")
+        let k2 = CertBuilder::new().add_userid("b@invalid.example.org")
             .generate().unwrap().0;
-        let k3 = TPKBuilder::new().add_userid("c@invalid.example.org")
+        let k3 = CertBuilder::new().add_userid("c@invalid.example.org")
             .generate().unwrap().0;
 
         assert!(db.merge(k1).unwrap().into_tpk_status().email_status.len() > 0);

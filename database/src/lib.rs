@@ -28,10 +28,10 @@ use tempfile::NamedTempFile;
 
 extern crate sequoia_openpgp as openpgp;
 use openpgp::{
-    TPK,
+    Cert,
     packet::UserID,
     parse::Parse,
-    packet::KeyFlags,
+    types::KeyFlags,
 };
 
 pub mod types;
@@ -142,7 +142,7 @@ pub trait Database: Sync + Send {
 
     /// Queries the database using Fingerprint, KeyID, or
     /// email-address.
-    fn lookup(&self, term: &Query) -> Result<Option<TPK>> {
+    fn lookup(&self, term: &Query) -> Result<Option<Cert>> {
         use self::Query::*;
         let armored = match term {
             ByFingerprint(ref fp) => self.by_fpr(fp),
@@ -151,7 +151,7 @@ pub trait Database: Sync + Send {
         };
 
         match armored {
-            Some(armored) => Ok(Some(TPK::from_bytes(armored.as_bytes())?)),
+            Some(armored) => Ok(Some(Cert::from_bytes(armored.as_bytes())?)),
             None => Ok(None),
         }
     }
@@ -176,19 +176,19 @@ pub trait Database: Sync + Send {
     fn by_kid(&self, kid: &KeyID) -> Option<String>;
     fn by_email(&self, email: &Email) -> Option<String>;
 
-    /// Complex operation that updates a TPK in the database.
+    /// Complex operation that updates a Cert in the database.
     ///
-    /// 1. Merge new TPK with old, full TPK
-    ///    - if old full TPK == new full TPK, stop
-    /// 2. Prepare new published TPK
-    ///    - retrieve UserIDs from old published TPK
-    ///    - create new TPK from full TPK by keeping only published UserIDs
-    /// 3. Write full and published TPK to temporary files
-    /// 4. Check for fingerprint and long key id collisions for published TPK
+    /// 1. Merge new Cert with old, full Cert
+    ///    - if old full Cert == new full Cert, stop
+    /// 2. Prepare new published Cert
+    ///    - retrieve UserIDs from old published Cert
+    ///    - create new Cert from full Cert by keeping only published UserIDs
+    /// 3. Write full and published Cert to temporary files
+    /// 4. Check for fingerprint and long key id collisions for published Cert
     ///    - abort if any problems come up!
-    /// 5. Move full and published temporary TPK to their location
+    /// 5. Move full and published temporary Cert to their location
     /// 6. Update all symlinks
-    fn merge(&self, new_tpk: TPK) -> Result<ImportResult> {
+    fn merge(&self, new_tpk: Cert) -> Result<ImportResult> {
         let fpr_primary = Fingerprint::try_from(new_tpk.primary().fingerprint())?;
 
         let _lock = self.lock()?;
@@ -199,7 +199,7 @@ pub trait Database: Sync + Send {
             .collect();
 
         let full_tpk_old = self.by_fpr_full(&fpr_primary)
-            .and_then(|bytes| TPK::from_bytes(bytes.as_ref()).ok());
+            .and_then(|bytes| Cert::from_bytes(bytes.as_bytes()).ok());
         let is_update = full_tpk_old.is_some();
         let (full_tpk_new, full_tpk_unchanged) = if let Some(full_tpk_old) = full_tpk_old {
             let full_tpk_new = new_tpk.merge(full_tpk_old.clone())?;
@@ -209,7 +209,7 @@ pub trait Database: Sync + Send {
             (new_tpk, false)
         };
 
-        let is_revoked = is_status_revoked(full_tpk_new.revocation_status());
+        let is_revoked = is_status_revoked(full_tpk_new.revoked(None));
 
         let is_ok = is_revoked ||
             full_tpk_new.subkeys().next().is_some() ||
@@ -221,7 +221,7 @@ pub trait Database: Sync + Send {
 
         let published_tpk_old = self
             .by_fpr(&fpr_primary)
-            .and_then(|bytes| TPK::from_bytes(bytes.as_ref()).ok());
+            .and_then(|bytes| Cert::from_bytes(bytes.as_bytes()).ok());
         let published_uids: Vec<UserID> = published_tpk_old
             .as_ref()
             .map(|tpk| tpk.userids()
@@ -363,9 +363,9 @@ pub trait Database: Sync + Send {
     fn get_tpk_status(&self, fpr_primary: &Fingerprint, known_addresses: &[Email]) -> Result<TpkStatus> {
         let tpk_full = self.by_fpr_full(&fpr_primary)
             .ok_or_else(|| failure::err_msg("Key not in database!"))
-            .and_then(|bytes| TPK::from_bytes(bytes.as_ref()))?;
+            .and_then(|bytes| Cert::from_bytes(bytes.as_bytes()))?;
 
-        let is_revoked = is_status_revoked(tpk_full.revocation_status());
+        let is_revoked = is_status_revoked(tpk_full.revoked(None));
 
         let unparsed_uids = tpk_full
             .userids()
@@ -375,7 +375,7 @@ pub trait Database: Sync + Send {
 
         let published_uids: Vec<UserID> = self
             .by_fpr(&fpr_primary)
-            .and_then(|bytes| TPK::from_bytes(bytes.as_ref()).ok())
+            .and_then(|bytes| Cert::from_bytes(bytes.as_bytes()).ok())
             .map(|tpk| tpk.userids()
                  .map(|binding| binding.userid().clone())
                  .collect()
@@ -406,18 +406,18 @@ pub trait Database: Sync + Send {
         Ok(TpkStatus { is_revoked, email_status, unparsed_uids })
     }
 
-    /// Complex operation that publishes some user id for a TPK already in the database.
+    /// Complex operation that publishes some user id for a Cert already in the database.
     ///
-    /// 1. Load published TPK
+    /// 1. Load published Cert
     ///     - if UserID is already in, stop
-    /// 2. Load full TPK
+    /// 2. Load full Cert
     ///     - if requested UserID is not in, stop
-    /// 3. Prepare new published TPK
-    ///    - retrieve UserIDs from old published TPK
-    ///    - create new TPK from full TPK by keeping only published UserIDs
-    /// 4. Check for fingerprint and long key id collisions for published TPK
+    /// 3. Prepare new published Cert
+    ///    - retrieve UserIDs from old published Cert
+    ///    - create new Cert from full Cert by keeping only published UserIDs
+    /// 4. Check for fingerprint and long key id collisions for published Cert
     ///    - abort if any problems come up!
-    /// 5. Move full and published temporary TPK to their location
+    /// 5. Move full and published temporary Cert to their location
     /// 6. Update all symlinks
     fn set_email_published(&self, fpr_primary: &Fingerprint, email_new: &Email) -> Result<()> {
         let _lock = self.lock()?;
@@ -426,11 +426,11 @@ pub trait Database: Sync + Send {
 
         let full_tpk = self.by_fpr_full(&fpr_primary)
             .ok_or_else(|| failure::err_msg("Key not in database!"))
-            .and_then(|bytes| TPK::from_bytes(bytes.as_ref()))?;
+            .and_then(|bytes| Cert::from_bytes(bytes.as_bytes()))?;
 
         let published_uids_old: Vec<UserID> = self
             .by_fpr(&fpr_primary)
-            .and_then(|bytes| TPK::from_bytes(bytes.as_ref()).ok())
+            .and_then(|bytes| Cert::from_bytes(bytes.as_bytes()).ok())
             .map(|tpk| tpk.userids()
                 .map(|binding| binding.userid().clone())
                 .collect()
@@ -491,18 +491,18 @@ pub trait Database: Sync + Send {
         Ok(())
     }
 
-    /// Complex operation that un-publishes some user id for a TPK already in the database.
+    /// Complex operation that un-publishes some user id for a Cert already in the database.
     ///
-    /// 1. Load published TPK
+    /// 1. Load published Cert
     ///     - if UserID is not in, stop
-    /// 2. Load full TPK
+    /// 2. Load full Cert
     ///     - if requested UserID is not in, stop
-    /// 3. Prepare new published TPK
-    ///    - retrieve UserIDs from old published TPK
-    ///    - create new TPK from full TPK by keeping only published UserIDs
-    /// 4. Check for fingerprint and long key id collisions for published TPK
+    /// 3. Prepare new published Cert
+    ///    - retrieve UserIDs from old published Cert
+    ///    - create new Cert from full Cert by keeping only published UserIDs
+    /// 4. Check for fingerprint and long key id collisions for published Cert
     ///    - abort if any problems come up!
-    /// 5. Move full and published temporary TPK to their location
+    /// 5. Move full and published temporary Cert to their location
     /// 6. Update all symlinks
     fn set_email_unpublished_filter(
         &self,
@@ -520,7 +520,7 @@ pub trait Database: Sync + Send {
     ) -> Result<()> {
         let published_tpk_old = self.by_fpr(&fpr_primary)
             .ok_or_else(|| failure::err_msg("Key not in database!"))
-            .and_then(|bytes| TPK::from_bytes(bytes.as_ref()))?;
+            .and_then(|bytes| Cert::from_bytes(bytes.as_bytes()))?;
 
         let published_emails_old: Vec<Email> = published_tpk_old
             .userids()
@@ -583,7 +583,7 @@ pub trait Database: Sync + Send {
         fpr_primary: &Fingerprint,
     ) -> Result<RegenerateResult> {
         let tpk = self.by_primary_fpr(&fpr_primary)
-            .and_then(|bytes| TPK::from_bytes(bytes.as_ref()).ok())
+            .and_then(|bytes| Cert::from_bytes(bytes.as_bytes()).ok())
             .ok_or_else(|| failure::err_msg("Key not in database!"))?;
 
         let published_emails: Vec<Email> = tpk
@@ -638,17 +638,17 @@ pub trait Database: Sync + Send {
     fn check_consistency(&self) -> Result<()>;
 }
 
-pub fn tpk_get_linkable_fprs(tpk: &TPK) -> Vec<Fingerprint> {
+pub fn tpk_get_linkable_fprs(tpk: &Cert) -> Vec<Fingerprint> {
     let ref signing_capable = KeyFlags::empty()
-        .set_sign(true)
-        .set_certify(true);
+        .set_signing(true)
+        .set_certification(true);
     let ref fpr_primary = Fingerprint::try_from(tpk.fingerprint()).unwrap();
     tpk
-            .keys_all()
+            .keys()
             .into_iter()
-            .flat_map(|(sig, _, key)| {
-                Fingerprint::try_from(key.fingerprint())
-                    .map(|fpr| (fpr, sig.map(|sig| sig.key_flags())))
+            .flat_map(|amalgamation| {
+                Fingerprint::try_from(amalgamation.key().fingerprint())
+                    .map(|fpr| (fpr, amalgamation.binding_signature(None).map(|sig| sig.key_flags())))
             })
             .filter(|(fpr, flags)| {
                 fpr == fpr_primary ||

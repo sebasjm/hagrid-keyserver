@@ -196,7 +196,7 @@ fn read_file_to_tpks(
 
 fn import_key(db: &KeyDatabase, packets: Vec<Packet>) -> Result<ImportResult> {
     let packet_pile = openpgp::PacketPile::from(packets);
-    openpgp::TPK::from_packet_pile(packet_pile)
+    openpgp::Cert::from_packet_pile(packet_pile)
         .and_then(|tpk| {
             db.merge(tpk)
         })

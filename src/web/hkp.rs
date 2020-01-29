@@ -223,20 +223,9 @@ fn key_to_hkp_index(db: rocket::State<KeyDatabase>, query: Query)
     let mut out = String::default();
     let p = tpk.primary();
 
-    let ctime = format!("{}", p.creation_time().to_timespec().sec);
-    let extime = tpk
-        .primary_key_signature()
-        .and_then(|x| x.signature_expiration_time())
-        .map(|x| format!("{}", x))
-        .unwrap_or_default();
-    let is_exp = tpk
-        .primary_key_signature()
-        .and_then(|x| {
-            if x.signature_expired() { "e" } else { "" }.into()
-        })
-    .unwrap_or_default();
+    let ctime = format!("{}", p.creation_time().elapsed().unwrap().as_secs());
     let is_rev =
-        if tpk.revocation_status() != RevocationStatus::NotAsFarAsWeKnow {
+        if tpk.revoked(None) != RevocationStatus::NotAsFarAsWeKnow {
             "r"
         } else {
             ""
@@ -250,8 +239,8 @@ fn key_to_hkp_index(db: rocket::State<KeyDatabase>, query: Query)
             algo,
             p.mpis().bits().unwrap_or(0),
             ctime,
-            extime,
-            is_exp,
+            "",
+            "",
             is_rev
     ));
 
@@ -259,21 +248,11 @@ fn key_to_hkp_index(db: rocket::State<KeyDatabase>, query: Query)
         let uidstr = uid.userid().to_string();
         let u = Uri::percent_encode(&uidstr);
         let ctime = uid
-            .binding_signature()
+            .binding_signature(None)
             .and_then(|x| x.signature_creation_time())
-            .map(|x| format!("{}", x.to_timespec().sec))
+            .and_then(|time| time.elapsed().ok())
+            .map(|x| format!("{}", x.as_secs()))
             .unwrap_or_default();
-        let extime = uid
-            .binding_signature()
-            .and_then(|x| x.signature_expiration_time())
-            .map(|x| format!("{}", x))
-            .unwrap_or_default();
-        let is_exp = uid
-            .binding_signature()
-            .and_then(|x| {
-                if x.signature_expired() { "e" } else { "" }.into()
-            })
-        .unwrap_or_default();
         let is_rev = if uid.revoked(None)
             != RevocationStatus::NotAsFarAsWeKnow
             {
@@ -284,7 +263,7 @@ fn key_to_hkp_index(db: rocket::State<KeyDatabase>, query: Query)
 
         out.push_str(&format!(
                 "uid:{}:{}:{}:{}{}\r\n",
-                u, ctime, extime, is_exp, is_rev
+                u, ctime, "", "", is_rev
         ));
     }
 
@@ -296,7 +275,7 @@ mod tests {
     use rocket::http::Status;
     use rocket::http::ContentType;
 
-    use sequoia_openpgp::tpk::TPKBuilder;
+    use sequoia_openpgp::cert::CertBuilder;
     use sequoia_openpgp::serialize::Serialize;
 
     use crate::web::tests::*;
@@ -310,7 +289,7 @@ mod tests {
         // ::std::mem::forget(tmpdir);
 
         // Generate a key and upload it.
-        let (tpk, _) = TPKBuilder::autocrypt(
+        let (tpk, _) = CertBuilder::autocrypt(
             None, Some("foo@invalid.example.com"))
             .generate().unwrap();
 
@@ -369,10 +348,10 @@ mod tests {
         let filemail_into = tmpdir.path().join("filemail");
 
         // Generate two keys and upload them.
-        let tpk_0 = TPKBuilder::autocrypt(
+        let tpk_0 = CertBuilder::autocrypt(
             None, Some("foo@invalid.example.com"))
             .generate().unwrap().0;
-        let tpk_1 = TPKBuilder::autocrypt(
+        let tpk_1 = CertBuilder::autocrypt(
             None, Some("bar@invalid.example.com"))
             .generate().unwrap().0;
 

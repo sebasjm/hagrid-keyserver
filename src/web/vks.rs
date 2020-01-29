@@ -11,7 +11,7 @@ use crate::web::RequestOrigin;
 use rocket_i18n::I18n;
 use gettext_macros::i18n;
 
-use sequoia_openpgp::TPK;
+use sequoia_openpgp::Cert;
 
 use std::io::Read;
 use std::convert::TryFrom;
@@ -99,16 +99,16 @@ pub fn process_key(
     reader: impl Read,
 ) -> response::UploadResponse {
     use sequoia_openpgp::parse::{Parse, PacketParserBuilder, Dearmor};
-    use sequoia_openpgp::tpk::TPKParser;
+    use sequoia_openpgp::cert::CertParser;
     use sequoia_openpgp::armor::ReaderMode;
 
-    // First, parse all TPKs and error out if one fails.
+    // First, parse all Certs and error out if one fails.
     let parser = match PacketParserBuilder::from_reader(reader)
         .and_then(|ppb| {
             ppb.dearmor(Dearmor::Auto(ReaderMode::VeryTolerant)).finalize()
         })
     {
-        Ok(ppr) => TPKParser::from_packet_parser(ppr),
+        Ok(ppr) => CertParser::from_packet_parser(ppr),
         Err(_) => return UploadResponse::err(i18n!(i18n.catalog, "Parsing of key data failed.")),
     };
     let mut tpks = Vec::new();
@@ -150,7 +150,7 @@ fn log_db_merge(import_result: Result<ImportResult>) -> Result<ImportResult> {
 
 fn process_key_multiple(
     db: &KeyDatabase,
-    tpks: Vec<TPK>,
+    tpks: Vec<Cert>,
 ) -> response::UploadResponse {
     let key_fprs: Vec<_> = tpks
         .into_iter()
@@ -167,7 +167,7 @@ fn process_key_single(
     i18n: &I18n,
     tokens_stateless: &tokens::Service,
     rate_limiter: &RateLimiter,
-    tpk: TPK,
+    tpk: Cert,
 ) -> response::UploadResponse {
     let fp = Fingerprint::try_from(tpk.fingerprint()).unwrap();
 

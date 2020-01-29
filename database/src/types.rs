@@ -29,7 +29,7 @@ impl TryFrom<&UserID> for Email {
     type Error = Error;
 
     fn try_from(uid: &UserID) -> Result<Self> {
-        if let Some(address) = uid.address()? {
+        if let Some(address) = uid.email()? {
             let mut iter = address.split('@');
             let localpart = iter.next().expect("Invalid email address");
             let domain = iter.next().expect("Invalid email address");
