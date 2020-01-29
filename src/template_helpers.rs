@@ -9,7 +9,7 @@ use crate::Result;
 use crate::i18n::I18NHelper;
 
 #[derive(Debug)]
-pub struct TemplateOverrides(String, HashSet<(String)>);
+pub struct TemplateOverrides(String, HashSet<String>);
 
 impl TemplateOverrides {
     pub fn load(template_path: &Path, localized_dir: &str) -> Result<Self> {
@@ -28,7 +28,7 @@ impl TemplateOverrides {
     }
 }
 
-fn load_localized_template_names(template_path: &Path, localized_dir: &str) -> Result<HashSet<(String)>> {
+fn load_localized_template_names(template_path: &Path, localized_dir: &str) -> Result<HashSet<String>> {
     let language_glob = template_path.join(localized_dir).join("*");
     glob::glob(language_glob.to_str().expect("valid glob path string"))
         .unwrap()
