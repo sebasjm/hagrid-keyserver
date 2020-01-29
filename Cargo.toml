@@ -27,12 +27,11 @@ time = "0.1"
 tempfile = "3.0"
 structopt = "0.2"
 url = "1.6"
-lettre_email = { version = "0.9", git = "https://github.com/lettre/lettre" }
 handlebars = "1.1.0"
 num_cpus = "1.0"
 ring = "0.13"
 base64 = "0.10"
-uuid = "0.7"
+uuid = { version = "0.7", features = [ "v4" ] }
 rocket_prometheus = "0.2"
 lazy_static = "1.3.0"
 rocket_i18n = "0.4"
@@ -43,10 +42,10 @@ glob = "0.3"
 rfc2047 = "0.1"
 
 [dependencies.lettre]
-version = "0.9"
+version = "0.10.0-pre"
 default-features = false
 # smtp-transport doesn't build (openssl problem)
-features = ["file-transport", "sendmail-transport"]
+features = ["builder", "file-transport", "sendmail-transport"]
 git = "https://github.com/lettre/lettre"
 
 [dependencies.rocket_contrib]

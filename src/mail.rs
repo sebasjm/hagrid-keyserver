@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use failure;
 use handlebars::Handlebars;
 use lettre::{Transport as LettreTransport, SendmailTransport, file::FileTransport};
-use lettre_email::{Mailbox,EmailBuilder};
+use lettre::builder::{EmailBuilder, Mailbox};
 use url;
 use serde::Serialize;
 use uuid::Uuid;
@@ -79,7 +79,7 @@ impl Service {
             url::Url::parse(&base_uri)
             ?.host_str().ok_or_else(|| failure::err_msg("No host in base-URI"))
             ?.to_string();
-        Ok(Self { from: from.parse().unwrap(), domain, templates, transport })
+        Ok(Self { from: from.into(), domain, templates, transport })
     }
 
     pub fn send_verification(
@@ -221,11 +221,11 @@ impl Service {
         match self.transport {
             Transport::Sendmail => {
                 let mut transport = SendmailTransport::new();
-                transport.send(email.into())?;
+                transport.send(email)?;
             },
             Transport::Filemail(ref path) => {
                 let mut transport = FileTransport::new(path);
-                transport.send(email.into())?;
+                transport.send(email)?;
             },
         }
 
