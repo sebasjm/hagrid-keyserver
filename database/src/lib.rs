@@ -5,6 +5,8 @@ use std::convert::TryFrom;
 use std::path::PathBuf;
 use std::str::FromStr;
 
+use openpgp::serialize::SerializeInto;
+
 use chrono::prelude::Utc;
 
 extern crate failure;
@@ -23,6 +25,7 @@ extern crate url;
 extern crate hex;
 extern crate walkdir;
 extern crate chrono;
+extern crate zbase32;
 
 use tempfile::NamedTempFile;
 
@@ -37,6 +40,7 @@ use openpgp::{
 pub mod types;
 use types::{Email, Fingerprint, KeyID};
 
+pub mod wkd;
 pub mod sync;
 
 mod fs;
@@ -175,6 +179,7 @@ pub trait Database: Sync + Send {
     fn by_fpr(&self, fpr: &Fingerprint) -> Option<String>;
     fn by_kid(&self, kid: &KeyID) -> Option<String>;
     fn by_email(&self, email: &Email) -> Option<String>;
+    fn by_email_wkd(&self, email: &Email) -> Option<Vec<u8>>;
 
     /// Complex operation that updates a Cert in the database.
     ///
@@ -319,6 +324,7 @@ pub trait Database: Sync + Send {
         // database consistency might be compromised!
         self.move_tmp_to_full(full_tpk_tmp, &fpr_primary)?;
         self.move_tmp_to_published(published_tpk_tmp, &fpr_primary)?;
+        self.regenerate_wkd(&fpr_primary, &published_tpk_clean)?;
 
         let published_tpk_changed = published_tpk_old
             .map(|tpk| tpk != published_tpk_clean)
@@ -464,6 +470,8 @@ pub trait Database: Sync + Send {
         let published_tpk_tmp = self.write_to_temp(&tpk_to_string(&published_tpk_clean)?)?;
 
         self.move_tmp_to_published(published_tpk_tmp, &fpr_primary)?;
+        self.regenerate_wkd(fpr_primary, &published_tpk_clean)?;
+
         self.update_write_log(&fpr_primary);
 
         if let Err(e) = self.link_email(&email_new, &fpr_primary) {
@@ -548,6 +556,8 @@ pub trait Database: Sync + Send {
         let published_tpk_tmp = self.write_to_temp(&tpk_to_string(&published_tpk_clean)?)?;
 
         self.move_tmp_to_published(published_tpk_tmp, &fpr_primary)?;
+        self.regenerate_wkd(fpr_primary, &published_tpk_clean)?;
+
         self.update_write_log(&fpr_primary);
 
         for unpublished_email in unpublished_emails {
@@ -593,6 +603,8 @@ pub trait Database: Sync + Send {
             .flatten()
             .collect();
 
+        self.regenerate_wkd(fpr_primary, &tpk)?;
+
         let fingerprints = tpk_get_linkable_fprs(&tpk);
 
         let fpr_checks = fingerprints
@@ -624,6 +636,21 @@ pub trait Database: Sync + Send {
         }
     }
 
+    fn regenerate_wkd(
+        &self,
+        fpr_primary: &Fingerprint,
+        published_tpk: &Cert
+    ) -> Result<()> {
+        let published_wkd_tpk_tmp = if published_tpk.userids().next().is_some() {
+            Some(self.write_to_temp(&published_tpk.to_vec()?)?)
+        } else {
+            None
+        };
+        self.move_tmp_to_published_wkd(published_wkd_tpk_tmp, fpr_primary)?;
+
+        Ok(())
+    }
+
     fn check_link_fpr(&self, fpr: &Fingerprint, target: &Fingerprint) -> Result<Option<Fingerprint>>;
 
     fn by_fpr_full(&self, fpr: &Fingerprint) -> Option<String>;
@@ -632,6 +659,7 @@ pub trait Database: Sync + Send {
     fn write_to_temp(&self, content: &[u8]) -> Result<NamedTempFile>;
     fn move_tmp_to_full(&self, content: NamedTempFile, fpr: &Fingerprint) -> Result<()>;
     fn move_tmp_to_published(&self, content: NamedTempFile, fpr: &Fingerprint) -> Result<()>;
+    fn move_tmp_to_published_wkd(&self, content: Option<NamedTempFile>, fpr: &Fingerprint) -> Result<()>;
     fn write_to_quarantine(&self, fpr: &Fingerprint, content: &[u8]) -> Result<()>;
     fn write_log_append(&self, filename: &str, fpr_primary: &Fingerprint) -> Result<()>;
 

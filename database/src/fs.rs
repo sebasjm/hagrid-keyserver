@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 use std::os::unix::fs::PermissionsExt;
 
 use tempfile;
-use url;
+use url::form_urlencoded;
 use pathdiff::diff_paths;
 use std::time::SystemTime;
 
@@ -16,6 +16,8 @@ use {Database, Query};
 use types::{Email, Fingerprint, KeyID};
 use sync::FlockMutexGuard;
 use Result;
+
+use wkd;
 
 use tempfile::NamedTempFile;
 
@@ -29,10 +31,12 @@ pub struct Filesystem {
     keys_dir_full: PathBuf,
     keys_dir_quarantined: PathBuf,
     keys_dir_published: PathBuf,
+    keys_dir_published_wkd: PathBuf,
     keys_dir_log: PathBuf,
 
     links_dir_by_fingerprint: PathBuf,
     links_dir_by_keyid: PathBuf,
+    links_dir_wkd_by_email: PathBuf,
     links_dir_by_email: PathBuf,
 
     dry_run: bool,
@@ -82,18 +86,22 @@ impl Filesystem {
         let keys_dir_quarantined = keys_internal_dir.join("quarantined");
         let keys_dir_log = keys_internal_dir.join("log");
         let keys_dir_published = keys_external_dir.join("pub");
+        let keys_dir_published_wkd = keys_external_dir.join("wkd");
         create_dir_all(&keys_dir_full)?;
         create_dir_all(&keys_dir_quarantined)?;
         create_dir_all(&keys_dir_published)?;
+        create_dir_all(&keys_dir_published_wkd)?;
         create_dir_all(&keys_dir_log)?;
 
         let links_dir = keys_external_dir.join("links");
         let links_dir_by_keyid = links_dir.join("by-keyid");
         let links_dir_by_fingerprint = links_dir.join("by-fpr");
         let links_dir_by_email = links_dir.join("by-email");
+        let links_dir_wkd_by_email = links_dir.join("wkd");
         create_dir_all(&links_dir_by_keyid)?;
         create_dir_all(&links_dir_by_fingerprint)?;
         create_dir_all(&links_dir_by_email)?;
+        create_dir_all(&links_dir_wkd_by_email)?;
 
         info!("Opened filesystem database.");
         info!("keys_internal_dir: '{}'", keys_internal_dir.display());
@@ -106,12 +114,14 @@ impl Filesystem {
 
             keys_dir_full,
             keys_dir_published,
+            keys_dir_published_wkd,
             keys_dir_quarantined,
             keys_dir_log,
 
             links_dir_by_keyid,
             links_dir_by_fingerprint,
             links_dir_by_email,
+            links_dir_wkd_by_email,
 
             dry_run,
         })
@@ -135,6 +145,12 @@ impl Filesystem {
         self.keys_dir_published.join(path_split(&hex))
     }
 
+    /// Returns the path to the given Fingerprint.
+    fn fingerprint_to_path_published_wkd(&self, fingerprint: &Fingerprint) -> PathBuf {
+        let hex = fingerprint.to_string();
+        self.keys_dir_published_wkd.join(path_split(&hex))
+    }
+
     /// Returns the path to the given KeyID.
     fn link_by_keyid(&self, keyid: &KeyID) -> PathBuf {
         let hex = keyid.to_string();
@@ -149,10 +165,22 @@ impl Filesystem {
 
     /// Returns the path to the given Email.
     fn link_by_email(&self, email: &Email) -> PathBuf {
-        let email =
-            url::form_urlencoded::byte_serialize(email.as_str().as_bytes())
+        let email = form_urlencoded::byte_serialize(email.as_str().as_bytes())
                 .collect::<String>();
         self.links_dir_by_email.join(path_split(&email))
+    }
+
+    /// Returns the WKD path to the given Email.
+    fn link_wkd_by_email(&self, email: &Email) -> PathBuf {
+        let (encoded_local_part, domain) = wkd::encode_wkd(email.as_str()).unwrap();
+        let encoded_domain = form_urlencoded::byte_serialize(domain.as_bytes())
+                .collect::<PathBuf>();
+
+        [
+            &self.links_dir_wkd_by_email,
+            &encoded_domain,
+            &path_split(&encoded_local_part)
+        ].iter().collect()
     }
 
     fn read_from_path(&self, path: &Path, allow_internal: bool) -> Option<String> {
@@ -165,6 +193,21 @@ impl Filesystem {
 
         if path.exists() {
             fs::read_to_string(path).ok()
+        } else {
+            None
+        }
+    }
+
+    fn read_from_path_bytes(&self, path: &Path, allow_internal: bool) -> Option<Vec<u8>> {
+        use std::fs;
+
+        if !path.starts_with(&self.keys_external_dir) &&
+            !(allow_internal && path.starts_with(&self.keys_internal_dir)) {
+            panic!("Attempted to access file outside expected dirs!");
+        }
+
+        if path.exists() {
+            fs::read(path).ok()
         } else {
             None
         }
@@ -188,7 +231,7 @@ impl Filesystem {
     fn path_to_email(path: &Path) -> Option<Email> {
         use std::str::FromStr;
         let merged = path_merge(path);
-        let decoded = url::form_urlencoded::parse(merged.as_bytes()).next()?.0;
+        let decoded = form_urlencoded::parse(merged.as_bytes()).next()?.0;
         Email::from_str(&decoded).ok()
     }
 
@@ -202,6 +245,52 @@ impl Filesystem {
         } else {
             Filesystem::path_to_fingerprint(path)
         }
+    }
+
+    fn link_email_vks(&self, email: &Email, fpr: &Fingerprint) -> Result<()> {
+        let path = self.fingerprint_to_path_published(fpr);
+        let link = self.link_by_email(&email);
+        let target = diff_paths(&path, link.parent().unwrap()).unwrap();
+
+        if link == target {
+            return Ok(());
+        }
+
+        symlink(&target, ensure_parent(&link)?)
+    }
+
+    fn link_email_wkd(&self, email: &Email, fpr: &Fingerprint) -> Result<()> {
+        let path = self.fingerprint_to_path_published_wkd(fpr);
+        let link = self.link_wkd_by_email(&email);
+        let target = diff_paths(&path, link.parent().unwrap()).unwrap();
+
+        if link == target {
+            return Ok(());
+        }
+
+        symlink(&target, ensure_parent(&link)?)
+    }
+
+    fn unlink_email_vks(&self, email: &Email, fpr: &Fingerprint) -> Result<()> {
+        let link = self.link_by_email(&email);
+
+        let expected = diff_paths(
+            &self.fingerprint_to_path_published(fpr),
+            link.parent().unwrap()
+        ).unwrap();
+
+        symlink_unlink_with_check(&link, &expected)
+    }
+
+    fn unlink_email_wkd(&self, email: &Email, fpr: &Fingerprint) -> Result<()> {
+        let link = self.link_wkd_by_email(&email);
+
+        let expected = diff_paths(
+            &self.fingerprint_to_path_published_wkd(fpr),
+            link.parent().unwrap()
+        ).unwrap();
+
+        symlink_unlink_with_check(&link, &expected)
     }
 
     fn open_logfile(&self, file_name: &str) -> Result<File> {
@@ -275,6 +364,16 @@ fn symlink(symlink_content: &Path, symlink_name: &Path) -> Result<()> {
     Ok(())
 }
 
+fn symlink_unlink_with_check(link: &Path, expected: &Path) -> Result<()> {
+    if let Ok(target) = read_link(&link) {
+        if target == expected {
+            remove_file(link)?;
+        }
+    }
+
+    Ok(())
+}
+
 impl Database for Filesystem {
     type MutexGuard = FlockMutexGuard;
 
@@ -321,6 +420,21 @@ impl Database for Filesystem {
         set_permissions(file.path(), Permissions::from_mode(0o644))?;
         let target = self.fingerprint_to_path_published(fpr);
         file.persist(ensure_parent(&target)?)?;
+        Ok(())
+    }
+
+    fn move_tmp_to_published_wkd(&self, file: Option<NamedTempFile>, fpr: &Fingerprint) -> Result<()> {
+        if self.dry_run {
+            return Ok(());
+        }
+        let target = self.fingerprint_to_path_published_wkd(fpr);
+        if let Some(file) = file {
+            set_permissions(file.path(), Permissions::from_mode(0o644))?;
+            file.persist(ensure_parent(&target)?)?;
+        } else if target.exists() {
+            remove_file(target)?;
+        }
+
         Ok(())
     }
 
@@ -400,32 +514,15 @@ impl Database for Filesystem {
             return Ok(());
         }
 
-        let link = self.link_by_email(&email);
-        let target = diff_paths(&self.fingerprint_to_path_published(fpr),
-                                link.parent().unwrap()).unwrap();
+        self.link_email_vks(email, fpr)?;
+        self.link_email_wkd(email, fpr)?;
 
-        if link == target {
-            return Ok(());
-        }
-
-        symlink(&target, ensure_parent(&link)?)
+        Ok(())
     }
 
     fn unlink_email(&self, email: &Email, fpr: &Fingerprint) -> Result<()> {
-        let link = self.link_by_email(&email);
-
-        match read_link(&link) {
-            Ok(target) => {
-                let expected = diff_paths(&self.fingerprint_to_path_published(fpr),
-                                          link.parent().unwrap()).unwrap();
-
-                if target == expected {
-                    remove_file(link)?;
-                }
-            }
-            Err(_) => {}
-        }
-
+        self.unlink_email_vks(email, fpr)?;
+        self.unlink_email_wkd(email, fpr)?;
         Ok(())
     }
 
@@ -494,6 +591,12 @@ impl Database for Filesystem {
     }
 
     // XXX: slow
+    fn by_email_wkd(&self, email: &Email) -> Option<Vec<u8>> {
+        let path = self.link_wkd_by_email(&email);
+        self.read_from_path_bytes(&path, false)
+    }
+
+    // XXX: slow
     fn by_kid(&self, kid: &KeyID) -> Option<String> {
         let path = self.link_by_keyid(kid);
         self.read_from_path(&path, false)
@@ -521,6 +624,22 @@ impl Database for Filesystem {
                             but found {}",
                         path, fp, primary_fp));
                 }
+                Ok(())
+            }
+        )?;
+
+        self.perform_checks(&self.keys_dir_published, &mut tpks,
+            |_, tpk, primary_fp| {
+                // check that certificate exists in published wkd path
+                let path_wkd = self.fingerprint_to_path_published_wkd(&primary_fp);
+                let should_wkd_exist = tpk.userids().next().is_some();
+
+                if should_wkd_exist && !path_wkd.exists() {
+                    return Err(format_err!("Missing wkd for fp {}", primary_fp));
+                };
+                if !should_wkd_exist && path_wkd.exists() {
+                    return Err(format_err!("Incorrectly present wkd for fp {}", primary_fp));
+                };
                 Ok(())
             }
         )?;
@@ -559,6 +678,11 @@ impl Database for Filesystem {
                     if !email_path.exists() {
                         return Err(format_err!(
                             "Missing link to key {} for email {}", primary_fp, email));
+                    }
+                    let email_wkd_path = self.link_wkd_by_email(&email);
+                    if !email_wkd_path.exists() {
+                        return Err(format_err!(
+                            "Missing wkd link to key {} for email {}", primary_fp, email));
                     }
                 }
                 Ok(())

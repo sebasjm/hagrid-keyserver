@@ -31,6 +31,16 @@ use std::fs;
 use TpkStatus;
 use EmailAddressStatus;
 
+fn check_mail_none(db: &impl Database, email: &Email) {
+    assert!(db.by_email(&email).is_none());
+    assert!(db.by_email_wkd(&email).is_none());
+}
+
+fn check_mail_some(db: &impl Database, email: &Email) {
+    assert!(db.by_email(&email).is_some());
+    assert!(db.by_email_wkd(&email).is_some());
+}
+
 pub fn test_uid_verification(db: &mut impl Database, log_path: &Path) {
     let str_uid1 = "Test A <test_a@example.com>";
     let str_uid2 = "Test B <test_b@example.com>";
@@ -70,8 +80,8 @@ pub fn test_uid_verification(db: &mut impl Database, log_path: &Path) {
     }
 
     // fail to fetch by uid
-    assert!(db.by_email(&email1).is_none());
-    assert!(db.by_email(&email2).is_none());
+    check_mail_none(db, &email1);
+    check_mail_none(db, &email2);
 
     // verify 1st uid
     db.set_email_published(&fpr, &email1).unwrap();
@@ -290,7 +300,7 @@ pub fn test_regenerate(db: &mut impl Database, log_path: &Path) {
     check_log_entry(log_path, &fpr);
 
     db.regenerate_links(&fpr).unwrap();
-    assert!(db.by_email(&email1).is_none());
+    check_mail_none(db, &email1);
     assert!(db.by_fpr(&fpr).is_some());
     assert!(db.by_fpr(&fpr_sign).is_some());
     assert!(db.by_fpr(&fpr_encrypt).is_none());
@@ -369,7 +379,7 @@ pub fn test_uid_replacement(db: &mut impl Database, log_path: &Path) {
 
     // verify 1st uid
     db.set_email_published(&fpr1, &email1).unwrap();
-    assert!(db.by_email(&email1).is_some());
+    check_mail_some(db, &email1);
     assert_eq!(Cert::from_bytes(db.by_email(&email1).unwrap().as_bytes()).unwrap()
                .fingerprint(), pgp_fpr1);
 
@@ -380,7 +390,7 @@ pub fn test_uid_replacement(db: &mut impl Database, log_path: &Path) {
 
     // verify uid on other key
     db.set_email_published(&fpr2, &email1).unwrap();
-    assert!(db.by_email(&email1).is_some());
+    check_mail_some(db, &email1);
     assert_eq!(Cert::from_bytes(db.by_email(&email1).unwrap().as_bytes()).unwrap()
                .fingerprint(), pgp_fpr2);
 
@@ -526,8 +536,8 @@ pub fn test_upload_revoked_tpk(db: &mut impl Database, log_path: &Path) {
     db.merge(tpk.clone()).unwrap();
     db.set_email_published(&fpr, &email1).unwrap();
 
-    assert!(db.by_email(&email1).is_some());
-    assert!(db.by_email(&email2).is_none());
+    check_mail_some(db, &email1);
+    check_mail_none(db, &email2);
 
     tpk = tpk.merge_packets(vec![revocation.into()]).unwrap();
     match tpk.revoked(None) {
@@ -547,8 +557,8 @@ pub fn test_upload_revoked_tpk(db: &mut impl Database, log_path: &Path) {
         unparsed_uids: 0,
     }, tpk_status);
 
-    assert!(db.by_email(&email1).is_none());
-    assert!(db.by_email(&email2).is_none());
+    check_mail_none(db, &email1);
+    check_mail_none(db, &email2);
 }
 
 pub fn test_uid_revocation(db: &mut impl Database, log_path: &Path) {
@@ -584,8 +594,8 @@ pub fn test_uid_revocation(db: &mut impl Database, log_path: &Path) {
     db.set_email_published(&fpr, &tpk_status.email_status[1].0).unwrap();
 
     // fetch both uids
-    assert!(db.by_email(&email1).is_some());
-    assert!(db.by_email(&email2).is_some());
+    check_mail_some(db, &email1);
+    check_mail_some(db, &email2);
 
     thread::sleep(time::Duration::from_secs(2));
 
@@ -615,8 +625,8 @@ pub fn test_uid_revocation(db: &mut impl Database, log_path: &Path) {
     }, tpk_status);
 
     // Fail to fetch by the revoked uid, ok by the non-revoked one.
-    assert!(db.by_email(&email1).is_some());
-    assert!(db.by_email(&email2).is_none());
+    check_mail_some(db, &email1);
+    check_mail_none(db, &email2);
 }
 
 /* FIXME I couldn't get this to work.
@@ -709,7 +719,7 @@ pub fn test_unlink_uid(db: &mut impl Database, log_path: &Path) {
 
     db.merge(tpk.clone()).unwrap().into_tpk_status();
     db.set_email_published(&fpr, &email).unwrap();
-    assert!(db.by_email(&email).is_some());
+    check_mail_some(db, &email);
 
     // Create a 2nd key with same uid, and revoke the uid.
     let tpk_evil = CertBuilder::new().add_userid(uid).generate().unwrap().0;
@@ -841,8 +851,8 @@ pub fn test_same_email_1(db: &mut impl Database, log_path: &Path) {
     }, tpk_status2);
 
     // fetch by both user ids.  We should get nothing.
-    assert!(&db.by_email(&email1).is_none());
-    assert!(&db.by_email(&email2).is_none());
+    check_mail_none(db, &email1);
+    check_mail_none(db, &email2);
 }
 
 // If a key has multiple user ids with the same email address, make
