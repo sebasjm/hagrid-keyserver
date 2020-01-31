@@ -1,5 +1,4 @@
 use failure::Fallible as Result;
-use failure;
 
 use std::path::Path;
 use std::time::Instant;
@@ -80,7 +79,7 @@ pub fn do_regenerate(config: &HagridConfig) -> Result<()> {
         false,
     )?;
 
-    let published_dir = config.keys_external_dir.as_ref().unwrap().join("pub");
+    let published_dir = config.keys_external_dir.as_ref().unwrap().join("links").join("by-email");
     let dirs: Vec<_> = WalkDir::new(published_dir)
         .min_depth(1)
         .max_depth(1)
@@ -109,13 +108,13 @@ pub fn do_regenerate(config: &HagridConfig) -> Result<()> {
 
 fn regenerate_dir_recursively(db: &KeyDatabase, stats: &mut RegenerateStats, dir: &Path) -> Result<()> {
     for path in WalkDir::new(dir)
+        .follow_links(true)
         .into_iter()
         .flatten()
         .filter(|e| e.file_type().is_file())
         .map(|entry| entry.into_path()) {
 
-        let fpr = KeyDatabase::path_to_fingerprint(&path)
-            .ok_or_else(|| failure::err_msg("Key not in database!"))?;
+        let fpr = KeyDatabase::path_to_primary(&path).unwrap();
         let result = db.regenerate_links(&fpr);
         stats.update(result, fpr);
     }

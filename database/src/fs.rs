@@ -236,7 +236,7 @@ impl Filesystem {
     }
 
     /// Returns the backing primary key fingerprint for any key path.
-    fn path_to_primary(path: &Path) -> Option<Fingerprint> {
+    pub fn path_to_primary(path: &Path) -> Option<Fingerprint> {
         use std::fs;
         let typ = fs::symlink_metadata(&path).ok()?.file_type();
         if typ.is_symlink() {
