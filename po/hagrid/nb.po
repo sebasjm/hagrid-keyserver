@@ -1,0 +1,464 @@
+# Translators:
+# Kristoffer Håvik, 2020
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: hagrid\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2018-06-15 16:33-0700\n"
+"PO-Revision-Date: 2019-09-27 18:05+0000\n"
+"Last-Translator: Kristoffer Håvik, 2020\n"
+"Language-Team: Norwegian Bokmål (https://www.transifex.com/otf/teams/102430/"
+"nb/)\n"
+"Language: nb\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: src/mail.rs:107
+msgctxt "Subject for verification email"
+msgid "Verify {userid} for your key on {domain}"
+msgstr "Bekreft {userid} for nøkkelen din på {domain}"
+
+#: src/mail.rs:140
+msgctxt "Subject for manage email"
+msgid "Manage your key on {domain}"
+msgstr "Administrer nøkkelen din på {domain}"
+
+#: src/gettext_strings.rs:4
+msgid "Error"
+msgstr "Feil"
+
+#: src/gettext_strings.rs:5
+msgid "Looks like something went wrong :("
+msgstr "Det ser ut til at noe gikk galt. :("
+
+#: src/gettext_strings.rs:6
+msgid "Error message: {{ internal_error }}"
+msgstr "Feilmelding: {{ internal_error }}"
+
+#: src/gettext_strings.rs:7
+msgid "There was an error with your request:"
+msgstr "Det skjedde en feil ved behandling av forespørselen din:"
+
+#: src/gettext_strings.rs:8
+msgid "We found an entry for <span class=\"email\">{{ query }}</span>:"
+msgstr "Vi fant en oppføring for <span class=\"email\">{{ query }}</span>:"
+
+#: src/gettext_strings.rs:9
+msgid ""
+"<strong>Hint:</strong> It's more convenient to use <span class=\"brand"
+"\">keys.openpgp.org</span> from your OpenPGP software.<br /> Take a look at "
+"our <a href=\"/about/usage\">usage guide</a> for details."
+msgstr ""
+"<strong>Tips:</strong> Det er enda mer praktisk å bruke <span class=\"brand"
+"\">keys.openpgp.org</span> via OpenPGP-programvaren.<br /> Les gjerne <a "
+"href=\"/about/usage\">brukerveiledningen</a> for detaljer."
+
+#: src/gettext_strings.rs:10
+msgid "debug info"
+msgstr "feilsøkingsinfo"
+
+#: src/gettext_strings.rs:11
+msgid "Search by Email Address / Key ID / Fingerprint"
+msgstr "Søk etter e-postadresse / nøkkel-ID / fingeravtrykk"
+
+#: src/gettext_strings.rs:12
+msgid "Search"
+msgstr "Søk"
+
+#: src/gettext_strings.rs:13
+msgid ""
+"You can also <a href=\"/upload\">upload</a> or <a href=\"/manage\">manage</"
+"a> your key."
+msgstr ""
+"Du kan også <a href=\"/upload\">laste opp</a> eller <a href=\"/manage"
+"\">administrere</a> nøkkelen din."
+
+#: src/gettext_strings.rs:14
+msgid "Find out more <a href=\"/about\">about this service</a>."
+msgstr "Finn ut mer <a href=\"/about\">om denne tjenesten</a>."
+
+#: src/gettext_strings.rs:15
+msgid "News:"
+msgstr "Nyheter:"
+
+#: src/gettext_strings.rs:16
+msgid ""
+"<a href=\"/about/news#2019-09-12-three-months-later\">Three months after "
+"launch ✨</a> (2019-09-12)"
+msgstr ""
+"<a href=\"/about/news#2019-09-12-three-months-later\">Tre måneder etter "
+"lansering ✨</a> (12. september 2019)"
+
+#: src/gettext_strings.rs:17
+msgid "v{{ version }} built from"
+msgstr "v{{ version }} bygd fra"
+
+#: src/gettext_strings.rs:18
+msgid "Powered by <a href=\"https://sequoia-pgp.org\">Sequoia-PGP</a>"
+msgstr "Drevet av <a href=\"https://sequoia-pgp.org\">Sequoia-PGP</a>"
+
+#: src/gettext_strings.rs:19
+msgid ""
+"Background image retrieved from <a href=\"https://www.toptal.com/designers/"
+"subtlepatterns/subtle-grey/\">Subtle Patterns</a> under CC BY-SA 3.0"
+msgstr ""
+"Bakgrunnsbildet er hentet fra <a href=\"https://www.toptal.com/designers/"
+"subtlepatterns/subtle-grey/\">Subtle Patterns</a> på lisens CC BY-SA 3.0"
+
+#: src/gettext_strings.rs:20
+msgid "Maintenance Mode"
+msgstr "Vedlikeholdsmodus"
+
+#: src/gettext_strings.rs:21
+msgid "Manage your key"
+msgstr "Administrer nøkkelen din"
+
+#: src/gettext_strings.rs:22
+msgid "Enter any verified email address for your key"
+msgstr "Skriv inn en bekreftet e-postadresse som tilhører nøkkelen din"
+
+#: src/gettext_strings.rs:23
+msgid "Send link"
+msgstr "Send lenke"
+
+#: src/gettext_strings.rs:24
+msgid ""
+"We will send you an email with a link you can use to remove any of your "
+"email addresses from search."
+msgstr ""
+"Vi sender deg en e-post med en lenke som du kan bruke for å ta bort e-"
+"postadressene dine fra søket."
+
+#: src/gettext_strings.rs:25
+msgid ""
+"Managing the key <span class=\"fingerprint\"><a href=\"{{ key_link }}\" "
+"target=\"_blank\">{{ key_fpr }}</a></span>."
+msgstr ""
+"Administrerer nøkkelen <span class=\"fingerprint\"><a href="
+"\"{{ key_link }}\" target=\"_blank\">{{ key_fpr }}</a></span>."
+
+#: src/gettext_strings.rs:26
+msgid "Your key is published with the following identity information:"
+msgstr "Nøkkelen din er offentliggjort med følgende identitetsinformasjon:"
+
+#: src/gettext_strings.rs:27
+msgid "Delete"
+msgstr "Slett"
+
+#: src/gettext_strings.rs:28
+msgid ""
+"Clicking \"delete\" on any address will remove it from this key. It will no "
+"longer appear in a search.<br /> To add another address, <a href=\"/upload"
+"\">upload</a> the key again."
+msgstr ""
+"Trykker du “Slett” ved en av adressene, blir den tatt bort fra denne "
+"nøkkelen og vil ikke lenger dukke opp i søk.<br /> For å legge til en annen "
+"adresse, <a href=\"/upload\">last opp</a> nøkkelen på nytt."
+
+#: src/gettext_strings.rs:29
+msgid ""
+"Your key is published as only non-identity information.  (<a href=\"/about\" "
+"target=\"_blank\">What does this mean?</a>)"
+msgstr ""
+"Nøkkelen din er offentliggjort uten identitetsinformasjon. (<a href=\"/about"
+"\" target=\"_blank\">Hva betyr dette?</a>)"
+
+#: src/gettext_strings.rs:30
+msgid "To add an address, <a href=\"/upload\">upload</a> the key again."
+msgstr ""
+"For å legge til en adresse, <a href=\"/upload\">last opp</a> nøkkelen på "
+"nytt."
+
+#: src/gettext_strings.rs:31
+msgid ""
+"We have sent an email with further instructions to <span class=\"email"
+"\">{{ address }}</span>."
+msgstr ""
+"Vi har sendt en e-post med videre instruksjoner til <span class=\"email"
+"\">{{ address }}</span>."
+
+#: src/gettext_strings.rs:32
+msgid "This address has already been verified."
+msgstr "Denne adressen er allerede bekreftet."
+
+#: src/gettext_strings.rs:33
+msgid ""
+"Your key <span class=\"fingerprint\">{{ key_fpr }}</span> is now published "
+"for the identity <a href=\"{{userid_link}}\" target=\"_blank\"><span class="
+"\"email\">{{ userid }}</span></a>."
+msgstr ""
+"Nøkkelen din <span class=\"fingerprint\">{{ key_fpr }}</span> er nå "
+"offentliggjort for identiteten <a href=\"{{userid_link}}\" target=\"_blank"
+"\"><span class=\"email\">{{ userid }}</span></a>."
+
+#: src/gettext_strings.rs:34
+msgid "Upload your key"
+msgstr "Last opp nøkkelen din"
+
+#: src/gettext_strings.rs:35
+msgid "Upload"
+msgstr "Last opp"
+
+#: src/gettext_strings.rs:36
+msgid ""
+"Need more info? Check our <a target=\"_blank\" href=\"/about\">intro</a> and "
+"<a target=\"_blank\" href=\"/about/usage\">usage guide</a>."
+msgstr ""
+"Vil du vite mer? Les <a target=\"_blank\" href=\"/about\">innføringen</a> og "
+"<a target=\"_blank\" href=\"/about/usage\">bruksanvisningen</a>."
+
+#: src/gettext_strings.rs:37
+msgid ""
+"You uploaded the key <span class=\"fingerprint\"><a href=\"{{ key_link }}\" "
+"target=\"_blank\">{{ key_fpr }}</a></span>."
+msgstr ""
+"Du har lastet opp nøkkelen <span class=\"fingerprint\"><a href="
+"\"{{ key_link }}\" target=\"_blank\">{{ key_fpr}}</a></span>."
+
+#: src/gettext_strings.rs:38
+msgid "This key is revoked."
+msgstr "Denne nøkkelen har blitt trukket tilbake."
+
+#: src/gettext_strings.rs:39
+msgid ""
+"It is published without identity information and can't be made available for "
+"search by email address (<a href=\"/about\" target=\"_blank\">what does this "
+"mean?</a>)."
+msgstr ""
+"Den har blitt offentliggjort uten identitetsinformasjon og kan ikke gjøres "
+"tilgjengelig i e-postadressesøk (<a href=\"/about\" target=\"_blank\">hva "
+"betyr dette?</a>)."
+
+#: src/gettext_strings.rs:40
+msgid ""
+"This key is now published with the following identity information (<a href="
+"\"/about\" target=\"_blank\">what does this mean?</a>):"
+msgstr ""
+"Denne nøkkelen er nå offentliggjort med følgende identitetsinformasjon (<a "
+"href=\"/about\" target=\"_blank\">hva betyr dette?</a>):"
+
+#: src/gettext_strings.rs:41
+msgid "Published"
+msgstr "Offentliggjort"
+
+#: src/gettext_strings.rs:42
+msgid ""
+"This key is now published with only non-identity information. (<a href=\"/"
+"about\" target=\"_blank\">What does this mean?</a>)"
+msgstr ""
+"Denne nøkkelen er nå offentliggjort uten identitetsinformasjon. (<a href=\"/"
+"about\" target=\"_blank\">Hva betyr dette?</a>)"
+
+#: src/gettext_strings.rs:43
+msgid ""
+"To make the key available for search by email address, you can verify it "
+"belongs to you:"
+msgstr ""
+"For at nøkkelen skal kunne finnes ved å søke etter e-postadresse, kan du "
+"bekrefte at den tilhører deg:"
+
+#: src/gettext_strings.rs:44
+msgid "Verification Pending"
+msgstr "Bekreftelse pågår"
+
+#: src/gettext_strings.rs:45
+msgid ""
+"<strong>Note:</strong> Some providers delay emails for up to 15 minutes to "
+"prevent spam. Please be patient."
+msgstr ""
+"<strong>Merk:</strong> Noen leverandører forsinker e-poster med inntil 15 "
+"min. for å forhindre søppelpost. Vennligst vent."
+
+#: src/gettext_strings.rs:46
+msgid "Send Verification Email"
+msgstr "Send bekreftelses-epost"
+
+#: src/gettext_strings.rs:47
+msgid ""
+"This key contains one identity that could not be parsed as an email address."
+"<br /> This identity can't be published on <span class=\"brand\">keys."
+"openpgp.org</span>.  (<a href=\"/about/faq#non-email-uids\" target=\"_blank"
+"\">Why?</a>)"
+msgstr ""
+"Denne nøkkelen inneholder en identitet som ikke lot seg tolke som en e-"
+"postadresse.<br /> Denne identiteten kan ikke offentliggjøres på <span class="
+"\"brand\">keys.openpgp.org</span>. (<a href=\"/about/faq#non-email-uids\" "
+"target=\"_blank\">Hvorfor?</a>)"
+
+#: src/gettext_strings.rs:48
+msgid ""
+"This key contains {{ count_unparsed }} identities that could not be parsed "
+"as an email address.<br /> These identities can't be published on <span "
+"class=\"brand\">keys.openpgp.org</span>.  (<a href=\"/about/faq#non-email-"
+"uids\" target=\"_blank\">Why?</a>)"
+msgstr ""
+"Denne nøkkelen inneholder {{ count_unparsed }} identiteter som ikke lot seg "
+"tolke som e-postadresser.<br /> Disse identitetene kan ikke offentliggjøres "
+"på <span class=\"brand\">keys.openpgp.org</span>. (<a href=\"/about/faq#non-"
+"email-uids\" target=\"_blank\">Hvorfor?</a>)"
+
+#: src/gettext_strings.rs:49
+msgid ""
+"This key contains one revoked identity, which is not published. (<a href=\"/"
+"about/faq#revoked-uids\" target=\"_blank\">Why?</a>)"
+msgstr ""
+"Denne nøkkelen inneholder en identitet som har blitt trukket tilbake og som "
+"ikke er offentliggjort. (<a href=\"/about/faq#revoked-uids\" target=\"_blank"
+"\">Hvorfor?</a>)"
+
+#: src/gettext_strings.rs:50
+msgid ""
+"This key contains {{ count_revoked }} revoked identities, which are not "
+"published. (<a href=\"/about/faq#revoked-uids\" target=\"_blank\">Why?</a>)"
+msgstr ""
+"Denne nøkkelen inneholder {{ count_revoked }} identiteter som har blitt "
+"trukket tilbake og som ikke er offentliggjorte. (<a href=\"/about/"
+"faq#revoked-uids\" target=\"_blank\">Hvorfor?</a>)"
+
+#: src/gettext_strings.rs:51
+msgid "Your keys have been successfully uploaded:"
+msgstr "Nøklene dine er lastet opp:"
+
+#: src/gettext_strings.rs:52
+msgid ""
+"<strong>Note:</strong> To make keys searchable by email address, you must "
+"upload them individually."
+msgstr ""
+"<strong>Merk:</strong> For at nøkler skal kunne finnes ved å søke etter e-"
+"postadresse, må de lastes opp én og én."
+
+#: src/gettext_strings.rs:53
+msgid "Verifying your email address…"
+msgstr "Bekrefter e-postadressen din…"
+
+#: src/gettext_strings.rs:54
+msgid ""
+"If the process doesn't complete after a few seconds, please <input type="
+"\"submit\" class=\"textbutton\" value=\"click here\" />."
+msgstr ""
+"Dersom det tar mer enn noen få sekunder, <input type=\"submit\" class="
+"\"textbutton\" value=\"klikk her\"/>."
+
+#: src/gettext_strings.rs:56
+msgid "Manage your key on {{domain}}"
+msgstr "Administrer nøkkelen din på {{domain}}"
+
+#: src/gettext_strings.rs:58
+msgid "Hi,"
+msgstr "Hei,"
+
+#: src/gettext_strings.rs:59
+msgid ""
+"This is an automated message from <a href=\"{{base_uri}}\" style=\"text-"
+"decoration:none; color: #333\">{{domain}}</a>."
+msgstr ""
+"Dette er en automatisk beskjed fra <a href=\"{{base_uri}}\" style=\"text-"
+"decoration:none; color: #333\">{{domain}}</a>."
+
+#: src/gettext_strings.rs:60
+msgid "If you didn't request this message, please ignore it."
+msgstr ""
+"Hvis ikke det var du som ba om denne beskjeden, kan du se bort fra den."
+
+#: src/gettext_strings.rs:61
+msgid "OpenPGP key: <tt>{{primary_fp}}</tt>"
+msgstr "OpenPGP-nøkkel: <tt>{{primary_fp}}</tt>"
+
+#: src/gettext_strings.rs:62
+msgid ""
+"To manage and delete listed addresses on this key, please follow the link "
+"below:"
+msgstr ""
+"For å administrere og slette adressene som hører til denne nøkkelen, "
+"vennligst følg lenken nedenfor:"
+
+#: src/gettext_strings.rs:63
+msgid ""
+"You can find more info at <a href=\"{{base_uri}}/about\">{{domain}}/about</"
+"a>."
+msgstr ""
+"Du finner mer informasjon på <a href=\"{{base_uri}}/about\">{{domain}}/"
+"about</a>."
+
+#: src/gettext_strings.rs:64
+msgid "distributing OpenPGP keys since 2019"
+msgstr "har distribuert OpenPGP-nøkler siden 2019"
+
+#: src/gettext_strings.rs:67
+msgid "This is an automated message from {{domain}}."
+msgstr "Dette er en automatisk melding fra {{domain}}."
+
+#: src/gettext_strings.rs:69
+msgid "OpenPGP key: {{primary_fp}}"
+msgstr "OpenPGP-nøkkel: {{primary_fp}}"
+
+#: src/gettext_strings.rs:71
+msgid "You can find more info at {{base_uri}}/about"
+msgstr "Du finner mer informasjon på {{base_uri}}/about"
+
+#: src/gettext_strings.rs:74
+msgid "Verify {{userid}} for your key on {{domain}}"
+msgstr "Bekreft {{userid}} for nøkkelen din på {{domain}}"
+
+#: src/gettext_strings.rs:80
+msgid ""
+"To let others find this key from your email address \"<a rel=\"nofollow\" "
+"href=\"#\" style=\"text-decoration:none; color: #333\">{{userid}}</a>\", "
+"please click the link below:"
+msgstr ""
+"For å la andre finne denne nøkkelen ved å søke etter e-postadressen \"<a rel="
+"\"nofollow\" href=\"#\" style=\"text-decoration:none; color: "
+"#333\">{{userid}}</a>\",\n"
+"vennligst klikk på lenken nedenfor:"
+
+#: src/gettext_strings.rs:88
+msgid ""
+"To let others find this key from your email address \"{{userid}}\",\n"
+"please follow the link below:"
+msgstr ""
+"For å la andre finne denne nøkkelen ved å søke etter e-postadressen "
+"\"{{userid}}\",\n"
+"vennligst følg lenken nedenfor:"
+
+#: src/web/manage.rs:103
+msgid "This link is invalid or expired"
+msgstr "Denne lenken er ugyldig eller utløpt"
+
+#: src/web/manage.rs:129
+msgid "Malformed address: {address}"
+msgstr "Deformert adresse: {address}"
+
+#: src/web/manage.rs:136
+msgid "No key for address: {address}"
+msgstr "Ingen nøkler for adressen {address}"
+
+#: src/web/manage.rs:152
+msgid "A request has already been sent for this address recently."
+msgstr "En forespørsel har allerede blitt sendt for denne adressen nylig."
+
+#: src/web/vks.rs:112
+msgid "Parsing of key data failed."
+msgstr "Kunne ikke analysere innholdet i nøkkelen."
+
+#: src/web/vks.rs:121
+msgid "Whoops, please don't upload secret keys!"
+msgstr "Hopp sann! Vennligst ikke last opp hemmelige nøkler!"
+
+#: src/web/vks.rs:134
+msgid "No key uploaded."
+msgstr "Ingen nøkkel er lastet opp."
+
+#: src/web/vks.rs:178
+msgid "Error processing uploaded key."
+msgstr "Kunne ikke behandle den opplastede nøkkelen."
+
+#: src/web/vks.rs:248
+msgid "Upload session expired. Please try again."
+msgstr "Opplastingsøkten er utgått. Vennligst prøv på nytt."
+
+#: src/web/vks.rs:285
+msgid "Invalid verification link."
+msgstr "Bekreftelseslenken er ugyldig."
