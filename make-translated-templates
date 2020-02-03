@@ -1,4 +1,4 @@
-#!/bin/zsh
+#!/usr/bin/env zsh
 
 for i in templates-untranslated/**/*.hbs; do
 	local template=${${i#templates-untranslated/}}
