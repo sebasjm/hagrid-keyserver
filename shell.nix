@@ -17,9 +17,11 @@ stdenv.mkDerivation {
     # latest.rustChannels.stable.rust
 
     clang
-    gettext
     nettle
     pkgconfig
+
+    gettext
+    transifex-client
   ];
 
   # Set Environment Variables
