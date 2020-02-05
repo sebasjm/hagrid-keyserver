@@ -55,7 +55,7 @@ a.brand {
   vertical-align: -30%;
 }
 
-h4:target, h3:target {
+h4:target, h3:target, h2:target {
   background-color: #ffa;
 }
 

@@ -154,6 +154,35 @@
         </blockquote>
     </p>
 
+    <h2 style="padding-left: 3%;" id="wkd-as-a-service"><a style="color: #050505;" href="#wkd-as-a-service">WKD as a Service</a></h2>
+
+    <p> <span class="brand">keys.openpgp.org</span> can be used as a managed Web Key Directory (WKD) service for any domain.
+        To do so, the domain simply needs a <tt>CNAME</tt> record that delegates its <tt>openpgpkey</tt> subdomain to <tt>wkd.keys.openpgp.org</tt>.
+        It should be possible to do this in the web interface of any DNS hoster.
+
+    <p> Once enabled for a domain, its verified addresses will automatically be available for lookup via WKD.
+
+    <p> The <tt>CNAME</tt> record should look like this:
+
+    <blockquote>
+        $ drill openpgpkey.example.org<br>
+        ...<br>
+        openpgpkey.example.org.       300     IN      CNAME   wkd.keys.openpgp.org.
+    </blockquote>
+
+    <p> There is a simple status checker for testing the service:
+
+    <blockquote>
+        $ curl 'https://wkd.keys.openpgp.org/status/?domain=openpgpkey.example.org'<br>
+        CNAME lookup ok: openpgpkey.example.org resolves to wkd.keys.openpgp.org<br>
+    </blockquote>
+
+    <p> For testing key retrieval:
+
+    <blockquote>
+        $ gpg  --locate-keys --auto-key-locate clear,nodefault,wkd address@example.org<br>
+    </blockquote>
+
     <h2 style="margin-left: 3%;">API</h2>
 
     <p>
