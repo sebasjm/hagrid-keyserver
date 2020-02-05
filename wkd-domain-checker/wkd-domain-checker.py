@@ -21,6 +21,7 @@ GATEWAY_DOMAIN = 'wkd.keys.openpgp.org'
 # a manual whitelist of domains. we don't allow arbitrary subdomains for abuse
 # reasons, but other entries are generally possible. just ask.
 WHITELIST = [
+    'openpgpkey.keys.openpgp.org',
     'openpgpkey.my.amazin.horse'
 ]
 
