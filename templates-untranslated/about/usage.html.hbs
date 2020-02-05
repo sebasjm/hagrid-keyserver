@@ -155,7 +155,10 @@
 
     <h2 style="padding-left: 3%;" id="wkd-as-a-service"><a style="color: #050505;" href="#wkd-as-a-service">WKD as a Service</a></h2>
 
-    <p> <span class="brand">keys.openpgp.org</span> can be used as a managed Web Key Directory (WKD) service for any domain.
+    <p> The Web Key Directory (WKD) is a standard for discovery of OpenPGP keys by email address, via the domain of its email provider.
+        It is used to discover unknown keys in some email clients, such as <a href="https://www.gpg4win.de/about.html" target="_blank">GpgOL</a>.
+
+    <p> <span class="brand">keys.openpgp.org</span> can be used as a managed WKD service for any domain.
         To do so, the domain simply needs a <tt>CNAME</tt> record that delegates its <tt>openpgpkey</tt> subdomain to <tt>wkd.keys.openpgp.org</tt>.
         It should be possible to do this in the web interface of any DNS hoster.
 

@@ -44,7 +44,7 @@ def check_domain(domain):
         return 'domain must have "openpgpkey" prefix\n', 400
 
     if domain != ("openpgpkey." + get_sld(domain)):
-        return 'domain must not be a subdomain!\n', 400
+        return 'subdomains can only be used upon request. send an email to <tt>support at keys dot openpgp dot org</tt>\n', 400
 
     req = requests.get(
         'https://cloudflare-dns.com/dns-query',
