@@ -10,8 +10,6 @@ use url::form_urlencoded;
 use pathdiff::diff_paths;
 use std::time::SystemTime;
 
-//use sequoia_openpgp::armor::{Writer, Kind};
-
 use {Database, Query};
 use types::{Email, Fingerprint, KeyID};
 use sync::FlockMutexGuard;
@@ -22,6 +20,7 @@ use wkd;
 use tempfile::NamedTempFile;
 
 use openpgp::Cert;
+use openpgp_utils::POLICY;
 
 pub struct Filesystem {
     tmp_dir: PathBuf,
@@ -649,6 +648,7 @@ impl Database for Filesystem {
             |_, tpk, primary_fp| {
                 let fingerprints = tpk
                     .keys()
+                    .with_policy(&*POLICY, None)
                     .for_certification()
                     .for_signing()
                     .map(|amalgamation| amalgamation.key().fingerprint())

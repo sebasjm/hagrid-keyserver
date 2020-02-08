@@ -6,7 +6,12 @@ use openpgp::{
     armor::{Writer, Kind},
     packet::UserID,
     serialize::Serialize as OpenPgpSerialize,
+    policy::StandardPolicy,
 };
+
+lazy_static! {
+    pub static ref POLICY: StandardPolicy = StandardPolicy::new();
+}
 
 pub fn is_status_revoked(status: RevocationStatus) -> bool {
     match status {
@@ -21,6 +26,7 @@ pub fn tpk_to_string(tpk: &Cert) -> Result<Vec<u8>> {
     {
         let mut armor_writer = Writer::new(&mut buf, Kind::PublicKey, &[][..])?;
         tpk.serialize(&mut armor_writer)?;
+        armor_writer.finalize()?;
     }
     Ok(buf)
 }
@@ -31,13 +37,14 @@ pub fn tpk_clean(tpk: &Cert) -> Result<Cert> {
     let mut acc = Vec::new();
 
     // The primary key and related signatures.
-    acc.push(tpk.primary().clone().into());
-    for s in tpk.direct_signatures() { acc.push(s.clone().into()) }
-    for s in tpk.self_revocations()  { acc.push(s.clone().into()) }
-    for s in tpk.other_revocations() { acc.push(s.clone().into()) }
+    let pk_bundle = tpk.primary_key().bundle();
+    acc.push(pk_bundle.key().clone().mark_role_primary().into());
+    for s in pk_bundle.self_signatures() { acc.push(s.clone().into()) }
+    for s in pk_bundle.self_revocations()  { acc.push(s.clone().into()) }
+    for s in pk_bundle.other_revocations() { acc.push(s.clone().into()) }
 
     // The subkeys and related signatures.
-    for skb in tpk.subkeys() {
+    for skb in tpk.keys().subkeys() {
         acc.push(skb.key().clone().into());
         for s in skb.self_signatures()   { acc.push(s.clone().into()) }
         for s in skb.self_revocations()  { acc.push(s.clone().into()) }
@@ -45,7 +52,7 @@ pub fn tpk_clean(tpk: &Cert) -> Result<Cert> {
     }
 
     // Updates for UserIDs fulfilling `filter`.
-    for uidb in tpk.userids() {
+    for uidb in tpk.userids().bundles() {
         acc.push(uidb.userid().clone().into());
         for s in uidb.self_signatures()   { acc.push(s.clone().into()) }
         for s in uidb.self_revocations()  { acc.push(s.clone().into()) }
@@ -65,14 +72,15 @@ pub fn tpk_filter_userids<F>(tpk: &Cert, filter: F) -> Result<Cert>
     let mut acc = Vec::new();
 
     // The primary key and related signatures.
-    acc.push(tpk.primary().clone().into());
-    for s in tpk.direct_signatures() { acc.push(s.clone().into()) }
-    for s in tpk.certifications()    { acc.push(s.clone().into()) }
-    for s in tpk.self_revocations()  { acc.push(s.clone().into()) }
-    for s in tpk.other_revocations() { acc.push(s.clone().into()) }
+    let pk_bundle = tpk.primary_key().bundle();
+    acc.push(pk_bundle.key().clone().mark_role_primary().into());
+    for s in pk_bundle.self_signatures() { acc.push(s.clone().into()) }
+    for s in pk_bundle.certifications()    { acc.push(s.clone().into()) }
+    for s in pk_bundle.self_revocations()  { acc.push(s.clone().into()) }
+    for s in pk_bundle.other_revocations() { acc.push(s.clone().into()) }
 
     // The subkeys and related signatures.
-    for skb in tpk.subkeys() {
+    for skb in tpk.keys().subkeys() {
         acc.push(skb.key().clone().into());
         for s in skb.self_signatures()   { acc.push(s.clone().into()) }
         for s in skb.certifications()    { acc.push(s.clone().into()) }
@@ -81,7 +89,7 @@ pub fn tpk_filter_userids<F>(tpk: &Cert, filter: F) -> Result<Cert>
     }
 
     // Updates for UserIDs fulfilling `filter`.
-    for uidb in tpk.userids() {
+    for uidb in tpk.userids().bundles() {
         // Only include userids matching filter
         if filter(uidb.userid()) {
             acc.push(uidb.userid().clone().into());

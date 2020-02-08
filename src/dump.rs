@@ -11,7 +11,7 @@ use self::openpgp::packet::prelude::*;
 use self::openpgp::packet::header::CTB;
 use self::openpgp::packet::{Header, header::BodyLength, Signature};
 use self::openpgp::packet::signature::subpacket::{Subpacket, SubpacketValue};
-use self::openpgp::crypto::{SessionKey, s2k::S2K};
+use self::openpgp::crypto::{SessionKey, S2K};
 use self::openpgp::parse::{map::Map, Parse, PacketParserResult};
 
 #[derive(Debug)]
@@ -567,7 +567,7 @@ impl PacketDumper {
             },
 
             CompressedData(ref c) => {
-                writeln!(output, "{}  Algorithm: {}", i, c.algorithm())?;
+                writeln!(output, "{}  Algorithm: {}", i, c.algo())?;
             },
 
             PKESK(ref p) => {
@@ -641,6 +641,9 @@ impl PacketDumper {
                         writeln!(output, "{}  Digest: {}", i,
                                  hex::encode(s.aead_digest()))?;
                     },
+
+                    self::openpgp::packet::SKESK::__Nonexhaustive =>
+                        unreachable!(),
                 }
             },
 
@@ -662,6 +665,8 @@ impl PacketDumper {
                 writeln!(output, "{}  Chunk size: {}", i, a.chunk_size())?;
                 writeln!(output, "{}  IV: {}", i, hex::encode(a.iv()))?;
             },
+
+            __Nonexhaustive => unreachable!(),
         }
 
         if let Some(fields) = additional_fields {
@@ -723,10 +728,10 @@ impl PacketDumper {
         };
 
         match s.value() {
-            Unknown(ref b) => {
+            Unknown { body, .. } => {
                 writeln!(output, "{}    {:?}{}:", i, s.tag(),
                          if s.critical() { " (critical)" } else { "" })?;
-                hexdump_unknown(output, b)?;
+                hexdump_unknown(output, body)?;
             },
             SignatureCreationTime(t) =>
                 write!(output, "{}    Signature creation time: {}", i,
@@ -808,10 +813,11 @@ impl PacketDumper {
                        .collect::<Vec<String>>().join(", "))?,
             IntendedRecipient(ref fp) =>
                 write!(output, "{}    Intended Recipient: {}", i, fp)?,
+            __Nonexhaustive => unreachable!(),
         }
 
         match s.value() {
-            Unknown(_) => (),
+            Unknown { .. } => (),
             EmbeddedSignature(ref sig) => {
                 if s.critical() {
                     write!(output, " (critical)")?;

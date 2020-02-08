@@ -589,6 +589,16 @@ pub mod tests {
     const BASE_URI: &'static str = "http://local.connection";
     const BASE_URI_ONION: &'static str = "http://local.connection.onion";
 
+    pub fn build_cert(name: &str) -> Cert {
+        let (tpk, _) = CertBuilder::new()
+            .add_signing_subkey()
+            .add_transport_encryption_subkey()
+            .add_userid(name)
+            .generate()
+            .unwrap();
+        return tpk;
+    }
+
     /// Creates a configuration and empty state dir for testing purposes.
     ///
     /// Note that you need to keep the returned TempDir alive for the
@@ -747,9 +757,7 @@ pub mod tests {
         let filemail_into = tmpdir.path().join("filemail");
 
         // Generate a key and upload it.
-        let (tpk, _) = CertBuilder::autocrypt(
-            None, Some("foo@invalid.example.com"))
-            .generate().unwrap();
+        let tpk = build_cert("foo@invalid.example.com");
 
         let mut tpk_serialized = Vec::new();
         tpk.serialize(&mut tpk_serialized).unwrap();
@@ -803,9 +811,7 @@ pub mod tests {
         let filemail_into = tmpdir.path().join("filemail");
 
         // Generate a key and upload it.
-        let (tpk, _) = CertBuilder::autocrypt(
-            None, Some("foo@invalid.example.com"))
-            .generate().unwrap();
+        let tpk = build_cert("foo@invalid.example.com");
 
         let mut tpk_serialized = Vec::new();
         tpk.serialize(&mut tpk_serialized).unwrap();
@@ -825,12 +831,8 @@ pub mod tests {
         let client = Client::new(rocket).expect("valid rocket instance");
 
         // Generate two keys and upload them.
-        let tpk_0 = CertBuilder::autocrypt(
-            None, Some("foo@invalid.example.com"))
-            .generate().unwrap().0;
-        let tpk_1 = CertBuilder::autocrypt(
-            None, Some("bar@invalid.example.com"))
-            .generate().unwrap().0;
+        let tpk_0 = build_cert("foo@invalid.example.com");
+        let tpk_1 = build_cert("bar@invalid.example.com");
 
         let mut tpk_serialized = Vec::new();
         tpk_0.serialize(&mut tpk_serialized).unwrap();
@@ -861,12 +863,8 @@ pub mod tests {
         let client = Client::new(rocket).expect("valid rocket instance");
 
         // Generate two keys and upload them.
-        let tpk_1 = CertBuilder::autocrypt(
-            None, Some("foo@invalid.example.com"))
-            .generate().unwrap().0;
-        let tpk_2 = CertBuilder::autocrypt(
-            None, Some("bar@invalid.example.com"))
-            .generate().unwrap().0;
+        let tpk_1 = build_cert("foo@invalid.example.com");
+        let tpk_2 = build_cert("bar@invalid.example.com");
 
         let mut tpk_serialized_1 = Vec::new();
         tpk_1.serialize(&mut tpk_serialized_1).unwrap();
@@ -937,9 +935,7 @@ pub mod tests {
         let filemail_into = tmpdir.path().join("filemail");
 
         // Generate a key and upload it.
-        let (tpk, _) = CertBuilder::autocrypt(
-            None, Some("foo@invalid.example.com"))
-            .generate().unwrap();
+        let tpk = build_cert("foo@invalid.example.com");
 
         let mut tpk_serialized = Vec::new();
         tpk.serialize(&mut tpk_serialized).unwrap();
@@ -973,9 +969,7 @@ pub mod tests {
     fn upload_curl_shortcut() {
         let (_tmpdir, client) = client().unwrap();
 
-        let (tpk, _) = CertBuilder::autocrypt(
-            None, Some("foo@invalid.example.com"))
-            .generate().unwrap();
+        let tpk = build_cert("foo@invalid.example.com");
 
         let mut tpk_serialized = Vec::new();
         tpk.serialize(&mut tpk_serialized).unwrap();
@@ -1073,10 +1067,10 @@ pub mod tests {
 
         assert!(body.contains("info:1:1"));
         let primary_fpr = tpk.fingerprint().to_hex();
-        let algo: u8 = tpk.primary().pk_algo().into();
+        let algo: u8 = tpk.primary_key().pk_algo().into();
         assert!(body.contains(&format!("pub:{}:{}:", primary_fpr, algo)));
 
-        let creation_time = tpk.primary().creation_time().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs();
+        let creation_time = tpk.primary_key().creation_time().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs();
         assert!(body.contains(&format!(":{}:", creation_time)));
     }
 

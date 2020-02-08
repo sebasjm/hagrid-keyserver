@@ -216,6 +216,7 @@ pub fn pks_internal_index(
 fn key_to_hkp_index(db: rocket::State<KeyDatabase>, query: Query)
                         -> MyResponse {
     use sequoia_openpgp::RevocationStatus;
+    use sequoia_openpgp::policy::StandardPolicy;
 
     let tpk = match db.lookup(&query) {
         Ok(Some(tpk)) => tpk,
@@ -223,11 +224,13 @@ fn key_to_hkp_index(db: rocket::State<KeyDatabase>, query: Query)
         Err(err) => { return MyResponse::ise(err); }
     };
     let mut out = String::default();
-    let p = tpk.primary();
+    let p = tpk.primary_key();
+
+    let ref policy = StandardPolicy::new();
 
     let ctime = format!("{}", p.creation_time().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs());
     let is_rev =
-        if tpk.revoked(None) != RevocationStatus::NotAsFarAsWeKnow {
+        if tpk.revoked(policy, None) != RevocationStatus::NotAsFarAsWeKnow {
             "r"
         } else {
             ""
@@ -246,16 +249,16 @@ fn key_to_hkp_index(db: rocket::State<KeyDatabase>, query: Query)
             is_rev
     ));
 
-    for uid in tpk.userids() {
+    for uid in tpk.userids().bundles() {
         let uidstr = uid.userid().to_string();
         let u = Uri::percent_encode(&uidstr);
         let ctime = uid
-            .binding_signature(None)
+            .binding_signature(policy, None)
             .and_then(|x| x.signature_creation_time())
             .and_then(|time| time.duration_since(SystemTime::UNIX_EPOCH).ok())
             .map(|x| format!("{}", x.as_secs()))
             .unwrap_or_default();
-        let is_rev = if uid.revoked(None)
+        let is_rev = if uid.revoked(policy, None)
             != RevocationStatus::NotAsFarAsWeKnow
             {
                 "r"
@@ -277,7 +280,6 @@ mod tests {
     use rocket::http::Status;
     use rocket::http::ContentType;
 
-    use sequoia_openpgp::cert::CertBuilder;
     use sequoia_openpgp::serialize::Serialize;
 
     use crate::web::tests::*;
@@ -291,9 +293,7 @@ mod tests {
         // ::std::mem::forget(tmpdir);
 
         // Generate a key and upload it.
-        let (tpk, _) = CertBuilder::autocrypt(
-            None, Some("foo@invalid.example.com"))
-            .generate().unwrap();
+        let tpk = build_cert("foo@invalid.example.com");
 
         // Prepare to /pks/add
         let mut armored = Vec::new();
@@ -302,6 +302,7 @@ mod tests {
             let mut w = Writer::new(&mut armored, Kind::PublicKey, &[])
                 .unwrap();
             tpk.serialize(&mut w).unwrap();
+            w.finalize().unwrap();
         }
         let mut post_data = String::from("keytext=");
         for enc in url::form_urlencoded::byte_serialize(&armored) {
@@ -350,12 +351,8 @@ mod tests {
         let filemail_into = tmpdir.path().join("filemail");
 
         // Generate two keys and upload them.
-        let tpk_0 = CertBuilder::autocrypt(
-            None, Some("foo@invalid.example.com"))
-            .generate().unwrap().0;
-        let tpk_1 = CertBuilder::autocrypt(
-            None, Some("bar@invalid.example.com"))
-            .generate().unwrap().0;
+        let tpk_0 = build_cert("foo@invalid.example.com");
+        let tpk_1 = build_cert("bar@invalid.example.com");
 
         // Prepare to /pks/add
         let mut armored = Vec::new();
@@ -365,6 +362,7 @@ mod tests {
                 .unwrap();
             tpk_0.serialize(&mut w).unwrap();
             tpk_1.serialize(&mut w).unwrap();
+            w.finalize().unwrap();
         }
         let mut post_data = String::from("keytext=");
         for enc in url::form_urlencoded::byte_serialize(&armored) {

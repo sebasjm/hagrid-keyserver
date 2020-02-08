@@ -20,6 +20,7 @@ use std::str::FromStr;
 use Database;
 use Query;
 use openpgp::cert::{CertBuilder, UserIDRevocationBuilder};
+use openpgp::cert::components::Amalgamation;
 use openpgp::{
     packet::UserID, parse::Parse, Packet, PacketPile, RevocationStatus, Cert
 };
@@ -27,6 +28,8 @@ use openpgp::types::{ReasonForRevocation, SignatureType, KeyFlags};
 use types::{Email, Fingerprint, KeyID};
 use std::path::Path;
 use std::fs;
+
+use openpgp_utils::POLICY;
 
 use TpkStatus;
 use EmailAddressStatus;
@@ -76,7 +79,7 @@ pub fn test_uid_verification(db: &mut impl Database, log_path: &Path) {
 
         assert!(key.userids().next().is_none());
         assert!(key.user_attributes().next().is_none());
-        assert!(key.subkeys().next().is_none());
+        assert!(key.keys().subkeys().next().is_none());
     }
 
     // fail to fetch by uid
@@ -93,7 +96,7 @@ pub fn test_uid_verification(db: &mut impl Database, log_path: &Path) {
 
         assert!(key.userids().skip(1).next().is_none());
         assert!(key.user_attributes().next().is_none());
-        assert!(key.subkeys().next().is_none());
+        assert!(key.keys().subkeys().next().is_none());
 
         let uid = key.userids().next().unwrap().userid().clone();
 
@@ -122,7 +125,7 @@ pub fn test_uid_verification(db: &mut impl Database, log_path: &Path) {
 
         assert!(key.userids().skip(1).next().is_none());
         assert!(key.user_attributes().next().is_none());
-        assert!(key.subkeys().next().is_none());
+        assert!(key.keys().subkeys().next().is_none());
 
         let uid = key.userids().next().unwrap().userid().clone();
 
@@ -151,7 +154,7 @@ pub fn test_uid_verification(db: &mut impl Database, log_path: &Path) {
 
         assert_eq!(key.userids().len(), 2);
         assert!(key.user_attributes().next().is_none());
-        assert!(key.subkeys().next().is_none());
+        assert!(key.keys().subkeys().next().is_none());
 
         let myuid1 = key.userids().next().unwrap().userid().clone();
         let myuid2 = key.userids().skip(1).next().unwrap().userid().clone();
@@ -202,7 +205,7 @@ pub fn test_uid_verification(db: &mut impl Database, log_path: &Path) {
 
         assert_eq!(key.userids().len(), 2);
         assert!(key.user_attributes().next().is_none());
-        assert!(key.subkeys().next().is_none());
+        assert!(key.keys().subkeys().next().is_none());
 
         let myuid1 = key.userids().next().unwrap().userid().clone();
         let myuid2 = key.userids().skip(1).next().unwrap().userid().clone();
@@ -233,7 +236,7 @@ pub fn test_uid_verification(db: &mut impl Database, log_path: &Path) {
         let uid3 = UserID::from(str_uid3);
 
         let email3 = Email::from_str(str_uid3).unwrap();
-        let key = tpk.primary();
+        let key = tpk.primary_key();
         let mut signer = key.clone().into_keypair().unwrap();
         let bind = UserIDBinding::default(key, uid3.clone(), &mut signer).unwrap();
 
@@ -260,7 +263,7 @@ pub fn test_uid_verification(db: &mut impl Database, log_path: &Path) {
 
         assert_eq!(key.userids().len(), 2);
         assert!(key.user_attributes().next().is_none());
-        assert!(key.subkeys().next().is_none());
+        assert!(key.keys().subkeys().next().is_none());
 
         let myuid1 = key.userids().next().unwrap().userid().clone();
         let myuid2 = key.userids().skip(1).next().unwrap().userid().clone();
@@ -287,10 +290,12 @@ pub fn test_regenerate(db: &mut impl Database, log_path: &Path) {
     let fpr = Fingerprint::try_from(tpk.fingerprint()).unwrap();
     let email1 = Email::from_str(str_uid1).unwrap();
     let fpr_sign: Fingerprint = tpk.keys()
+        .with_policy(&*POLICY, None)
         .for_signing()
         .map(|amalgamation| amalgamation.key().fingerprint().try_into().unwrap())
         .next().unwrap();
     let fpr_encrypt: Fingerprint = tpk.keys()
+        .with_policy(&*POLICY, None)
         .key_flags(KeyFlags::empty().set_transport_encryption(true))
         .map(|amalgamation| amalgamation.key().fingerprint().try_into().unwrap())
         .next().unwrap();
@@ -412,7 +417,7 @@ pub fn test_uid_deletion(db: &mut impl Database, log_path: &Path) {
         .unwrap()
         .0;
     let fpr = Fingerprint::try_from(tpk.fingerprint()).unwrap();
-    let n_subkeys = tpk.subkeys().count();
+    let n_subkeys = tpk.keys().subkeys().count();
     let email1 = Email::from_str(str_uid1).unwrap();
     let email2 = Email::from_str(str_uid2).unwrap();
 
@@ -435,7 +440,7 @@ pub fn test_uid_deletion(db: &mut impl Database, log_path: &Path) {
     // otherwise intact.
     let tpk = db.lookup(&Query::ByEmail(email2.clone())).unwrap().unwrap();
     assert_eq!(tpk.userids().count(), 2);
-    assert_eq!(tpk.subkeys().count(), n_subkeys);
+    assert_eq!(tpk.keys().subkeys().count(), n_subkeys);
 
     let fpr = Fingerprint::try_from(tpk.fingerprint()).unwrap();
 
@@ -446,7 +451,7 @@ pub fn test_uid_deletion(db: &mut impl Database, log_path: &Path) {
     // otherwise intact.
     let tpk = db.lookup(&Query::ByEmail(email1.clone())).unwrap().unwrap();
     assert_eq!(tpk.userids().count(), 1);
-    assert_eq!(tpk.subkeys().count(), n_subkeys);
+    assert_eq!(tpk.keys().subkeys().count(), n_subkeys);
 
     // Delete first UID.
     db.set_email_unpublished(&fpr, &email1).unwrap();
@@ -457,7 +462,7 @@ pub fn test_uid_deletion(db: &mut impl Database, log_path: &Path) {
         db.lookup(&Query::ByFingerprint(tpk.fingerprint().try_into().unwrap()))
         .unwrap().unwrap();
     assert_eq!(tpk.userids().count(), 0);
-    assert_eq!(tpk.subkeys().count(), n_subkeys);
+    assert_eq!(tpk.keys().subkeys().count(), n_subkeys);
 }
 
 pub fn test_subkey_lookup(db: &mut impl Database, _log_path: &Path) {
@@ -474,10 +479,12 @@ pub fn test_subkey_lookup(db: &mut impl Database, _log_path: &Path) {
 
     let fpr_primray = Fingerprint::try_from(tpk.fingerprint()).unwrap();
     let fpr_sign: Fingerprint = tpk.keys()
+        .with_policy(&*POLICY, None)
         .for_signing()
         .map(|amalgamation| amalgamation.key().fingerprint().try_into().unwrap())
         .next().unwrap();
     let fpr_encrypt: Fingerprint = tpk.keys()
+        .with_policy(&*POLICY, None)
         .key_flags(KeyFlags::empty().set_transport_encryption(true))
         .map(|amalgamation| amalgamation.key().fingerprint().try_into().unwrap())
         .next().unwrap();
@@ -503,10 +510,12 @@ pub fn test_kid_lookup(db: &mut impl Database, _log_path: &Path) {
     let _ = db.merge(tpk.clone()).unwrap().into_tpk_status();
     let kid_primray = KeyID::try_from(tpk.fingerprint()).unwrap();
     let kid_sign: KeyID = tpk.keys()
+        .with_policy(&*POLICY, None)
         .for_signing()
         .map(|amalgamation| amalgamation.key().fingerprint().try_into().unwrap())
         .next().unwrap();
     let kid_encrypt: KeyID = tpk.keys()
+        .with_policy(&*POLICY, None)
         .key_flags(KeyFlags::empty().set_transport_encryption(true))
         .map(|amalgamation| amalgamation.key().fingerprint().try_into().unwrap())
         .next().unwrap();
@@ -540,7 +549,7 @@ pub fn test_upload_revoked_tpk(db: &mut impl Database, log_path: &Path) {
     check_mail_none(db, &email2);
 
     tpk = tpk.merge_packets(vec![revocation.into()]).unwrap();
-    match tpk.revoked(None) {
+    match tpk.revoked(&*POLICY, None) {
         RevocationStatus::Revoked(_) => (),
         _ => panic!("expected Cert to be revoked"),
     }
@@ -601,10 +610,12 @@ pub fn test_uid_revocation(db: &mut impl Database, log_path: &Path) {
 
     // revoke one uid
     let sig = {
-        let uid = tpk.userids().find(|b| *b.userid() == uid2).unwrap();
-        assert_eq!(RevocationStatus::NotAsFarAsWeKnow, uid.revoked(None));
+        let uid = tpk.userids()
+            .with_policy(&*POLICY, None)
+            .find(|b| *b.userid() == uid2).unwrap();
+        assert_eq!(RevocationStatus::NotAsFarAsWeKnow, uid.revoked());
 
-        let mut keypair = tpk.primary().clone()
+        let mut keypair = tpk.primary_key().bundle().key().clone()
             .mark_parts_secret().unwrap()
             .into_keypair().unwrap();
         UserIDRevocationBuilder::new()
@@ -670,7 +681,7 @@ pub fn test_uid_revocation_fake(db: &mut D) {
     let sig = {
         assert_eq!(RevocationStatus::NotAsFarAsWeKnow, uid.revoked(None));
 
-        let mut keypair = tpk.primary().clone().into_keypair().unwrap();
+        let mut keypair = tpk.primary_key().clone().into_keypair().unwrap();
         uid.userid().revoke(
             &mut keypair,
             &tpk_fake,
@@ -726,10 +737,11 @@ pub fn test_unlink_uid(db: &mut impl Database, log_path: &Path) {
     let fpr_evil = Fingerprint::try_from(tpk_evil.fingerprint()).unwrap();
     let sig = {
         let uid = tpk_evil.userids()
+            .with_policy(&*POLICY, None)
             .find(|b| b.userid().value() == uid.as_bytes()).unwrap();
-        assert_eq!(RevocationStatus::NotAsFarAsWeKnow, uid.revoked(None));
+        assert_eq!(RevocationStatus::NotAsFarAsWeKnow, uid.revoked());
 
-        let mut keypair = tpk_evil.primary().clone()
+        let mut keypair = tpk_evil.primary_key().bundle().key().clone()
             .mark_parts_secret().unwrap()
             .into_keypair().unwrap();
 
@@ -826,10 +838,12 @@ pub fn test_same_email_1(db: &mut impl Database, log_path: &Path) {
 
     // revoke tpk2's uid
     let sig = {
-        let uid = tpk2.userids().find(|b| *b.userid() == uid2).unwrap();
-        assert_eq!(RevocationStatus::NotAsFarAsWeKnow, uid.revoked(None));
+        let uid = tpk2.userids()
+            .with_policy(&*POLICY, None)
+            .find(|b| *b.userid() == uid2).unwrap();
+        assert_eq!(RevocationStatus::NotAsFarAsWeKnow, uid.revoked());
 
-        let mut keypair = tpk2.primary().clone()
+        let mut keypair = tpk2.primary_key().bundle().key().clone()
             .mark_parts_secret().unwrap()
             .into_keypair().unwrap();
 
@@ -895,10 +909,12 @@ pub fn test_same_email_2(db: &mut impl Database, log_path: &Path) {
 
     // revoke one uid
     let sig = {
-        let uid = tpk.userids().find(|b| *b.userid() == uid2).unwrap();
-        assert_eq!(RevocationStatus::NotAsFarAsWeKnow, uid.revoked(None));
+        let uid = tpk.userids()
+            .with_policy(&*POLICY, None)
+            .find(|b| *b.userid() == uid2).unwrap();
+        assert_eq!(RevocationStatus::NotAsFarAsWeKnow, uid.revoked());
 
-        let mut keypair = tpk.primary().clone()
+        let mut keypair = tpk.primary_key().bundle().key().clone()
             .mark_parts_secret().unwrap()
             .into_keypair().unwrap();
         UserIDRevocationBuilder::new()

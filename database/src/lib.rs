@@ -14,7 +14,10 @@ use failure::Error;
 use failure::Fallible as Result;
 extern crate fs2;
 extern crate idna;
-#[macro_use] extern crate log;
+#[macro_use]
+extern crate log;
+#[macro_use]
+extern crate lazy_static;
 extern crate pathdiff;
 extern crate rand;
 extern crate serde;
@@ -50,7 +53,7 @@ mod stateful_tokens;
 pub use stateful_tokens::StatefulTokens;
 
 mod openpgp_utils;
-use openpgp_utils::{tpk_filter_userids, tpk_to_string, tpk_clean, is_status_revoked};
+use openpgp_utils::{tpk_filter_userids, tpk_to_string, tpk_clean, is_status_revoked, POLICY};
 
 #[cfg(test)]
 mod test;
@@ -194,7 +197,7 @@ pub trait Database: Sync + Send {
     /// 5. Move full and published temporary Cert to their location
     /// 6. Update all symlinks
     fn merge(&self, new_tpk: Cert) -> Result<ImportResult> {
-        let fpr_primary = Fingerprint::try_from(new_tpk.primary().fingerprint())?;
+        let fpr_primary = Fingerprint::try_from(new_tpk.primary_key().fingerprint())?;
 
         let _lock = self.lock()?;
 
@@ -214,10 +217,10 @@ pub trait Database: Sync + Send {
             (new_tpk, false)
         };
 
-        let is_revoked = is_status_revoked(full_tpk_new.revoked(None));
+        let is_revoked = is_status_revoked(full_tpk_new.revoked(&*POLICY, None));
 
         let is_ok = is_revoked ||
-            full_tpk_new.subkeys().next().is_some() ||
+            full_tpk_new.keys().subkeys().next().is_some() ||
             full_tpk_new.userids().next().is_some();
         if !is_ok {
             self.write_to_quarantine(&fpr_primary, &tpk_to_string(&full_tpk_new)?)?;
@@ -242,11 +245,12 @@ pub trait Database: Sync + Send {
 
         let mut email_status: Vec<_> = full_tpk_new
             .userids()
+            .bundles()
             .filter(|binding| known_uids.contains(binding.userid()))
             .flat_map(|binding| {
                 let uid = binding.userid();
                 if let Ok(email) = Email::try_from(uid) {
-                    if is_status_revoked(binding.revoked(None)) {
+                    if is_status_revoked(binding.revoked(&*POLICY, None)) {
                         Some((email, EmailAddressStatus::Revoked))
                     } else if !is_revoked && published_uids.contains(uid) {
                         Some((email, EmailAddressStatus::Published))
@@ -272,7 +276,8 @@ pub trait Database: Sync + Send {
         } else {
             let revoked_uids: Vec<UserID> = full_tpk_new
                 .userids()
-                .filter(|binding| is_status_revoked(binding.revoked(None)))
+                .bundles()
+                .filter(|binding| is_status_revoked(binding.revoked(&*POLICY, None)))
                 .map(|binding| binding.userid().clone())
                 .collect();
 
@@ -292,7 +297,8 @@ pub trait Database: Sync + Send {
             .filter(|email| {
                 let has_unrevoked_userid = published_tpk_new
                     .userids()
-                    .filter(|binding| !is_status_revoked(binding.revoked(None)))
+                    .bundles()
+                    .filter(|binding| !is_status_revoked(binding.revoked(&*POLICY, None)))
                     .map(|binding| binding.userid())
                     .map(|uid| Email::try_from(uid).ok())
                     .flatten()
@@ -371,7 +377,7 @@ pub trait Database: Sync + Send {
             .ok_or_else(|| failure::err_msg("Key not in database!"))
             .and_then(|bytes| Cert::from_bytes(bytes.as_bytes()))?;
 
-        let is_revoked = is_status_revoked(tpk_full.revoked(None));
+        let is_revoked = is_status_revoked(tpk_full.revoked(&*POLICY, None));
 
         let unparsed_uids = tpk_full
             .userids()
@@ -389,12 +395,13 @@ pub trait Database: Sync + Send {
 
         let mut email_status: Vec<_> = tpk_full
             .userids()
+            .bundles()
             .flat_map(|binding| {
                 let uid = binding.userid();
                 if let Ok(email) = Email::try_from(uid) {
                     if !known_addresses.contains(&email) {
                         None
-                    } else if is_status_revoked(binding.revoked(None)) {
+                    } else if is_status_revoked(binding.revoked(&*POLICY, None)) {
                         Some((email, EmailAddressStatus::Revoked))
                     } else if published_uids.contains(uid) {
                         Some((email, EmailAddressStatus::Published))
@@ -461,8 +468,9 @@ pub trait Database: Sync + Send {
 
         if !published_tpk_new
             .userids()
-            .map(|binding| binding.userid())
-            .any(|uid| Email::try_from(uid).map(|email| email == *email_new).unwrap_or(false)) {
+            .map(|binding| Email::try_from(binding.userid()))
+            .flatten()
+            .any(|email| email == *email_new) {
                 return Err(failure::err_msg("Requested UserID not found!"));
         }
 
@@ -532,8 +540,7 @@ pub trait Database: Sync + Send {
 
         let published_emails_old: Vec<Email> = published_tpk_old
             .userids()
-            .map(|binding| binding.userid())
-            .map(|uid| Email::try_from(uid))
+            .map(|binding| Email::try_from(binding.userid()))
             .flatten()
             .collect();
 
@@ -543,8 +550,7 @@ pub trait Database: Sync + Send {
 
         let published_emails_new: Vec<Email> = published_tpk_new
             .userids()
-            .map(|binding| binding.userid())
-            .map(|uid| Email::try_from(uid))
+            .map(|binding| Email::try_from(binding.userid()))
             .flatten()
             .collect();
 
@@ -598,8 +604,7 @@ pub trait Database: Sync + Send {
 
         let published_emails: Vec<Email> = tpk
             .userids()
-            .map(|binding| binding.userid())
-            .map(|uid| Email::try_from(uid))
+            .map(|binding| Email::try_from(binding.userid()))
             .flatten()
             .collect();
 
@@ -673,10 +678,11 @@ pub fn tpk_get_linkable_fprs(tpk: &Cert) -> Vec<Fingerprint> {
     let ref fpr_primary = Fingerprint::try_from(tpk.fingerprint()).unwrap();
     tpk
             .keys()
+            .bundles()
             .into_iter()
-            .flat_map(|amalgamation| {
-                Fingerprint::try_from(amalgamation.key().fingerprint())
-                    .map(|fpr| (fpr, amalgamation.binding_signature(None).map(|sig| sig.key_flags())))
+            .flat_map(|bundle| {
+                Fingerprint::try_from(bundle.key().fingerprint())
+                    .map(|fpr| (fpr, bundle.binding_signature(&*POLICY, None).and_then(|sig| sig.key_flags())))
             })
             .filter(|(fpr, flags)| {
                 fpr == fpr_primary ||
