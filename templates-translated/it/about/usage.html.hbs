@@ -45,6 +45,17 @@ da Luglio 2019.</p>
 <p>Nota che non c'è alcun supporto predisposto per il caricamento e la verifica degli indirizzi email per ora.</p>
 
     <h2>
+        <div><img src="/assets/img/pignus.png"></div>
+        Pignus
+    </h2>
+    <p><a href="https://www.frobese.de/pignus/">Pignus</a> per iOS
+usa <span class="brand">keys.openpgp.org</span> di default
+da Novembre 2019.</p>
+<ul>
+<li>Le tue chiavi possono essere caricate in qualsiasi momento.</li>
+            <li>Le chiavi possono essere cercate per indirizzo email.</li>
+        </ul>
+<h2>
         <div><img src="/assets/img/gnupg.svg"></div>
         GnuPG
     </h2>
@@ -95,6 +106,27 @@ Se hai
 installato, puoi usare la seguente configurazione:</p>
 <blockquote>keyserver hkp://zkaan2xfbuxia2wpf7ofnkbz6r5zdbbvxbunvp5g2iebopbfc4iqmbad.onion</blockquote>
     
+
+    <h2 style="padding-left: 3%;" id="wkd-as-a-service"><a style="color: #050505;" href="#wkd-as-a-service">WKD as a Service</a></h2>
+
+    <p>Il Web Key Directory (WKD) è uno standard per la ricerca delle chiavi OpenPGP per indirizzo email, tramite il dominio della email.
+Viene usato per cercare le chiavi sconosciute in alcuni client email, come <a href="https://www.gpg4win.de/about.html" target="_blank">GpgOL</a>.</p>
+<p><span class="brand">keys.openpgp.org</span> può essere usato come un servizio WKD gestito per un qualsiasi dominio.
+Per farlo, al dominio serve semplicemente una voce <tt>CNAME</tt> che deleghi il suo sotto-dominio <tt>openpgpkey</tt> a <tt>wkd.keys.openpgp.org</tt>.Dovrebbe essere possibile farlo nell'interfaccia web dell'host del DNS.</p>
+<p>Una volta abilitato per il dominio, l'indirizzo verificato sarà automaticamente disponibile per la ricerca tramite WKD.</p>
+<p>La voce <tt>CNAME</tt> dovrebbe assomigliare a questa:</p>
+<blockquote>$ drill openpgpkey.example.org<br>
+...<br>
+openpgpkey.example.org.       300     IN      CNAME   wkd.keys.openpgp.org.</blockquote>
+
+    <p>C'è un pratico indicatore per verificare lo stato del servizio:</p>
+<blockquote>$ curl 'https://wkd.keys.openpgp.org/status/?domain=openpgpkey.example.org'<br>
+        CNAME lookup ok: openpgpkey.example.org resolves to wkd.keys.openpgp.org<br>
+</blockquote>
+
+    <p>Per provare la ricerca delle chiavi:</p>
+<blockquote>$ gpg --locate-keys --auto-key-locate clear,nodefault,wkd address@example.org<br>
+</blockquote>
 
     <h2 style="margin-left: 3%;">API</h2>
 

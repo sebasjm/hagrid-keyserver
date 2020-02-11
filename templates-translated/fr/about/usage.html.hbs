@@ -34,6 +34,15 @@
 <p>Notez qu’il n’y a actuellement pas de prise en charge intégrée du téléversement ni de la confirmation d’adresses courriel.</p>
 
     <h2>
+        <div><img src="/assets/img/pignus.png"></div>
+        Pignus
+    </h2>
+    <p><a href="https://www.frobese.de/pignus/">Pignus</a> pour iOS utilise <span class="brand">keys.openpgp.org</span> par défaut depuis novembre 2019.</p>
+<ul>
+<li>Vos clés peuvent être téléversées n’importe quand.</li>
+            <li>La recherche de clés peut se faire par adresse courriel.</li>
+        </ul>
+<h2>
         <div><img src="/assets/img/gnupg.svg"></div>
         GnuPG
     </h2>
@@ -71,6 +80,25 @@
     <p>Pour les utilisateurs qui souhaitent être particulièrement prudents, il est possible d’accéder anonymement à <span class="brand">keys.openpgp.org</span> en tant que <a href="https://support.torproject.org/fr/onionservices/#onionservices-2" target="_blank">service onion</a>. Si vous avez installé <a href="https://www.torproject.org/fr/" target="_blank">Tor</a>, utilisez la configuration suivante :</p>
 <blockquote>keyserver hkp://zkaan2xfbuxia2wpf7ofnkbz6r5zdbbvxbunvp5g2iebopbfc4iqmbad.onion</blockquote>
     
+
+    <h2 style="padding-left: 3%;" id="wkd-as-a-service"><a style="color: #050505;" href="#wkd-as-a-service">WKD-service</a></h2>
+
+    <p>L’annuaire de clés Web (WDK) est la norme pour découvrir des clés OpenPGP d’après une adresse courriel, par le domaine de son fournisseur de service de courriel. Il est utilisé pour découvrir des clés inconnues dans certains clients de courriel tels que <a href="https://www.gpg4win.de/about.html" target="_blank">GpgOL</a> (page en anglais).</p>
+<p>Pour n’importe quel domaine, <span class="brand">keys.openpgp.org</span> peut être utilisé comme service WKD géré. Pour ce faire, le domaine doit simplement être un enregistrement <tt>CNAME</tt> qui délègue son sous-domaine <tt>openpgpkey</tt> à <tt>wkd.keys.openpgp.org</tt>. Il devrait être possible de le faire dans l’interface Web de n’importe quel hébergeur de DNS.</p>
+<p>Une fois qu’il est appliqué pour un domaine, ses adresses confirmées seront automatiquement disponibles pour les recherches grâce au WKD.</p>
+<p>L’enregistrement <tt>CNAME</tt> devrait ressembler à ceci : </p>
+<blockquote>$ drill openpgpkey.example.org<br>
+        ...<br>
+        openpgpkey.example.org.       300     IN      CNAME   wkd.keys.openpgp.org.</blockquote>
+
+    <p>Il existe un vérificateur d’état simple pour tester le service :</p>
+<blockquote>$ curl 'https://wkd.keys.openpgp.org/status/?domain=openpgpkey.example.org'<br>
+        CNAME lookup ok: openpgpkey.example.org resolves to wkd.keys.openpgp.org<br>
+</blockquote>
+
+    <p>Pour tester la récupération des clés :</p>
+<blockquote>$ gpg  --locate-keys --auto-key-locate clear,nodefault,wkd adresse@exemple.org<br>
+</blockquote>
 
     <h2 style="margin-left: 3%;">API</h2>
 

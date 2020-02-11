@@ -14,7 +14,7 @@
 <ul>
 <li>Schlüssel werden automatisch aktualisiert</li>
             <li>Schlüssel können während der Generierung hochgeladen werden, inkl. Adress-Bestätigung.</li>
-            <li>Schlüssel können anhand von Adressen gefunden werden.</li>
+            <li>Schlüssel können anhand von Email-Adressen gesucht werden.</li>
         </ul>
 <h2>
         <div><img src="/assets/img/gpgtools.png"></div>
@@ -29,11 +29,22 @@
     <p><a href="https://www.openkeychain.org/">OpenKeychain</a> für Android verwendet <span class="brand">keys.openpgp.org</span> voreingestellt seit Juli 2019.</p>
 <ul>
 <li>Schlüssel werden automatisch aktualisiert</li>
-            <li>Schlüssel können anhand von Adressen gefunden werden.</li>
+            <li>Schlüssel können anhand von Email-Adressen gesucht werden.</li>
         </ul>
-<p>Bislang gibt es allerdings keine integrierte Unterstützung für das Bestätigen von E-Mail-Adressen.</p>
+<p>Bislang gibt es allerdings keine integrierte Unterstützung für das Bestätigen von Email-Adressen.</p>
 
     <h2>
+        <div><img src="/assets/img/pignus.png"></div>
+        Pignus
+    </h2>
+    <p><a href="https://www.frobese.de/pignus/">Pignus</a> für iOS
+        verwendet  <span class="brand">keys.openpgp.org</span> voreingestellt
+        seit November 2019.</p>
+<ul>
+<li>Schlüssel können zu jedem Zeitpunkt hochgeladen werden.</li>
+            <li>Schlüssel können anhand von Email-Adressen gesucht werden.</li>
+        </ul>
+<h2>
         <div><img src="/assets/img/gnupg.svg"></div>
         GnuPG
     </h2>
@@ -50,7 +61,7 @@
         </li>
     </ul>
 <h4 id="gnupg-upload"><a href="#gnupg-upload">Schlüssel hochladen</a></h4>
-    <p>Schlüssel können mit GnuPG's <tt>--send-keys</tt> Befehl hochgeladen werden, allerdings können auf diese Weise keine Identitäts-Informationen (<a href="/about">was ist das?</a>) bestätigt werden für die Suche per E-Mail-Adresse.</p>
+    <p>Schlüssel können mit GnuPG's <tt>--send-keys</tt> Befehl hochgeladen werden, allerdings können auf diese Weise keine Identitäts-Informationen (<a href="/about">was bedeutet das?</a>) bestätigt werden für die Suche per Email-Adresse.</p>
 
     <ul>
 <li>Du kannst versuchen deinen Schlüssel mittels dieses Shortcuts hochzuladen. Du solltest in der Ausgabe einen Direktlink zur Bestätigungs-Seite erhalten:<blockquote>gpg --export deine_adresse@example.net | curl -T - {{ base_uri }}</blockquote>
@@ -68,9 +79,31 @@
         </li>
     </ul>
 <h4 id="gnupg-tor"><a href="#gnupg-tor">Nutzung über Tor</a></h4>
-    <p>Nutzer mit erhöhten Anonymitäts-Anforderungen können <span class="brand">keys.openpgp.org</span> anonym als <a href="https://en.wikipedia.org/wiki/Tor_(anonymity_network)#Onion_services" target="_blank">Onion Service</a> verwenden. Wenn <a href="https://www.torproject.org/" target="_blank">Tor</a> installiert ist, verwende die folgende Konfiguration:</p>
+    <p>Nutzer mit erhöhten Anonymitäts-Anforderungen können <span class="brand">keys.openpgp.org</span> anonym als <a href="https://support.torproject.org/onionservices/#onionservices-2" target="_blank">Onion Service</a> verwenden. Wenn <a href="https://www.torproject.org/" target="_blank">Tor</a> installiert und gestartet ist, verwende dafür die folgende Konfiguration:</p>
 <blockquote>keyserver hkp://zkaan2xfbuxia2wpf7ofnkbz6r5zdbbvxbunvp5g2iebopbfc4iqmbad.onion</blockquote>
     
+
+    <h2 style="padding-left: 3%;" id="wkd-as-a-service"><a style="color: #050505;" href="#wkd-as-a-service">WKD as a Service</a></h2>
+
+    <p>Der "Web Key Directory"-Standard (WKD) ermöglicht das automatische Auffinden von OpenPGP-Schlüsseln für eine gegebene Email-Adresse, über die Domain des Email-Anbieters.
+Dieser Standard wird von einigen Email-Apps unterstützt, unter anderem <a href="https://www.gpg4win.de/about-de.html" target="_blank">GpgOL</a>.</p>
+<p><span class="brand">keys.openpgp.org</span> kann als automatischer Dienst für WKD von beliebigen Domains verwendet werden.
+Dafür muss lediglich ein <tt>CNAME</tt>-DNS-Eintrag für die <tt>openpgpkey</tt>-Subdomain eingerichtet werden, der auf <tt>wkd.keys.openpgp.org</tt> zeigt.
+Diese Einrichtung sollte im Web-Interface jedes DNS-Hosters möglich sein.</p>
+<p>Sofort nach Einrichtung sind alle bestätigten Email-Adressen der entsprechenden Domain per WKD auffindbar.</p>
+<p>Der <tt>CNAME</tt>-DNS-Eintrag sollte wie folgt aussehen:</p>
+<blockquote>$ drill openpgpkey.example.org<br>
+        ...<br>
+        openpgpkey.example.org.       300     IN      CNAME   wkd.keys.openpgp.org.</blockquote>
+
+    <p>Für die Fehlersuche steht ein einfacher Status-Prüfer zur Verfügung:</p>
+<blockquote>$ curl 'https://wkd.keys.openpgp.org/status/?domain=openpgpkey.example.org'<br>
+        CNAME lookup ok: openpgpkey.example.org resolves to wkd.keys.openpgp.org<br>
+</blockquote>
+
+    <p>Um das Auffinden per WKD zu testen:</p>
+<blockquote>$ gpg  --locate-keys --auto-key-locate clear,nodefault,wkd address@example.org<br>
+</blockquote>
 
     <h2 style="margin-left: 3%;">API</h2>
 
@@ -78,6 +111,6 @@
 
     <h2 style="margin-left: 3%;">Andere Client-Software</h2>
 
-    <p>Fehlt eine Anleitung für die Anwendung, die du verwendest? Schick eine E-Mail an <span class="email">support at keys punkt openpgp punkt org</span>, und wir werden versuchen eine entsprechende Anleitung hinzuzufügen.</p>
+    <p>Fehlt eine Anleitung für die Anwendung, die du verwendest? Schick eine Email an <span class="email">support at keys punkt openpgp punkt org</span>, und wir werden versuchen eine entsprechende Anleitung hinzuzufügen.</p>
 
 </div>
