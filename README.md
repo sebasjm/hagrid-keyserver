@@ -28,7 +28,15 @@ Quick Start
 
 Building Hagrid requires a working nightly Rust toolchain. The
 easiest way to get the toolchain is to download [rustup](https://rustup.rs).
-After rustup is installed, get the nightly compiler and tools, copy the
+
+Additionally, install external dependencies are required. Get them (on Debian or
+Ubuntu) with
+
+```bash
+sudo apt install gnutls-bin nettle-dev gcc llvm-dev libclang-dev build-essential pkg-config gettext
+```
+
+After rustup and all other dependencies are installed, get the nightly compiler and tools, copy the
 config file, and simply compile and run:
 
 ```bash
