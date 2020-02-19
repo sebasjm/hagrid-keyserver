@@ -1,5 +1,7 @@
 use std::fmt;
 
+use std::time::SystemTime;
+
 use rocket::Data;
 use rocket::Outcome;
 use rocket::http::{ContentType, Status};
@@ -223,7 +225,7 @@ fn key_to_hkp_index(db: rocket::State<KeyDatabase>, query: Query)
     let mut out = String::default();
     let p = tpk.primary();
 
-    let ctime = format!("{}", p.creation_time().elapsed().unwrap().as_secs());
+    let ctime = format!("{}", p.creation_time().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs());
     let is_rev =
         if tpk.revoked(None) != RevocationStatus::NotAsFarAsWeKnow {
             "r"
@@ -250,7 +252,7 @@ fn key_to_hkp_index(db: rocket::State<KeyDatabase>, query: Query)
         let ctime = uid
             .binding_signature(None)
             .and_then(|x| x.signature_creation_time())
-            .and_then(|time| time.elapsed().ok())
+            .and_then(|time| time.duration_since(SystemTime::UNIX_EPOCH).ok())
             .map(|x| format!("{}", x.as_secs()))
             .unwrap_or_default();
         let is_rev = if uid.revoked(None)

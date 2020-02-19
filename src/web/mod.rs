@@ -568,6 +568,8 @@ pub mod tests {
     use sequoia_openpgp::parse::Parse;
     use sequoia_openpgp::serialize::Serialize;
 
+    use std::time::SystemTime;
+
     use crate::database::*;
     use super::*;
 
@@ -1074,7 +1076,7 @@ pub mod tests {
         let algo: u8 = tpk.primary().pk_algo().into();
         assert!(body.contains(&format!("pub:{}:{}:", primary_fpr, algo)));
 
-        let creation_time = tpk.primary().creation_time().elapsed().unwrap().as_secs();
+        let creation_time = tpk.primary().creation_time().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs();
         assert!(body.contains(&format!(":{}:", creation_time)));
     }
 
