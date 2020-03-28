@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use failure;
 use handlebars::Handlebars;
 use lettre::{Transport as LettreTransport, SendmailTransport, file::FileTransport};
-use lettre::builder::{EmailBuilder, Mailbox};
+use lettre::builder::{EmailBuilder, PartBuilder, Mailbox, MimeMultipartType};
 use url;
 use serde::Serialize;
 use uuid::Uuid;
@@ -208,11 +208,27 @@ impl Service {
             println!("{}", &txt);
         }
 
+        // build this ourselves, as a temporary workaround for https://github.com/lettre/lettre/issues/400
+        let text = PartBuilder::new()
+            .body(txt)
+            .header(("Content-Type", "text/plain; charset=utf-8"))
+            .header(("Content-Transfer-Encoding", "8bit"))
+            .build();
+
+        let html = PartBuilder::new()
+            .body(html)
+            .header(("Content-Type", "text/html; charset=utf-8"))
+            .header(("Content-Transfer-Encoding", "8bit"))
+            .build();
+
         let email = EmailBuilder::new()
             .from(self.from.clone())
             .subject(rfc2047_encode(subject))
-            .alternative(html, txt)
-            .message_id(format!("<{}@{}>", Uuid::new_v4(), self.domain));
+            .message_id(format!("<{}@{}>", Uuid::new_v4(), self.domain))
+            .message_type(MimeMultipartType::Alternative)
+            .header(("Content-Transfer-Encoding", "8bit"))
+            .child(text)
+            .child(html);
 
         let email = to.iter().fold(email, |email, to| email.to(to.to_string()));
 
