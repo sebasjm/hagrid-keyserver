@@ -142,7 +142,7 @@ pub fn pks_add_form(
 ) -> MyResponse {
     match vks_web::process_post_form(&db, &tokens_stateless, &rate_limiter, &i18n, data) {
         Ok(UploadResponse::Ok { is_new_key, key_fpr, primary_uid, token, .. }) => {
-            let msg = if is_new_key && send_welcome_mail(&request_origin, &mail_service, &i18n, key_fpr, primary_uid, token) {
+            let msg = if is_new_key && send_welcome_mail(&request_origin, &mail_service, key_fpr, primary_uid, token) {
                 format!("Upload successful. This is a new key, a welcome email has been sent.")
             } else {
                 format!("Upload successful. Please note that identity information will only be published after verification. See {baseuri}/about/usage#gnupg-upload", baseuri = request_origin.get_base_uri())
@@ -160,14 +160,13 @@ pub fn pks_add_form(
 fn send_welcome_mail(
     request_origin: &RequestOrigin,
     mail_service: &mail::Service,
-    i18n: &I18n,
     fpr: String,
     primary_uid: Option<Email>,
     token: String,
 ) -> bool {
     if let Some(primary_uid) = primary_uid {
         mail_service.send_welcome(
-            i18n, request_origin.get_base_uri(), fpr, &primary_uid, &token).is_ok()
+            request_origin.get_base_uri(), fpr, &primary_uid, &token).is_ok()
     } else {
         false
     }

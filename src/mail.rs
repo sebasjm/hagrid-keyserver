@@ -150,14 +150,13 @@ impl Service {
 
     pub fn send_welcome(
         &self,
-        i18n: &I18n,
         base_uri: &str,
         tpk_name: String,
         userid: &Email,
         token: &str
     ) -> Result<()> {
         let ctx = context::Welcome {
-            lang: i18n.lang.to_string(),
+            lang: "en".to_owned(),
             primary_fp: tpk_name,
             uri: format!("{}/upload/{}", base_uri, token),
             base_uri: base_uri.to_owned(),
@@ -170,7 +169,7 @@ impl Service {
             &vec![userid],
             &format!("Your key upload on {domain}", domain = self.domain),
             "welcome",
-            i18n.lang,
+            "en",
             ctx,
         )
     }
