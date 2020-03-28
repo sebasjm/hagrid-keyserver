@@ -12,4 +12,5 @@ build:binary:
         - apt update -qy
         - apt install -qy libclang-dev build-essential pkg-config clang nettle-dev/testing gettext zsh
         - ./make-translated-templates
+        - RUST_BACKTRACE=full cargo build
         - RUST_BACKTRACE=full cargo test --all
