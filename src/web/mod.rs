@@ -519,16 +519,16 @@ fn configure_mail_service(config: &Config) -> Result<mail::Service> {
     // Mail service
     let email_template_dir: PathBuf = config.get_str("email_template_dir")?.into();
 
-    let base_uri = config.get_str("base-URI")?.to_string();
-    let from = config.get_str("from")?.to_string();
+    let base_uri = config.get_str("base-URI")?;
+    let from = config.get_str("from")?;
 
     let filemail_into = config.get_str("filemail_into")
         .ok().map(|p| PathBuf::from(p));
 
     if let Some(path) = filemail_into {
-        mail::Service::filemail(from, base_uri, email_template_dir, path)
+        mail::Service::filemail(from, base_uri, &email_template_dir, &path)
     } else {
-        mail::Service::sendmail(from, base_uri, email_template_dir)
+        mail::Service::sendmail(from, base_uri, &email_template_dir)
     }
 }
 
@@ -561,7 +561,6 @@ pub mod tests {
     use rocket::local::{Client, LocalResponse};
     use rocket::http::Status;
     use rocket::http::ContentType;
-    use lettre::Envelope;
 
     use sequoia_openpgp::Cert;
     use sequoia_openpgp::cert::CertBuilder;
@@ -570,20 +569,10 @@ pub mod tests {
 
     use std::time::SystemTime;
 
+    use mail::pop_mail;
+
     use crate::database::*;
     use super::*;
-
-    // for some reason, this is no longer public in lettre itself
-    // FIXME replace with builtin struct on lettre update
-    // see https://github.com/lettre/lettre/blob/master/lettre/src/file/mod.rs#L41
-    #[derive(Deserialize)]
-    struct SerializableEmail {
-        #[serde(alias = "envelope")]
-        _envelope: Envelope,
-        #[serde(alias = "message_id")]
-        _message_id: String,
-        message: Vec<u8>,
-    }
 
     /// Fake base URI to use in tests.
     const BASE_URI: &'static str = "http://local.connection";
@@ -647,7 +636,6 @@ pub mod tests {
         Ok((tmpdir, Client::new(rocket)?))
     }
 
-    #[cfg(test)]
     pub fn assert_consistency(rocket: &rocket::Rocket) {
         let db = rocket.state::<KeyDatabase>().unwrap();
         db.check_consistency().unwrap();
@@ -1239,22 +1227,6 @@ pub mod tests {
         let capture_content = capture_re.captures(mail_content.as_ref()).unwrap()
             .get(1).unwrap().as_bytes();
         String::from_utf8_lossy(capture_content).to_string()
-    }
-
-    /// Returns and removes the first mail it finds from the given
-    /// directory.
-    pub fn pop_mail(dir: &Path) -> Result<Option<String>> {
-        for entry in fs::read_dir(dir)? {
-            let entry = entry?;
-            if entry.file_type()?.is_file() {
-                let fh = fs::File::open(entry.path())?;
-                fs::remove_file(entry.path())?;
-                let mail: SerializableEmail = ::serde_json::from_reader(fh)?;
-                let body = String::from_utf8_lossy(&mail.message).to_string();
-                return Ok(Some(body));
-            }
-        }
-        Ok(None)
     }
 
     fn vks_publish_submit_multiple<'a>(client: &'a Client, data: &[u8]) {

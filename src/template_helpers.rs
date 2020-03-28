@@ -48,7 +48,7 @@ fn load_localized_template_names(template_path: &Path, localized_dir: &str) -> R
     .collect()
 }
 
-pub fn load_handlebars(template_dir: PathBuf) -> Result<Handlebars> {
+pub fn load_handlebars(template_dir: &Path) -> Result<Handlebars> {
     let mut handlebars = Handlebars::new();
 
     let i18ns = include_i18n!();
@@ -60,7 +60,7 @@ pub fn load_handlebars(template_dir: PathBuf) -> Result<Handlebars> {
     let glob_path = glob_path.to_str().expect("valid glob path string");
 
     for path in glob::glob(glob_path).unwrap().flatten() {
-        let template_name = remove_extension(path.strip_prefix(&template_dir)?);
+        let template_name = remove_extension(path.strip_prefix(template_dir)?);
         handlebars.register_template_file(&template_name.to_string_lossy(), &path)?;
     }
 

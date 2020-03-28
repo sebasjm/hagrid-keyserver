@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::{PathBuf, Path};
 
 use failure;
 use handlebars::Handlebars;
@@ -63,20 +63,20 @@ enum Transport {
 
 impl Service {
     /// Sends mail via sendmail.
-    pub fn sendmail(from: String, base_uri: String, template_dir: PathBuf) -> Result<Self> {
+    pub fn sendmail(from: &str, base_uri: &str, template_dir: &Path) -> Result<Self> {
         Self::new(from, base_uri, template_dir, Transport::Sendmail)
     }
 
     /// Sends mail by storing it in the given directory.
-    pub fn filemail(from: String, base_uri: String, template_dir: PathBuf, path: PathBuf) -> Result<Self> {
-        Self::new(from, base_uri, template_dir, Transport::Filemail(path))
+    pub fn filemail(from: &str, base_uri: &str, template_dir: &Path, path: &Path) -> Result<Self> {
+        Self::new(from, base_uri, template_dir, Transport::Filemail(path.to_owned()))
     }
 
-    fn new(from: String, base_uri: String, template_dir: PathBuf, transport: Transport)
+    fn new(from: &str, base_uri: &str, template_dir: &Path, transport: Transport)
            -> Result<Self> {
         let templates = template_helpers::load_handlebars(template_dir)?;
         let domain =
-            url::Url::parse(&base_uri)
+            url::Url::parse(base_uri)
             ?.host_str().ok_or_else(|| failure::err_msg("No host in base-URI"))
             ?.to_string();
         Ok(Self { from: from.into(), domain, templates, transport })
@@ -245,6 +245,193 @@ impl Service {
         }
 
         Ok(())
+    }
+}
+
+
+// for some reason, this is no longer public in lettre itself
+// FIXME replace with builtin struct on lettre update
+// see https://github.com/lettre/lettre/blob/master/lettre/src/file/mod.rs#L41
+#[cfg(test)]
+#[derive(Deserialize)]
+struct SerializableEmail {
+    #[serde(alias = "envelope")]
+    _envelope: lettre::Envelope,
+    #[serde(alias = "message_id")]
+    _message_id: String,
+    message: Vec<u8>,
+}
+
+/// Returns and removes the first mail it finds from the given
+/// directory.
+#[cfg(test)]
+pub fn pop_mail(dir: &Path) -> Result<Option<String>> {
+    use std::fs;
+    for entry in fs::read_dir(dir)? {
+        let entry = entry?;
+        if entry.file_type()?.is_file() {
+            let fh = fs::File::open(entry.path())?;
+            fs::remove_file(entry.path())?;
+            let mail: SerializableEmail = ::serde_json::from_reader(fh)?;
+            let body = String::from_utf8_lossy(&mail.message).to_string();
+            return Ok(Some(body));
+        }
+    }
+    Ok(None)
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use tempfile::{tempdir, TempDir};
+    use gettext_macros::{include_i18n};
+    use std::str::FromStr;
+
+    const BASEDIR: &str = "http://localhost/";
+    const FROM: &str = "test@localhost";
+    const TO: &str = "recipient@example.org";
+
+    fn configure_i18n(lang: &'static str) -> I18n {
+        let langs = include_i18n!();
+        let catalog = langs.clone().into_iter().find(|(l, _)| *l == lang).unwrap().1;
+        rocket_i18n::I18n { catalog, lang }
+    }
+
+    fn configure_mail() -> (Service, TempDir) {
+        let template_dir: PathBuf = ::std::env::current_dir().unwrap().join("dist/email-templates").to_str().unwrap().into();
+        let tempdir = tempdir().unwrap();
+        let service = Service::filemail(FROM, BASEDIR, &template_dir, tempdir.path()).unwrap();
+        (service, tempdir)
+    }
+
+    fn assert_header(headers: &[(&str, &str)], name: &str, pred: impl Fn(&str) -> bool) {
+        if let Some((_, v)) = headers.iter().find(|(h, _)| *h == name) {
+            assert!(pred(v));
+        } else {
+            panic!(format!("Missing header: {}", name));
+        }
+    }
+
+    fn check_headers(mail_content: &str) {
+        // this naively assumes that all lines colons are headers, and that all headers fit in
+        // a single line. that's not accurate, but ok for our testing.
+        let headers: Vec<_> = mail_content
+            .lines()
+            .filter(|line| line.contains(": "))
+            .map(|line| {
+                let mut it = line.splitn(2, ": ");
+                let h = it.next().unwrap();
+                let v = it.next().unwrap();
+                (h, v)
+            })
+            .collect();
+        assert!(headers.contains(&("Content-Transfer-Encoding", "8bit")));
+        assert!(headers.contains(&("Content-Type", "text/plain; charset=utf-8")));
+        assert!(headers.contains(&("Content-Type", "text/html; charset=utf-8")));
+        assert!(headers.contains(&("From", "<test@localhost>")));
+        assert!(headers.contains(&("To", "<recipient@example.org>")));
+        assert_header(&headers, "Content-Type", |v| v.starts_with("multipart/alternative"));
+        assert_header(&headers, "Date", |v| v.contains("+0000"));
+        assert_header(&headers, "Message-ID", |v| v.contains("@localhost>"));
+    }
+
+    #[test]
+    fn pop_mail_empty() {
+        let (_mail, tempdir) = configure_mail();
+        assert!(pop_mail(tempdir.path()).unwrap().is_none());
+    }
+
+    #[test]
+    fn check_verification_mail_en() {
+        let (mail, tempdir) = configure_mail();
+        let i18n = configure_i18n("en");
+        let recipient = Email::from_str(TO).unwrap();
+
+        mail.send_verification(&i18n, "test", "fingerprintoo".to_owned(), &recipient, "token").unwrap();
+        let mail_content = pop_mail(tempdir.path()).unwrap().unwrap();
+
+        check_headers(&mail_content);
+        assert!(mail_content.contains("lang=\"en\""));
+        assert!(mail_content.contains("Hi,"));
+        assert!(mail_content.contains("fingerprintoo"));
+        assert!(mail_content.contains("test/verify/token"));
+        assert!(mail_content.contains("test/about"));
+        assert!(mail_content.contains("To let others find this key"));
+    }
+
+    #[test]
+    fn check_verification_mail_ja() {
+        let (mail, tempdir) = configure_mail();
+        let i18n = configure_i18n("ja");
+        let recipient = Email::from_str(TO).unwrap();
+
+        mail.send_verification(&i18n, "test", "fingerprintoo".to_owned(), &recipient, "token").unwrap();
+        let mail_content = pop_mail(tempdir.path()).unwrap().unwrap();
+
+        check_headers(&mail_content);
+        assert!(mail_content.contains("lang=\"ja\""));
+        assert!(mail_content.contains("どうも、"));
+        assert!(mail_content.contains("fingerprintoo"));
+        assert!(mail_content.contains("test/verify/token"));
+        assert!(mail_content.contains("test/about"));
+        assert!(mail_content.contains("あなたのメールアド"));
+        assert!(mail_content.contains("Subject:   =?utf-8?q?localhost=E3=81=AE=E3=81=82=E3=81=AA=E3=81=9F=E3=81=AE?="));
+
+    }
+
+    #[test]
+    fn check_manage_mail_en() {
+        let (mail, tempdir) = configure_mail();
+        let i18n = configure_i18n("en");
+        let recipient = Email::from_str(TO).unwrap();
+
+        mail.send_manage_token(&i18n, "test", "fingerprintoo".to_owned(), &recipient, "token").unwrap();
+        let mail_content = pop_mail(tempdir.path()).unwrap().unwrap();
+
+        check_headers(&mail_content);
+        assert!(mail_content.contains("lang=\"en\""));
+        assert!(mail_content.contains("Hi,"));
+        assert!(mail_content.contains("fingerprintoo"));
+        assert!(mail_content.contains("testtoken"));
+        assert!(mail_content.contains("test/about"));
+        assert!(mail_content.contains("manage and delete"));
+    }
+
+    #[test]
+    fn check_manage_mail_ja() {
+        let (mail, tempdir) = configure_mail();
+        let i18n = configure_i18n("ja");
+        let recipient = Email::from_str(TO).unwrap();
+
+        mail.send_manage_token(&i18n, "test", "fingerprintoo".to_owned(), &recipient, "token").unwrap();
+        let mail_content = pop_mail(tempdir.path()).unwrap().unwrap();
+
+        check_headers(&mail_content);
+        print!("{}", mail_content);
+        assert!(mail_content.contains("lang=\"ja\""));
+        assert!(mail_content.contains("どうも、"));
+        assert!(mail_content.contains("fingerprintoo"));
+        assert!(mail_content.contains("testtoken"));
+        assert!(mail_content.contains("test/about"));
+        assert!(mail_content.contains("この鍵の掲示されたア"));
+        assert!(mail_content.contains("Subject: =?utf-8?q?localhost=E3=81=AE=E9=8D=B5=E3=82=92=E7=AE=A1=E7=90=86?="));
+    }
+
+    #[test]
+    fn check_welcome_mail() {
+        let (mail, tempdir) = configure_mail();
+        let recipient = Email::from_str(TO).unwrap();
+
+        mail.send_welcome("test", "fingerprintoo".to_owned(), &recipient, "token").unwrap();
+        let mail_content = pop_mail(tempdir.path()).unwrap().unwrap();
+
+        check_headers(&mail_content);
+        assert!(mail_content.contains("lang=\"en\""));
+        assert!(mail_content.contains("Hi,"));
+        assert!(mail_content.contains("fingerprintoo"));
+        assert!(mail_content.contains("test/upload/token"));
+        assert!(mail_content.contains("test/about"));
+        assert!(mail_content.contains("first time"));
     }
 }
 

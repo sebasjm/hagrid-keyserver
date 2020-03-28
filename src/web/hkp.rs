@@ -282,6 +282,7 @@ mod tests {
     use sequoia_openpgp::serialize::Serialize;
 
     use crate::web::tests::*;
+    use crate::mail::pop_mail;
 
     #[test]
     fn hkp() {
