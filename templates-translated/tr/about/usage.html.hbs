@@ -36,6 +36,17 @@ bize yazın ve biz de eklemeye çalışalım.</p>
 <p>Yükleme ve e-posta adresi doğrulama için henüz gömülü bir destek olmadığını unutmayın.</p>
 
     <h2>
+        <div><img src="/assets/img/pignus.png"></div>
+        Pignus
+    </h2>
+    <p>iOS için <a href="https://www.frobese.de/pignus/">Pignus</a> 
+        Kasım 2019'dan beri varsayılan olarak
+<span class="brand">keys.openpgp.org</span> kullanıyor.</p>
+<ul>
+<li>Anahtarlarınız istediğiniz zaman yüklenebilir.</li>
+            <li>E-posta adresiyle anahtarları bulabilirsiniz.</li>
+        </ul>
+<h2>
         <div><img src="/assets/img/gnupg.svg"></div>
         GnuPG
     </h2>
@@ -74,6 +85,28 @@ Bu sorunu çözmek için GnuPG ekibiyle birlikte çalışıyoruz.
     <p>Daha dikkatli olmak isteyen kullanıcılar, <span class="brand">keys.openpgp.org</span> sitesine <a href="https://support.torproject.org/onionservices/#onionservices-2" target="_blank">onion hizmeti</a> olarak da erişebilirler. <a href="https://www.torproject.org/" target="_blank">Tor</a> kurmuşsanız aşağıdaki yapılandırmayı kullanabilirsiniz:</p>
 <blockquote>keyserver hkp://zkaan2xfbuxia2wpf7ofnkbz6r5zdbbvxbunvp5g2iebopbfc4iqmbad.onion</blockquote>
     
+
+    <h2 style="padding-left: 3%;" id="wkd-as-a-service"><a style="color: #050505;" href="#wkd-as-a-service">Hizmet olarak WKD</a></h2>
+
+    <p>Web Anahtar Dizini (WKD) OpenPGP anahtarlarınız e-posta, alan adı veya e-posta sağlayıcısı ile bulunabilmesi için bir standarttır. 
+ <a href="https://www.gpg4win.de/about.html" target="_blank">GpgOL</a> gibi bazı e-posta istemcilerinde bilinmeyen anahtarları bulmak için kullanılır.</p>
+<p><span class="brand">keys.openpgp.org</span> herhangi bir alan adı için yönetilen WKD hizmeti olarak kullanılabilir.
+    Bunu yapmak için, alan adının sadece <tt>openpgpkey</tt> alt alan adını <tt>wkd.keys.openpgp.org</tt> adresine devreden bir <tt>CNAME</tt> sahasına ihtiyacı var.
+    Bu herhangi bir DNS barındırma hizmetinin web arayüzünde yapılabiliyor olmalıdır.</p>
+<p>Bir alan adı için etkinleştirildiğinde, doğrulanmış adresleri otomatik olarak WKD aracılığıyla arama için kullanıma hazır olacaktır.</p>
+<p><tt>CNAME</tt> kaydı şu şekilde olmalıdır:</p>
+<blockquote>$ drill openpgpkey.example.org<br>
+        ...<br>
+        openpgpkey.example.org.       300     IN      CNAME   wkd.keys.openpgp.org.</blockquote>
+
+    <p>Hizmeti denemek için kullanılabilecek basit bir durum denetleyici var:</p>
+<blockquote>$ curl 'https://wkd.keys.openpgp.org/status/?domain=openpgpkey.example.org'<br>
+        CNAME lookup ok: openpgpkey.example.org resolves to wkd.keys.openpgp.org<br>
+</blockquote>
+
+    <p>Anahtar bulup getirmeyi sınamak için:</p>
+<blockquote>$ gpg  --locate-keys --auto-key-locate clear,nodefault,wkd address@example.org<br>
+</blockquote>
 
     <h2 style="margin-left: 3%;">API</h2>
 

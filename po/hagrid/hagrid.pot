@@ -22,10 +22,6 @@ msgctxt "Subject for manage email"
 msgid "Manage your key on {domain}"
 msgstr ""
 
-#: src/web/manage.rs:103
-msgid "This link is invalid or expired"
-msgstr ""
-
 #: src/gettext_strings.rs:4
 msgid "Error"
 msgstr ""
@@ -284,6 +280,10 @@ msgstr ""
 
 #: src/gettext_strings.rs:88
 msgid "To let others find this key from your email address \"{{userid}}\",\nplease follow the link below:"
+msgstr ""
+
+#: src/web/manage.rs:103
+msgid "This link is invalid or expired"
 msgstr ""
 
 #: src/web/manage.rs:129

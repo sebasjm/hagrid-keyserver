@@ -54,6 +54,19 @@
     <p>Leider gibt es keinen guten Weg, eine derart widerrufene Identität zu verteilen, ohne die Identität an sich zu offenbaren. Da widerrufene Identitäten nicht weiter verteilt werden sollten, können wir entsprechende Identitäten (mit oder ohne Widerruf) nicht mehr verteilen.</p>
     <p>Es gibt Lösungsansätze für dieses Problem, die eine Verteilung von Widerrufen erlauben, ohne die Identitäten an sich zu offenbaren. Bislang gibt es dafür allerdings keine fertige Spezifikation, oder Unterstützung in verwendeter OpenPGP-Software. Sobald sich hier die Situation verändert, werden wir natürlich auch auf <span class="brand">keys.openpgp.org</span> entsprechende Unterstützung einbauen.</p>
 
+    <h3 id="search-substring">Warum ist es nicht möglich nach einem Teil einer E-Mail-Adresse zu suchen, beispielsweise nur der Domain?</h3>
+
+    <p>Manche Schlüsselserver unterstützen die Suche nach einem Teil einer E-Mail Adresse.
+Das ermöglicht nicht nur das Finden von Schlüsseln sondern auch von Adressen, wenn man Suchanfragen wie "Schlüssel für Adressen at gmail Punkt com" nutzt.
+Das erzeugt im Ergebnis eine öffentlich einsehbare Auflistung der Adressen aller Schlüssel auf solchen Schlüsselservern.</p>
+
+    <p>Die Suche mittels einer E-Mail Adresse auf <span class="brand">keys.openpgp.org</span> zeigt nur dann einen Schlüssel an, wenn sie exakt der E-Mail Adresse entspricht.
+Auf diese Weise kann ein normaler Nutzer die Schlüssel von Adressen finden, die er bereits kennt, nicht jedoch die von ihm nicht nicht bekannten Adressen.
+Das verhindert, dass ein böswilliger Nutzer oder Spammer einfach an eine Liste aller E-Mail Adressen auf diesem Server gelangt.</p>
+
+    <p>Wir haben diese Einschränkung zu einem Teil unserer <a href="/about/privacy">Datenschutzrichtlinie</a> gemacht,
+wir können die Einschränkung nicht ohne das Einverständnis des Nutzers abändern.</p>
+
     <h3 id="tor"><a href="#tor">Wird Tor untertützt?</a></h3>
 
     <p>Na klar!
@@ -75,7 +88,7 @@
 <h3 id="older-gnupg"><a href="#older-gnupg">Ich erhalte beim Aktualisieren von Schlüsseln mittels GnuPG eine Fehlermeldung. Handelt es sich um einen Bug?</a></h3>
 
     <p>Dies ist ein Problem in aktuellen Versionen von GnuPG. Bei dem Versuch einen Schlüssel von <span class="brand">keys.openpgp.org</span> zu aktualisieren, der keine <a href="/about">Identitäts-Informationen</a>beinhaltet, bricht GnuPG den Import mit der folgenden Fehlermeldung ab:</p>
-    <blockquote>$ gpg --receive-keys A2604867523C7ED8<br>
-      gpg: key A2604867523C7ED8: no user ID</blockquote>
+    <blockquote>$ gpg --receive-keys EB85BB5FA33A75E15E944E63F231550C4F47E38E1
+gpg: key EB85BB5FA33A75E15E944E63F231550C4F47E38E: no user ID</blockquote>
     <p>Wir arbeiten mit dem GnuPG-Team an einer Lösung.</p>
 </div>
