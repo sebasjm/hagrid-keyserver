@@ -1,0 +1,70 @@
+#!/usr/bin/env zsh
+
+set -e
+
+[[ $# == 4 || $# == 5 ]] || { echo "Usage: $0 keys-internal-dir keys-external-dir encryption-key backup-dir [date]" >&2; exit 1; }
+
+local keys_internal_dir=$1
+local keys_external_dir=$2
+local encryption_key=$3
+local backup_dir=$4
+# backupdate in format YYYY-MM-DD
+local backupdate=$5
+
+[[ -d $keys_internal_dir ]] || { echo "Missing dir $keys_internal_dir" >&2; exit 1; }
+[[ -d $keys_internal_dir/log ]] || { echo "Missing dir $keys_internal_dir/log" >&2; exit 1; }
+[[ -d $keys_external_dir ]] || { echo "Missing dir $keys_external_dir" >&2; exit 1; }
+[[ -d $keys_external_dir/pub ]] || { echo "Missing dir $keys_external_dir/pub" >&2; exit 1; }
+[[ -f $encryption_key ]] || { echo "Missing file $encryption_key" >&2; exit 1; }
+[[ -d $backup_dir ]] || { echo "Missing dir $backup_dir" >&2; exit 1; }
+
+if [[ -z $backupdate ]]; then
+	# for EPOCHSECONDS
+	zmodload zsh/datetime
+	backupdate="$(date --date=@$(( EPOCHSECONDS - 24*60*60 )) +'%Y-%m-%d')"
+fi
+
+local log_file="$keys_internal_dir/log/$backupdate"
+[[ -f $log_file ]] || { echo "Missing dir $log_file" >&2; exit 1; }
+
+local tempdir=$(mktemp -d)
+trap "rm -rf ${(q)tempdir}" EXIT
+
+local keylist_file=$tempdir/keylist
+
+integer count=0
+cat $log_file | cut -d' ' -f2 | sort -u | while read -r fp; do
+	key_file=${fp[1,2]}/${fp[3,4]}/${fp[5,$]}
+	[[ -f $keys_external_dir/pub/$key_file ]] || { echo "Missing file $key_file" >&2; exit 1; }
+	echo -E - $key_file
+	count+=1
+done > $keylist_file
+
+local backup_file_unencrypted=$tempdir/$backupdate.tar.gz
+local backup_file_encrypted=$tempdir/$backupdate.tar.gz.pgp
+
+tar \
+	--create \
+	--gzip \
+	--file $backup_file_unencrypted \
+	--verbatim-files-from \
+	--directory $keys_external_dir/pub \
+	--files-from $keylist_file
+
+GNUPGHOME=$tempdir gpg \
+	--quiet \
+	--no-keyring \
+	--compress-level 0 \
+	--recipient-file $encryption_key \
+	--output $backup_file_encrypted \
+	--encrypt $backup_file_unencrypted
+
+backup_file=$backup_dir/$backupdate.tar.gz.pgp
+mv $backup_file_encrypted $backup_file
+
+sha256sum="$(cd $backup_dir; sha256sum $backupdate.tar.gz.pgp)"
+echo $sha256sum >> $backup_dir/SHA256SUM
+
+echo "finished backup for $backupdate, total keys $count"
+ls -l $backup_file
+echo $sha256sum
