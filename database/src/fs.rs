@@ -889,6 +889,13 @@ mod tests {
     }
 
     #[test]
+    fn same_email_3() {
+        let (_tmp_dir, mut db, log_path) = open_db();
+        test::test_same_email_3(&mut db, &log_path);
+        db.check_consistency().expect("inconsistent database");
+    }
+
+    #[test]
     fn no_selfsig() {
         let (_tmp_dir, mut db, log_path) = open_db();
         test::test_no_selfsig(&mut db, &log_path);

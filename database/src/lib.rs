@@ -103,11 +103,11 @@ impl Query {
     }
 }
 
-#[derive(Debug,PartialEq,Eq)]
+#[derive(Debug,PartialEq,Eq,PartialOrd,Ord)]
 pub enum EmailAddressStatus {
-    Revoked,
-    NotPublished,
     Published,
+    NotPublished,
+    Revoked,
 }
 
 pub enum ImportResult {
@@ -262,7 +262,9 @@ pub trait Database: Sync + Send {
                 }
             })
             .collect();
-        email_status.sort_by(|(e1,_),(e2,_)| e1.cmp(e2));
+        email_status.sort();
+        // EmailAddressStatus is ordered published, unpublished, revoked. if there are multiple for
+        // the same address, we keep the first.
         email_status.dedup_by(|(e1, _), (e2, _)| e1 == e2);
 
         // Abort if no changes were made
@@ -413,7 +415,9 @@ pub trait Database: Sync + Send {
                 }
             })
             .collect();
-        email_status.sort_by(|(e1,_),(e2,_)| e1.cmp(e2));
+        email_status.sort();
+        // EmailAddressStatus is ordered published, unpublished, revoked. if there are multiple for
+        // the same address, we keep the first.
         email_status.dedup_by(|(e1, _), (e2, _)| e1 == e2);
 
         Ok(TpkStatus { is_revoked, email_status, unparsed_uids })
