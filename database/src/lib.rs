@@ -230,12 +230,7 @@ pub trait Database: Sync + Send {
         let published_tpk_old = self
             .by_fpr(&fpr_primary)
             .and_then(|bytes| Cert::from_bytes(bytes.as_bytes()).ok());
-        let published_uids: Vec<UserID> = published_tpk_old
-            .as_ref()
-            .map(|tpk| tpk.userids()
-                 .map(|binding| binding.userid().clone())
-                 .collect()
-                ).unwrap_or_default();
+        let published_emails = published_tpk_old.as_ref().map(|cert| tpk_get_emails(cert)).unwrap_or_default();
 
         let unparsed_uids = full_tpk_new
             .userids()
@@ -246,19 +241,22 @@ pub trait Database: Sync + Send {
         let mut email_status: Vec<_> = full_tpk_new
             .userids()
             .bundles()
-            .filter(|binding| known_uids.contains(binding.userid()))
-            .flat_map(|binding| {
-                let uid = binding.userid();
-                if let Ok(email) = Email::try_from(uid) {
-                    if is_status_revoked(binding.revoked(&*POLICY, None)) {
-                        Some((email, EmailAddressStatus::Revoked))
-                    } else if !is_revoked && published_uids.contains(uid) {
-                        Some((email, EmailAddressStatus::Published))
-                    } else {
-                        Some((email, EmailAddressStatus::NotPublished))
-                    }
+            .map(|binding| {
+                if let Ok(email) = Email::try_from(binding.userid()) {
+                    Some((binding, email))
                 } else {
                     None
+                }
+            })
+            .flatten()
+            .filter(|(binding, email)| known_uids.contains(binding.userid()) || published_emails.contains(email))
+            .flat_map(|(binding, email)| {
+                if is_status_revoked(binding.revoked(&*POLICY, None)) {
+                    Some((email, EmailAddressStatus::Revoked))
+                } else if !is_revoked && published_emails.contains(&email) {
+                    Some((email, EmailAddressStatus::Published))
+                } else {
+                    Some((email, EmailAddressStatus::NotPublished))
                 }
             })
             .collect();
@@ -274,7 +272,7 @@ pub trait Database: Sync + Send {
 
         // If the key is revoked, consider all uids revoked
         let newly_revoked_uids: Vec<&UserID> = if is_revoked {
-            published_uids.iter().collect()
+            full_tpk_new.userids().bundles().map(|binding| binding.userid()).collect()
         } else {
             let revoked_uids: Vec<UserID> = full_tpk_new
                 .userids()
@@ -283,19 +281,28 @@ pub trait Database: Sync + Send {
                 .map(|binding| binding.userid().clone())
                 .collect();
 
-            published_uids.iter()
-                .filter(|uid| revoked_uids.contains(uid))
-                .collect()
+            published_tpk_old
+                .as_ref()
+                .map(|tpk| tpk
+                    .userids()
+                    .bundles()
+                    .map(|binding| binding.userid())
+                    .filter(|uid| revoked_uids.contains(uid))
+                    .collect()
+                ).unwrap_or_default()
         };
 
         let published_tpk_new = tpk_filter_userids(
             &full_tpk_new, |uid| {
-                published_uids.contains(uid) && !newly_revoked_uids.contains(&uid)
+                if let Ok(email) = Email::try_from(uid) {
+                    published_emails.contains(&email) && !newly_revoked_uids.contains(&uid)
+                } else {
+                    false
+                }
             })?;
 
-        let newly_revoked_emails: Vec<Email> = published_uids.iter()
-            .map(|uid| Email::try_from(uid).ok())
-            .flatten()
+        let newly_revoked_emails: Vec<&Email> = published_emails
+            .iter()
             .filter(|email| {
                 let has_unrevoked_userid = published_tpk_new
                     .userids()
@@ -304,7 +311,7 @@ pub trait Database: Sync + Send {
                     .map(|binding| binding.userid())
                     .map(|uid| Email::try_from(uid).ok())
                     .flatten()
-                    .any(|unrevoked_email| unrevoked_email == *email);
+                    .any(|unrevoked_email| &unrevoked_email == *email);
                 !has_unrevoked_userid
             }).collect();
 
@@ -673,6 +680,14 @@ pub trait Database: Sync + Send {
     fn write_log_append(&self, filename: &str, fpr_primary: &Fingerprint) -> Result<()>;
 
     fn check_consistency(&self) -> Result<()>;
+}
+
+fn tpk_get_emails(cert: &Cert) -> Vec<Email> {
+    cert
+        .userids()
+        .map(|binding| Email::try_from(binding.userid()))
+        .flatten()
+        .collect()
 }
 
 pub fn tpk_get_linkable_fprs(tpk: &Cert) -> Vec<Fingerprint> {
