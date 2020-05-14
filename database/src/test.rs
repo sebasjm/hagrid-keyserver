@@ -1001,7 +1001,12 @@ pub fn test_same_email_3(db: &mut impl Database, log_path: &Path) {
         unparsed_uids: 0,
     }, tpk_status);
 
-    // fetch by both user ids.  We should still get both user ids.
+    assert_eq!(get_userids(&db.by_email(&email).unwrap()[..]),
+               vec![ uid2.clone() ]);
+
+    // make sure this survives depulication and publication of that same email address
+    db.set_email_unpublished(&fpr, &email);
+    db.set_email_published(&fpr, &email);
     assert_eq!(get_userids(&db.by_email(&email).unwrap()[..]),
                vec![ uid2.clone() ]);
 }
