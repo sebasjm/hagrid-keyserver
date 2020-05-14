@@ -1,13 +1,17 @@
 use failure::Fallible as Result;
+use std::convert::TryFrom;
 
 use openpgp::{
     Cert,
+    cert::components::ComponentBundle,
     RevocationStatus,
     armor::{Writer, Kind},
     packet::UserID,
     serialize::Serialize as OpenPgpSerialize,
     policy::StandardPolicy,
 };
+
+use Email;
 
 lazy_static! {
     pub static ref POLICY: StandardPolicy = StandardPolicy::new();
@@ -62,10 +66,23 @@ pub fn tpk_clean(tpk: &Cert) -> Result<Cert> {
     Cert::from_packet_pile(acc.into())
 }
 
+/// Filters the Cert, keeping only UserIDs that aren't revoked, and whose emails match the given list
+pub fn tpk_filter_alive_emails(tpk: &Cert, emails: &[Email]) -> Result<Cert> {
+    tpk_filter_userids(tpk, |uid| {
+        if is_status_revoked(uid.revoked(&*POLICY, None)) {
+            false
+        } else if let Ok(email) = Email::try_from(uid.userid()) {
+            emails.contains(&email)
+        } else {
+            false
+        }
+    })
+}
+
 /// Filters the Cert, keeping only those UserIDs that fulfill the
 /// predicate `filter`.
 pub fn tpk_filter_userids<F>(tpk: &Cert, filter: F) -> Result<Cert>
-    where F: Fn(&UserID) -> bool
+    where F: Fn(&ComponentBundle<UserID>) -> bool
 {
     // Iterate over the Cert, pushing packets we want to merge
     // into the accumulator.
@@ -91,7 +108,7 @@ pub fn tpk_filter_userids<F>(tpk: &Cert, filter: F) -> Result<Cert>
     // Updates for UserIDs fulfilling `filter`.
     for uidb in tpk.userids().bundles() {
         // Only include userids matching filter
-        if filter(uidb.userid()) {
+        if filter(uidb) {
             acc.push(uidb.userid().clone().into());
             for s in uidb.self_signatures()   { acc.push(s.clone().into()) }
             for s in uidb.certifications()    { acc.push(s.clone().into()) }

@@ -53,7 +53,7 @@ mod stateful_tokens;
 pub use stateful_tokens::StatefulTokens;
 
 mod openpgp_utils;
-use openpgp_utils::{tpk_filter_userids, tpk_to_string, tpk_clean, is_status_revoked, POLICY};
+use openpgp_utils::{tpk_filter_userids, tpk_filter_alive_emails, tpk_to_string, tpk_clean, is_status_revoked, POLICY};
 
 #[cfg(test)]
 mod test;
@@ -270,36 +270,11 @@ pub trait Database: Sync + Send {
             return Ok(ImportResult::Unchanged(TpkStatus { is_revoked, email_status, unparsed_uids }));
         }
 
-        // If the key is revoked, consider all uids revoked
-        let newly_revoked_uids: Vec<&UserID> = if is_revoked {
-            full_tpk_new.userids().bundles().map(|binding| binding.userid()).collect()
+        let published_tpk_new = if is_revoked {
+            tpk_filter_alive_emails(&full_tpk_new, &[])
         } else {
-            let revoked_uids: Vec<UserID> = full_tpk_new
-                .userids()
-                .bundles()
-                .filter(|binding| is_status_revoked(binding.revoked(&*POLICY, None)))
-                .map(|binding| binding.userid().clone())
-                .collect();
-
-            published_tpk_old
-                .as_ref()
-                .map(|tpk| tpk
-                    .userids()
-                    .bundles()
-                    .map(|binding| binding.userid())
-                    .filter(|uid| revoked_uids.contains(uid))
-                    .collect()
-                ).unwrap_or_default()
-        };
-
-        let published_tpk_new = tpk_filter_userids(
-            &full_tpk_new, |uid| {
-                if let Ok(email) = Email::try_from(uid) {
-                    published_emails.contains(&email) && !newly_revoked_uids.contains(&uid)
-                } else {
-                    false
-                }
-            })?;
+            tpk_filter_alive_emails(&full_tpk_new, &published_emails)
+        }?;
 
         let newly_revoked_emails: Vec<&Email> = published_emails
             .iter()
@@ -470,12 +445,10 @@ pub trait Database: Sync + Send {
             return Ok(());
         }
 
-        let published_tpk_new = {
-            tpk_filter_userids(&full_tpk, |uid| {
-                Email::try_from(uid).map(|email| email == *email_new)
-                    .unwrap_or(false) || published_uids_old.contains(uid)
-            })?
-        };
+        let mut published_emails = published_emails_old.clone();
+        published_emails.push(email_new.clone());
+
+        let published_tpk_new = tpk_filter_alive_emails(&full_tpk, &published_emails)?;
 
         if !published_tpk_new
             .userids()
@@ -556,7 +529,7 @@ pub trait Database: Sync + Send {
             .collect();
 
         let published_tpk_new = {
-            tpk_filter_userids(&published_tpk_old, |uid| email_remove(uid))?
+            tpk_filter_userids(&published_tpk_old, |uid| email_remove(uid.userid()))?
         };
 
         let published_emails_new: Vec<Email> = published_tpk_new
