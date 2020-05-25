@@ -234,6 +234,39 @@ pub fn search(
     }
 }
 
+#[derive(Debug)]
+pub struct ParamEmail(crate::database::types::Email);
+
+use rocket::request::FromParam;
+use rocket::http::RawStr;
+
+impl<'r> FromParam<'r> for ParamEmail {
+    type Error = &'r RawStr;
+
+    fn from_param(param: &'r RawStr) -> std::result::Result<Self, Self::Error> {
+        use std::str::FromStr;
+        if let Ok(email) = crate::database::types::Email::from_str(param) {
+            Ok(ParamEmail(email))
+        } else {
+            Err(param)
+        }
+    }
+}
+
+#[get("/<q>")]
+pub fn render_profile(
+    db: rocket::State<KeyDatabase>,
+    q: ParamEmail,
+) -> MyResponse {
+    if let Some(_) = db.by_email(&q.0) {
+        MyResponse::ok_bare("found-profile")
+    } else {
+        MyResponse::not_found_plain(
+            format!("No key found for given e-mail address: {:?}", q)
+        )
+    }
+}
+
 fn key_to_response(
     db: rocket::State<KeyDatabase>,
     query_string: String,
