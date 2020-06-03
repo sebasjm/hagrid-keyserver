@@ -50,6 +50,7 @@ default-features = false
 # smtp-transport doesn't build (openssl problem)
 features = ["builder", "file-transport", "sendmail-transport"]
 git = "https://github.com/lettre/lettre"
+rev = "245c600c82ee18b766e8729f005ff453a55dce34"
 
 [dependencies.rocket_contrib]
 version = "0"
