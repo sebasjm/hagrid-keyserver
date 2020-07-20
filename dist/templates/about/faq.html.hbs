@@ -228,17 +228,45 @@
     </a></h3>
 
     <p>
-      This is a problem with current versions of GnuPG.  If you attempt to
-      update a key from <span class="brand">keys.openpgp.org</span> that
-      contains no <a href="/about">identity information</a>, GnuPG will refuse
-      to process the key:
+      GnuPG considers keys that contain no identity information to be invalid, and refuses to import them.
+      However, a key that has no <a href="/about">verified email addresses</a> may still contain useful information.
+      In particular, it's still possible to check whether the key is revoked or not.
+    </p>
+    <p>
+      In June 2019, the <span class="brand">keys.openpgp.org</span> team created a patch that allows GnuPG to process updates from keys without identity information.
+      This patch was quickly included in several downstream distributions of GnuPG, including Debian, Fedora, NixOS, and GPG Suite for macOS.
+    </p>
+    <p>
+      In March 2020 the GnuPG team rejected the patch, and updated the issue status to "Wontfix".
+      This means that <strong>unpatched versions of GnuPG cannot receive updates from <span class="brand">keys.openpgp.org</span> for keys that don't have any verified email address</strong>.
+      You can read about this decision in issue <a href="https://dev.gnupg.org/T4393#133689">T4393</a> on the GnuPG bug tracker.
+    </p>
+    <p>
+      You can check if your version of GnuPG is affected with the following instructions.
     </p>
     <blockquote>
-      $ gpg --receive-keys EB85BB5FA33A75E15E944E63F231550C4F47E38E<br />
-      gpg: key EB85BB5FA33A75E15E944E63F231550C4F47E38E: no user ID
+      <span style="font-size: larger;">Import test key:</span><br>
+      <br>
+      $ curl https://keys.openpgp.org/assets/uid-test.pub.asc | gpg --import<br>
+      gpg: key F231550C4F47E38E: "Alice Lovelace &lt;alice@openpgp.example&gt;" imported<br>
+      gpg: Total number processed: 1<br>
+      gpg:               imported: 1<br>
+      <br>
     </blockquote>
-    <p>
-      We are working with the GnuPG team to resolve this problem.
-    </p>
+    <blockquote>
+      <span style="font-size: larger;">With patch, key will be updated if locally known:</span><br>
+      <br>
+      $ gpg --recv-keys EB85BB5FA33A75E15E944E63F231550C4F47E38E<br>
+      gpg: key F231550C4F47E38E: "Alice Lovelace &lt;alice@openpgp.example&gt;" not changed<br>
+      gpg: Total number processed: 1<br>
+      gpg:              unchanged: 1<br>
+      <br>
+    </blockquote>
+    <blockquote>
+      <span style="font-size: larger;">Without patch, a key without identity is always rejected:</span><br>
+      <br>
+      $ gpg --recv-keys EB85BB5FA33A75E15E944E63F231550C4F47E38E<br>
+      gpg: key EB85BB5FA33A75E15E944E63F231550C4F47E38E: no user ID<br>
+    </blockquote>
 </div>
 {{/layout}}
