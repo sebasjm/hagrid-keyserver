@@ -1,6 +1,7 @@
 use std::fmt;
 
 use std::time::SystemTime;
+use std::collections::HashMap;
 
 use rocket::Data;
 use rocket::Outcome;
@@ -20,6 +21,7 @@ use crate::web;
 use crate::mail;
 use crate::web::{HagridState, RequestOrigin, MyResponse, vks_web};
 use crate::web::vks::response::UploadResponse;
+use crate::web::vks::response::EmailStatus;
 
 #[derive(Debug)]
 pub enum Hkp {
@@ -48,7 +50,6 @@ impl<'a, 'r> FromRequest<'a, 'r> for Hkp {
     fn from_request(request: &'a Request<'r>) -> request::Outcome<Hkp, ()> {
         use std::str::FromStr;
         use rocket::request::FormItems;
-        use std::collections::HashMap;
 
         let query = request.uri().query().unwrap_or("");
         let fields = FormItems::from(query)
@@ -141,12 +142,8 @@ pub fn pks_add_form(
     data: Data,
 ) -> MyResponse {
     match vks_web::process_post_form(&db, &tokens_stateless, &rate_limiter, &i18n, data) {
-        Ok(UploadResponse::Ok { is_new_key, key_fpr, primary_uid, token, .. }) => {
-            let msg = if is_new_key && send_welcome_mail(&request_origin, &mail_service, key_fpr, primary_uid, token) {
-                format!("Upload successful. This is a new key, a welcome email has been sent.")
-            } else {
-                format!("Upload successful. Please note that identity information will only be published after verification. See {baseuri}/about/usage#gnupg-upload", baseuri = request_origin.get_base_uri())
-            };
+        Ok(UploadResponse::Ok { is_new_key, key_fpr, primary_uid, token, status, .. }) => {
+            let msg = pks_add_ok(&request_origin, &mail_service, &rate_limiter, token, status, is_new_key, key_fpr, primary_uid);
             MyResponse::plain(msg)
         }
         Ok(_) => {
@@ -157,19 +154,61 @@ pub fn pks_add_form(
     }
 }
 
+fn pks_add_ok(
+    request_origin: &RequestOrigin,
+    mail_service: &mail::Service,
+    rate_limiter: &RateLimiter,
+    token: String,
+    status: HashMap<String, EmailStatus>,
+    is_new_key: bool,
+    key_fpr: String,
+    primary_uid: Option<Email>,
+) -> String {
+    if primary_uid.is_none() {
+        return format!("Upload successful. Please note that identity information will only be published after verification. See {baseuri}/about/usage#gnupg-upload", baseuri = request_origin.get_base_uri())
+    }
+    let primary_uid = primary_uid.unwrap();
+
+    if is_new_key {
+        if send_welcome_mail(&request_origin, &mail_service, key_fpr, primary_uid, token) {
+            return format!("Upload successful. This is a new key, a welcome email has been sent.");
+        }
+        return format!("Upload successful. Please note that identity information will only be published after verification. See {baseuri}/about/usage#gnupg-upload", baseuri = request_origin.get_base_uri())
+    }
+
+    let has_unverified = status.iter().any(|(_, v)| *v == EmailStatus::Unpublished);
+    if !has_unverified {
+        return format!("Upload successful.");
+    }
+
+    // We send this out on the *second* time the key is uploaded (within one ratelimit period).
+    let uploaded_repeatedly = !rate_limiter.action_perform(format!("hkp-upload-{}", &key_fpr));
+    if uploaded_repeatedly && rate_limiter.action_perform(format!("hkp-upload-sent-{}", &primary_uid)) {
+        if send_upload_mail(&request_origin, &mail_service, key_fpr, primary_uid, token) {
+            return format!("Upload successful. An upload information email has been sent.");
+        }
+    }
+    return format!("Upload successful. Please note that identity information will only be published after verification. See {baseuri}/about/usage#gnupg-upload", baseuri = request_origin.get_base_uri())
+}
+
+fn send_upload_mail(
+    request_origin: &RequestOrigin,
+    mail_service: &mail::Service,
+    fpr: String,
+    primary_uid: Email,
+    token: String,
+) -> bool {
+    mail_service.send_upload(request_origin.get_base_uri(), fpr, &primary_uid, &token).is_ok()
+}
+
 fn send_welcome_mail(
     request_origin: &RequestOrigin,
     mail_service: &mail::Service,
     fpr: String,
-    primary_uid: Option<Email>,
+    primary_uid: Email,
     token: String,
 ) -> bool {
-    if let Some(primary_uid) = primary_uid {
-        mail_service.send_welcome(
-            request_origin.get_base_uri(), fpr, &primary_uid, &token).is_ok()
-    } else {
-        false
-    }
+    mail_service.send_welcome(request_origin.get_base_uri(), fpr, &primary_uid, &token).is_ok()
 }
 
 #[get("/pks/lookup")]
