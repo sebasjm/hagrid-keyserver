@@ -170,7 +170,8 @@ fn pks_add_ok(
     let primary_uid = primary_uid.unwrap();
 
     if is_new_key {
-        if send_welcome_mail(&request_origin, &mail_service, key_fpr, primary_uid, token) {
+        if send_welcome_mail(&request_origin, &mail_service, key_fpr, &primary_uid, token) {
+            rate_limiter.action_perform(format!("hkp-sent-{}", &primary_uid));
             return format!("Upload successful. This is a new key, a welcome email has been sent.");
         }
         return format!("Upload successful. Please note that identity information will only be published after verification. See {baseuri}/about/usage#gnupg-upload", baseuri = request_origin.get_base_uri())
@@ -183,8 +184,8 @@ fn pks_add_ok(
 
     // We send this out on the *second* time the key is uploaded (within one ratelimit period).
     let uploaded_repeatedly = !rate_limiter.action_perform(format!("hkp-upload-{}", &key_fpr));
-    if uploaded_repeatedly && rate_limiter.action_perform(format!("hkp-upload-sent-{}", &primary_uid)) {
-        if send_upload_mail(&request_origin, &mail_service, key_fpr, primary_uid, token) {
+    if uploaded_repeatedly && rate_limiter.action_perform(format!("hkp-sent-{}", &primary_uid)) {
+        if send_upload_mail(&request_origin, &mail_service, key_fpr, &primary_uid, token) {
             return format!("Upload successful. An upload information email has been sent.");
         }
     }
@@ -195,20 +196,20 @@ fn send_upload_mail(
     request_origin: &RequestOrigin,
     mail_service: &mail::Service,
     fpr: String,
-    primary_uid: Email,
+    primary_uid: &Email,
     token: String,
 ) -> bool {
-    mail_service.send_upload(request_origin.get_base_uri(), fpr, &primary_uid, &token).is_ok()
+    mail_service.send_upload(request_origin.get_base_uri(), fpr, primary_uid, &token).is_ok()
 }
 
 fn send_welcome_mail(
     request_origin: &RequestOrigin,
     mail_service: &mail::Service,
     fpr: String,
-    primary_uid: Email,
+    primary_uid: &Email,
     token: String,
 ) -> bool {
-    mail_service.send_welcome(request_origin.get_base_uri(), fpr, &primary_uid, &token).is_ok()
+    mail_service.send_welcome(request_origin.get_base_uri(), fpr, primary_uid, &token).is_ok()
 }
 
 #[get("/pks/lookup")]
@@ -361,6 +362,19 @@ mod tests {
         let welcome_mail = pop_mail(filemail_into.as_path()).unwrap();
         assert!(welcome_mail.is_some());
 
+        // Add!
+        let mut response = client.post("/pks/add")
+            .body(post_data.as_bytes())
+            .header(ContentType::Form)
+            .dispatch();
+        assert_eq!(response.status(), Status::Ok);
+        let body = response.body_string().unwrap();
+        eprintln!("response: {}", body);
+
+        // No second email right after the welcome one!
+        let upload_mail = pop_mail(filemail_into.as_path()).unwrap();
+        assert!(upload_mail.is_none());
+
         // We should not be able to look it up by email address.
         check_null_responses_by_email(&client, "foo@invalid.example.com");
 
@@ -394,23 +408,33 @@ mod tests {
         let tpk_1 = build_cert("bar@invalid.example.com");
 
         // Prepare to /pks/add
-        let mut armored = Vec::new();
+        let mut armored_first = Vec::new();
+        let mut armored_both = Vec::new();
         {
             use sequoia_openpgp::armor::{Writer, Kind};
-            let mut w = Writer::new(&mut armored, Kind::PublicKey, &[])
-                .unwrap();
+            let mut w = Writer::new(&mut armored_both, Kind::PublicKey, &[]).unwrap();
             tpk_0.serialize(&mut w).unwrap();
             tpk_1.serialize(&mut w).unwrap();
             w.finalize().unwrap();
         }
-        let mut post_data = String::from("keytext=");
-        for enc in url::form_urlencoded::byte_serialize(&armored) {
-            post_data.push_str(enc);
+        {
+            use sequoia_openpgp::armor::{Writer, Kind};
+            let mut w = Writer::new(&mut armored_first, Kind::PublicKey, &[]).unwrap();
+            tpk_0.serialize(&mut w).unwrap();
+            w.finalize().unwrap();
+        }
+        let mut post_data_first = String::from("keytext=");
+        for enc in url::form_urlencoded::byte_serialize(&armored_first) {
+            post_data_first.push_str(enc);
+        }
+        let mut post_data_both = String::from("keytext=");
+        for enc in url::form_urlencoded::byte_serialize(&armored_both) {
+            post_data_both.push_str(enc);
         }
 
         // Add!
         let response = client.post("/pks/add")
-            .body(post_data.as_bytes())
+            .body(post_data_both.as_bytes())
             .header(ContentType::Form)
             .dispatch();
         assert_eq!(response.status(), Status::Ok);
@@ -418,6 +442,26 @@ mod tests {
         // Check that there is no welcome mail (since we uploaded two)
         let welcome_mail = pop_mail(filemail_into.as_path()).unwrap();
         assert!(welcome_mail.is_none());
+
+        // Add the first again
+        let response = client.post("/pks/add")
+            .body(post_data_first.as_bytes())
+            .header(ContentType::Form)
+            .dispatch();
+        assert_eq!(response.status(), Status::Ok);
+
+        let upload_mail_1 = pop_mail(filemail_into.as_path()).unwrap();
+        assert!(upload_mail_1.is_none());
+
+        // Add the first again a second time - we should get an upload mail
+        let response = client.post("/pks/add")
+            .body(post_data_first.as_bytes())
+            .header(ContentType::Form)
+            .dispatch();
+        assert_eq!(response.status(), Status::Ok);
+
+        let upload_mail_2 = pop_mail(filemail_into.as_path()).unwrap();
+        assert!(upload_mail_2.is_some());
 
         check_mr_responses_by_fingerprint(&client, &tpk_0, 0);
         check_mr_responses_by_fingerprint(&client, &tpk_1, 0);
