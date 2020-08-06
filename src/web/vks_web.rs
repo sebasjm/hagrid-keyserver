@@ -237,6 +237,12 @@ pub fn search(
 #[derive(Debug)]
 pub struct ParamEmail(crate::database::types::Email);
 
+impl std::fmt::Display for ParamEmail {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0.as_str())
+    }
+}
+
 use rocket::request::FromParam;
 use rocket::http::RawStr;
 
@@ -261,9 +267,7 @@ pub fn render_profile(
     if let Some(_) = db.by_email(&q.0) {
         MyResponse::ok_bare("found-profile")
     } else {
-        MyResponse::not_found_plain(
-            format!("No key found for given e-mail address: {:?}", q)
-        )
+        MyResponse::not_found(None, format!("No key found for given e-mail address: {}", q))
     }
 }
 
