@@ -36,8 +36,9 @@
         return null;
     }
 
-    const email = location.href.split('/').pop();
-    const keyUrl = "/vks/v1/by-email/" + email;
+    const query = decodeURIComponent(location.href.split(/[=/]/).pop());
+    const type = query.indexOf('@') == -1 ? 'fingerprint' : 'email';
+    const keyUrl = `/vks/v1/by-${type}/${query}`;
     const response = await fetch(keyUrl);
     const armor = await response.text();
     const key = (await openpgp.key.readArmored(armor)).keys[0];
@@ -62,6 +63,7 @@
 
     // grab avatar from MD5 of primary user's e-mail address
     const util = openpgp.util;
+    const email = primaryUser.user.userId.email;
     const digest = await openpgp.crypto.hash.md5(util.str_to_Uint8Array(email));
     const profileHash = util.str_to_hex(util.Uint8Array_to_str(digest));
 
