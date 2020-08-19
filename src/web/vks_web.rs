@@ -287,7 +287,7 @@ fn key_to_response(
         fpr: fp.to_string(),
     };
 
-    MyResponse::ok("found", context)
+    MyResponse::ok("found-profile", context)
 }
 
 
