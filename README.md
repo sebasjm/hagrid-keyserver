@@ -41,7 +41,7 @@ config file, and simply compile and run:
 
 ```bash
 cd hagrid
-rustup override set nightly
+rustup override set nightly-2020-06-01
 cp Rocket.toml.dist Rocket.toml
 cargo run
 ```
